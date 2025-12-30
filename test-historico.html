@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico de Costeos</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1400px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        h1 { color: #333; text-align: center; }
+        .login-section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .stats-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .stat-card h3 { margin: 0; color: #666; font-size: 14px; }
+        .stat-card p { margin: 10px 0 0 0; font-size: 24px; font-weight: bold; color: #4CAF50; }
+        .filters { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .filters input, .filters select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .filters button { padding: 8px 15px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .filters button:hover { background: #1976D2; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #4CAF50; color: white; }
+        tr:hover { background: #f5f5f5; }
+        .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; margin: 2px; }
+        .btn-view { background: #2196F3; color: white; }
+        .btn-export { background: #FF9800; color: white; }
+        .btn-view:hover { background: #1976D2; }
+        .btn-export:hover { background: #F57C00; }
+        input, button { padding: 10px; margin: 5px; font-size: 14px; }
+        .error { color: red; }
+        .success { color: green; }
+        .hidden { display: none !important; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 30px; border-radius: 8px; max-width: 90%; max-height: 90%; overflow: auto; }
+        .modal-close { float: right; font-size: 24px; cursor: pointer; }
+        .detail-table { margin-top: 15px; }
+        .detail-table th { background: #2196F3; }
+    </style>
+</head>
+<body>
+    <h1>📚 Histórico de Costeos</h1>
+    
+    <div class="login-section">
+        <h3>🔐 Login</h3>
+        <input type="email" id="email" placeholder="Email" value="lpardina@goodies.com.ar">
+        <input type="password" id="password" placeholder="Password" value="admin123">
+        <button onclick="login()">Iniciar Sesión</button>
+        <span id="loginResult"></span>
+    </div>
+    
+    <div id="mainContent" class="hidden">
+        <div class="stats-container">
+            <div class="stat-card">
+                <h3>Total Costeos</h3>
+                <p id="statTotal">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Artículos Costeados</h3>
+                <p id="statArticulos">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Inversión Total ARS</h3>
+                <p id="statInversion">$0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Proveedores</h3>
+                <p id="statProveedores">0</p>
+            </div>
+        </div>
+        
+        <div class="filters">
+            <input type="text" id="filtroProveedor" placeholder="Filtrar por proveedor...">
+            <input type="date" id="filtroDesde" placeholder="Desde">
+            <input type="date" id="filtroHasta" placeholder="Hasta">
+            <select id="filtroEstado">
+                <option value="">Todos los estados</option>
+                <option value="calculado">Calculado</option>
+                <option value="borrador">Borrador</option>
+            </select>
+            <button onclick="aplicarFiltros()">🔍 Filtrar</button>
+            <button onclick="limpiarFiltros()">🔄 Limpiar</button>
+            <button onclick="cargarHistorico()" style="background: #4CAF50;">🔃 Actualizar</button>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Nombre</th>
+                    <th>Proveedor</th>
+                    <th>Moneda</th>
+                    <th>Artículos</th>
+                    <th>Costo Total ARS</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tablaCosteos">
+                <tr><td colspan="8" style="text-align: center;">Cargando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div id="modalDetalle" class="modal hidden">
+        <div class="modal-content">
+            <span class="modal-close" onclick="cerrarModal()">&times;</span>
+            <h2 id="modalTitulo">Detalle del Costeo</h2>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        let token = '';
+        let costeos = [];
+        
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    token = data.token;
+                    document.getElementById('loginResult').innerHTML = '<span class="success">✅ Conectado</span>';
+                    document.getElementById('mainContent').classList.remove('hidden');
+                    cargarHistorico();
+                } else {
+                    document.getElementById('loginResult').innerHTML = '<span class="error">❌ ' + data.error + '</span>';
+                }
+            } catch (error) {
+                document.getElementById('loginResult').innerHTML = '<span class="error">❌ Error de conexión</span>';
+            }
+        }
+        
+        async function cargarHistorico() {
+            try {
+                const response = await fetch('http://localhost:3000/api/export/costeos', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    costeos = data.costeos || [];
+                    mostrarCosteos(costeos);
+                    actualizarEstadisticas(costeos);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        
+        function mostrarCosteos(lista) {
+            const tbody = document.getElementById('tablaCosteos');
+            
+            if (lista.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No hay costeos registrados</td></tr>';
+                return;
+            }
+            
+            let html = '';
+            for (const costeo of lista) {
+                const fecha = new Date(costeo.created_at).toLocaleDateString('es-AR');
+                const costoTotal = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(costeo.costo_total_ars || 0);
+                
+                html += `<tr>
+                    <td>${fecha}</td>
+                    <td>${costeo.nombre_costeo}</td>
+                    <td>${costeo.proveedor}</td>
+                    <td>${costeo.moneda_principal || 'USD'}</td>
+                    <td>-</td>
+                    <td>${costoTotal}</td>
+                    <td>${costeo.estado || 'borrador'}</td>
+                    <td>
+                        <button class="btn btn-view" onclick="verDetalle('${costeo.id}')">👁️ Ver</button>
+                        <button class="btn btn-export" onclick="exportarExcel('${costeo.id}', '${costeo.nombre_costeo}')">📥 Excel</button>
+                    </td>
+                </tr>`;
+            }
+            
+            tbody.innerHTML = html;
+        }
+        
+        function actualizarEstadisticas(lista) {
+            document.getElementById('statTotal').textContent = lista.length;
+            
+            const proveedores = [...new Set(lista.map(c => c.proveedor))];
+            document.getElementById('statProveedores').textContent = proveedores.length;
+            
+            const inversionTotal = lista.reduce((sum, c) => sum + (parseFloat(c.costo_total_ars) || 0), 0);
+            document.getElementById('statInversion').textContent = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(inversionTotal);
+            
+            document.getElementById('statArticulos').textContent = '-';
+        }
+        
+        function aplicarFiltros() {
+            const proveedor = document.getElementById('filtroProveedor').value.toLowerCase();
+            const desde = document.getElementById('filtroDesde').value;
+            const hasta = document.getElementById('filtroHasta').value;
+            const estado = document.getElementById('filtroEstado').value;
+            
+            let filtrados = costeos;
+            
+            if (proveedor) {
+                filtrados = filtrados.filter(c => c.proveedor.toLowerCase().includes(proveedor));
+            }
+            
+            if (desde) {
+                filtrados = filtrados.filter(c => new Date(c.created_at) >= new Date(desde));
+            }
+            
+            if (hasta) {
+                filtrados = filtrados.filter(c => new Date(c.created_at) <= new Date(hasta + 'T23:59:59'));
+            }
+            
+            if (estado) {
+                filtrados = filtrados.filter(c => c.estado === estado);
+            }
+            
+            mostrarCosteos(filtrados);
+            actualizarEstadisticas(filtrados);
+        }
+        
+        function limpiarFiltros() {
+            document.getElementById('filtroProveedor').value = '';
+            document.getElementById('filtroDesde').value = '';
+            document.getElementById('filtroHasta').value = '';
+            document.getElementById('filtroEstado').value = '';
+            mostrarCosteos(costeos);
+            actualizarEstadisticas(costeos);
+        }
+        
+        async function verDetalle(id) {
+            try {
+                const response = await fetch('http://localhost:3000/api/costeos/' + id, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    mostrarModalDetalle(data);
+                } else {
+                    alert('Error al cargar detalle: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+        
+        function mostrarModalDetalle(data) {
+            const costeo = data.costeo;
+            const articulos = data.articulos || [];
+            
+            document.getElementById('modalTitulo').textContent = costeo.nombre_costeo;
+            
+            let html = `
+                <h3>📋 Datos Generales</h3>
+                <p><strong>Proveedor:</strong> ${costeo.proveedor}</p>
+                <p><strong>Factura:</strong> ${costeo.factura_nro || '-'}</p>
+                <p><strong>Moneda:</strong> ${costeo.moneda_principal}</p>
+                <p><strong>TC USD:</strong> ${costeo.tc_usd}</p>
+                <p><strong>Estado:</strong> ${costeo.estado}</p>
+                
+                <h3>📦 Artículos (${articulos.length})</h3>
+                <table class="detail-table">
+                    <tr>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Unidades</th>
+                        <th>Costo Neto Unit.</th>
+                        <th>Costo Final Unit.</th>
+                        <th>Costo Total</th>
+                    </tr>
+            `;
+            
+            for (const art of articulos) {
+                const costoNeto = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(art.costo_unitario_ars || 0);
+                const costoFinal = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(art.costo_final_unitario_ars || 0);
+                const costoTotal = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(art.costo_total_ars || 0);
+                
+                html += `<tr>
+                    <td>${art.codigo_goodies}</td>
+                    <td>${art.nombre}</td>
+                    <td>${art.unidades_totales}</td>
+                    <td>${costoNeto}</td>
+                    <td>${costoFinal}</td>
+                    <td>${costoTotal}</td>
+                </tr>`;
+            }
+            
+            html += '</table>';
+            
+            document.getElementById('modalBody').innerHTML = html;
+            document.getElementById('modalDetalle').classList.remove('hidden');
+        }
+        
+        function cerrarModal() {
+            document.getElementById('modalDetalle').classList.add('hidden');
+        }
+        
+        async function exportarExcel(id, nombre) {
+            try {
+                const response = await fetch('http://localhost:3000/api/export/costeos/' + id + '/excel', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'Costeo_' + nombre.replace(/[^a-zA-Z0-9]/g, '_') + '.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    alert('✅ Excel descargado');
+                } else {
+                    alert('Error al exportar');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+        
+        // Cerrar modal con Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') cerrarModal();
+        });
+    </script>
+</body>
+</html>

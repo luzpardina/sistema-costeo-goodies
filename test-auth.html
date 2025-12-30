@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Sistema de Costeo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .response {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            border-left: 4px solid #4CAF50;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .error {
+            border-left-color: #f44336;
+            background-color: #ffebee;
+        }
+        .success {
+            border-left-color: #4CAF50;
+            background-color: #e8f5e9;
+        }
+        label {
+            font-weight: bold;
+            color: #555;
+            display: block;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center; color: #4CAF50;">🧪 Test - Sistema de Autenticación</h1>
+
+    <!-- REGISTRO -->
+    <div class="container">
+        <h2>📝 Registrar Usuario</h2>
+        <form id="registerForm">
+            <label>Email:</label>
+            <input type="email" id="regEmail" placeholder="luz@goodies.com.ar" required>
+            
+            <label>Contraseña:</label>
+            <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" required>
+            
+            <label>Nombre:</label>
+            <input type="text" id="regNombre" placeholder="Luz Pardina" required>
+            
+            <label>Rol:</label>
+            <select id="regRol">
+                <option value="admin">Admin</option>
+                <option value="comex" selected>Comex</option>
+                <option value="comercial">Comercial</option>
+                <option value="contable">Contable</option>
+                <option value="visualizador">Visualizador</option>
+            </select>
+            
+            <button type="submit">Registrar</button>
+        </form>
+        <div id="registerResponse"></div>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="container">
+        <h2>🔐 Login</h2>
+        <form id="loginForm">
+            <label>Email:</label>
+            <input type="email" id="loginEmail" placeholder="luz@goodies.com.ar" required>
+            
+            <label>Contraseña:</label>
+            <input type="password" id="loginPassword" placeholder="Tu contraseña" required>
+            
+            <button type="submit">Login</button>
+        </form>
+        <div id="loginResponse"></div>
+    </div>
+
+    <!-- OBTENER USUARIO ACTUAL -->
+    <div class="container">
+        <h2>👤 Obtener Mi Información (requiere token)</h2>
+        <label>Token JWT:</label>
+        <input type="text" id="token" placeholder="Pega aquí el token del login">
+        <button onclick="getMe()">Obtener Mi Info</button>
+        <div id="meResponse"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api/auth';
+
+        // REGISTRO
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const responseDiv = document.getElementById('registerResponse');
+            
+            try {
+                const response = await fetch(`${API_URL}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: document.getElementById('regEmail').value,
+                        password: document.getElementById('regPassword').value,
+                        nombre: document.getElementById('regNombre').value,
+                        rol: document.getElementById('regRol').value
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.textContent = '✅ Registro exitoso!\n\n' + JSON.stringify(data, null, 2);
+                    // Auto-completar token
+                    if (data.token) {
+                        document.getElementById('token').value = data.token;
+                    }
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = '❌ Error:\n\n' + JSON.stringify(data, null, 2);
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = '❌ Error de conexión: ' + error.message;
+            }
+        });
+
+        // LOGIN
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const responseDiv = document.getElementById('loginResponse');
+            
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: document.getElementById('loginEmail').value,
+                        password: document.getElementById('loginPassword').value
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.textContent = '✅ Login exitoso!\n\n' + JSON.stringify(data, null, 2);
+                    // Auto-completar token
+                    if (data.token) {
+                        document.getElementById('token').value = data.token;
+                    }
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = '❌ Error:\n\n' + JSON.stringify(data, null, 2);
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = '❌ Error de conexión: ' + error.message;
+            }
+        });
+
+        // OBTENER INFO DEL USUARIO
+        async function getMe() {
+            const responseDiv = document.getElementById('meResponse');
+            const token = document.getElementById('token').value;
+            
+            if (!token) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = '❌ Debes ingresar un token';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.textContent = '✅ Información obtenida!\n\n' + JSON.stringify(data, null, 2);
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = '❌ Error:\n\n' + JSON.stringify(data, null, 2);
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = '❌ Error de conexión: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

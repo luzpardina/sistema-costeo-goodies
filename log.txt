@@ -1,0 +1,10 @@
+[dotenv@17.2.3] injecting env (7) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+
+🚀 Servidor corriendo en http://localhost:3000
+📊 Health check: http://localhost:3000/health
+🔐 Auth endpoints: http://localhost:3000/api/auth
+📦 Costeos endpoints: http://localhost:3000/api/costeos
+✅ Conexión a PostgreSQL exitosa
+✅ Modelos sincronizados con la base de datos
+^C

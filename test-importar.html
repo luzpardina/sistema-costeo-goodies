@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Importar Costeo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .response {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            border-left: 4px solid #4CAF50;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error {
+            border-left-color: #f44336;
+            background-color: #ffebee;
+        }
+        .success {
+            border-left-color: #4CAF50;
+            background-color: #e8f5e9;
+        }
+        label {
+            font-weight: bold;
+            color: #555;
+            display: block;
+            margin-top: 10px;
+        }
+        .file-input {
+            border: 2px dashed #4CAF50;
+            padding: 20px;
+            text-align: center;
+            background-color: #f0f8f0;
+            cursor: pointer;
+        }
+        .file-input:hover {
+            background-color: #e8f5e9;
+        }
+        .hidden {
+            display: none;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .status.logged-in {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .status.logged-out {
+            background-color: #fff3e0;
+            color: #e65100;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test - Importar Costeo desde Excel</h1>
+
+    <!-- SECCIÓN DE LOGIN -->
+    <div class="container" id="loginSection">
+        <h2>🔐 Paso 1: Login</h2>
+        <p>Primero necesitás hacer login para obtener el token de autenticación.</p>
+        
+        <label>Email:</label>
+        <input type="email" id="loginEmail" value="lpardina@goodies.com.ar">
+        
+        <label>Contraseña:</label>
+        <input type="password" id="loginPassword" value="admin123">
+        
+        <button onclick="login()">Login</button>
+        <div id="loginResponse"></div>
+    </div>
+
+    <!-- ESTADO DE SESIÓN -->
+    <div class="status logged-out" id="sessionStatus">
+        ❌ No has iniciado sesión
+    </div>
+
+    <!-- SECCIÓN DE IMPORTACIÓN -->
+    <div class="container" id="importSection">
+        <h2>📦 Paso 2: Importar Archivo Excel</h2>
+        <p>Seleccioná el archivo Excel de costeo (BACKUS_4-25_-_LEGAJO_DEFINITIVO.xlsx o similar).</p>
+        
+        <div class="file-input" onclick="document.getElementById('fileInput').click()">
+            <p>📄 Click aquí para seleccionar archivo Excel</p>
+            <p style="font-size: 12px; color: #666;">Formatos aceptados: .xlsx, .xls</p>
+        </div>
+        
+        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;" onchange="mostrarArchivo()">
+        
+        <div id="fileInfo" class="hidden" style="margin: 15px 0; padding: 10px; background: #e3f2fd; border-radius: 5px;">
+            <strong>Archivo seleccionado:</strong>
+            <p id="fileName" style="margin: 5px 0;"></p>
+            <p id="fileSize" style="margin: 5px 0; font-size: 12px; color: #666;"></p>
+        </div>
+        
+        <button id="importBtn" onclick="importar()" disabled>Importar Costeo</button>
+        
+        <div id="importResponse"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        let token = null;
+
+        // LOGIN
+        async function login() {
+            const responseDiv = document.getElementById('loginResponse');
+            const statusDiv = document.getElementById('sessionStatus');
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: document.getElementById('loginEmail').value,
+                        password: document.getElementById('loginPassword').value
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    token = data.token;
+                    responseDiv.className = 'response success';
+                    responseDiv.textContent = '✅ Login exitoso!\n\nUsuario: ' + data.usuario.nombre + '\nRol: ' + data.usuario.rol;
+                    
+                    statusDiv.className = 'status logged-in';
+                    statusDiv.textContent = '✅ Sesión iniciada como ' + data.usuario.nombre;
+                    
+                    // Habilitar botón de importar si hay archivo
+                    if (document.getElementById('fileInput').files.length > 0) {
+                        document.getElementById('importBtn').disabled = false;
+                    }
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = '❌ Error:\n\n' + JSON.stringify(data, null, 2);
+                    
+                    statusDiv.className = 'status logged-out';
+                    statusDiv.textContent = '❌ Error al iniciar sesión';
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = '❌ Error de conexión: ' + error.message;
+            }
+        }
+
+        // MOSTRAR ARCHIVO SELECCIONADO
+        function mostrarArchivo() {
+            const fileInput = document.getElementById('fileInput');
+            const fileInfo = document.getElementById('fileInfo');
+            const fileName = document.getElementById('fileName');
+            const fileSize = document.getElementById('fileSize');
+            const importBtn = document.getElementById('importBtn');
+            
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                fileName.textContent = file.name;
+                fileSize.textContent = 'Tamaño: ' + (file.size / 1024).toFixed(2) + ' KB';
+                fileInfo.classList.remove('hidden');
+                
+                // Habilitar botón solo si hay token
+                if (token) {
+                    importBtn.disabled = false;
+                }
+            }
+        }
+
+        // IMPORTAR
+        async function importar() {
+            const responseDiv = document.getElementById('importResponse');
+            const fileInput = document.getElementById('fileInput');
+            
+            // Verificar token
+            if (!token) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = '❌ Debes hacer login primero';
+                return;
+            }
+            
+            // Verificar archivo
+            if (fileInput.files.length === 0) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = '❌ Debes seleccionar un archivo';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            
+            // Crear FormData
+            const formData = new FormData();
+            formData.append('archivo', file);
+            
+            // Deshabilitar botón durante la importación
+            const importBtn = document.getElementById('importBtn');
+            importBtn.disabled = true;
+            importBtn.textContent = 'Importando...';
+            
+            responseDiv.className = 'response';
+            responseDiv.textContent = '⏳ Procesando archivo...\n\nEsto puede tomar unos segundos...';
+            
+            try {
+                const response = await fetch(`${API_URL}/costeos/importar`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.textContent = '✅ ¡IMPORTACIÓN EXITOSA!\n\n' + 
+                        'Costeo ID: ' + data.costeo.id + '\n' +
+                        'Nombre: ' + data.costeo.nombre + '\n' +
+                        'Proveedor: ' + data.costeo.proveedor + '\n' +
+                        'Moneda: ' + data.costeo.moneda + '\n\n' +
+                        'ESTADÍSTICAS:\n' +
+                        '- Artículos importados: ' + data.estadisticas.articulos_importados + '\n' +
+                        '- Gastos importados: ' + data.estadisticas.gastos_importados + '\n' +
+                        '- Flete (USD): ' + data.estadisticas.flete_usd + '\n' +
+                        '- Seguro (USD): ' + data.estadisticas.seguro_usd + '\n\n' +
+                        '¡Podés verificar los datos en pgAdmin!';
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = '❌ Error en la importación:\n\n' + JSON.stringify(data, null, 2);
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = '❌ Error de conexión:\n\n' + error.message;
+            } finally {
+                // Rehabilitar botón
+                importBtn.disabled = false;
+                importBtn.textContent = 'Importar Costeo';
+            }
+        }
+    </script>
+</body>
+</html>

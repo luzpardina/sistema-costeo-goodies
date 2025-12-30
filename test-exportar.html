@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exportar Costeo a Excel</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        h1 { color: #333; }
+        .section { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        input, button { padding: 10px; margin: 5px; font-size: 16px; }
+        button { background: #4CAF50; color: white; border: none; cursor: pointer; border-radius: 4px; }
+        button:hover { background: #45a049; }
+        button:disabled { background: #ccc; }
+        .error { color: red; }
+        .success { color: green; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #4CAF50; color: white; }
+        tr:hover { background: #f5f5f5; }
+        .btn-export { background: #2196F3; }
+        .btn-export:hover { background: #1976D2; }
+    </style>
+</head>
+<body>
+    <h1>📊 Exportar Costeo a Excel</h1>
+    
+    <div class="section">
+        <h3>Paso 1: Login</h3>
+        <input type="email" id="email" placeholder="Email" value="lpardina@goodies.com.ar">
+        <input type="password" id="password" placeholder="Password" value="admin123">
+        <button onclick="login()">Login</button>
+        <p id="loginResult"></p>
+    </div>
+    
+    <div class="section">
+        <h3>Paso 2: Ver Costeos Disponibles</h3>
+        <button onclick="listarCosteos()" id="btnListar" disabled>Ver Mis Costeos</button>
+        <div id="listaCosteos"></div>
+    </div>
+
+    <script>
+        let token = '';
+        
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    token = data.token;
+                    document.getElementById('loginResult').innerHTML = '<span class="success">✅ Login exitoso!</span>';
+                    document.getElementById('btnListar').disabled = false;
+                } else {
+                    document.getElementById('loginResult').innerHTML = '<span class="error">❌ ' + data.error + '</span>';
+                }
+            } catch (error) {
+                document.getElementById('loginResult').innerHTML = '<span class="error">❌ Error: ' + error.message + '</span>';
+            }
+        }
+        
+        async function listarCosteos() {
+            try {
+                const response = await fetch('http://localhost:3000/api/export/costeos', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.costeos) {
+                    let html = '<table><tr><th>Nombre</th><th>Proveedor</th><th>Costo Total</th><th>Estado</th><th>Acción</th></tr>';
+                    
+                    for (const costeo of data.costeos) {
+                        const costoFormateado = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(costeo.costo_total_ars || 0);
+                        html += `<tr>
+                            <td>${costeo.nombre_costeo}</td>
+                            <td>${costeo.proveedor}</td>
+                            <td>${costoFormateado}</td>
+                            <td>${costeo.estado}</td>
+                            <td><button class="btn-export" onclick="exportarExcel('${costeo.id}', '${costeo.nombre_costeo}')">📥 Exportar Excel</button></td>
+                        </tr>`;
+                    }
+                    html += '</table>';
+                    document.getElementById('listaCosteos').innerHTML = html;
+                } else {
+                    document.getElementById('listaCosteos').innerHTML = '<span class="error">No hay costeos disponibles</span>';
+                }
+            } catch (error) {
+                document.getElementById('listaCosteos').innerHTML = '<span class="error">❌ Error: ' + error.message + '</span>';
+            }
+        }
+        
+        async function exportarExcel(id, nombre) {
+            try {
+                const response = await fetch('http://localhost:3000/api/export/costeos/' + id + '/excel', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'Costeo_' + nombre.replace(/[^a-zA-Z0-9]/g, '_') + '.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    alert('✅ Excel descargado exitosamente!');
+                } else {
+                    const data = await response.json();
+                    alert('❌ Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

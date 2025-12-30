@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Costeo - GOODIES</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; color: #fff; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #333; margin-bottom: 30px; }
+        .logo { font-size: 24px; font-weight: bold; color: #4CAF50; }
+        .user-info { display: flex; align-items: center; gap: 15px; }
+        .user-name { color: #aaa; }
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; transition: all 0.3s; margin: 2px; }
+        .btn-primary { background: #4CAF50; color: white; }
+        .btn-primary:hover { background: #45a049; }
+        .btn-secondary { background: #2196F3; color: white; }
+        .btn-secondary:hover { background: #1976D2; }
+        .btn-danger { background: #f44336; color: white; }
+        .btn-danger:hover { background: #d32f2f; }
+        .btn-success { background: #4CAF50; color: white; }
+        .btn-warning { background: #ff9800; color: white; }
+        .btn-purple { background: #9c27b0; color: white; }
+        .btn-purple:hover { background: #7b1fa2; }
+        .btn:disabled { background: #666; cursor: not-allowed; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+        .login-container { max-width: 400px; margin: 100px auto; background: #1e1e2f; padding: 40px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .login-container h2 { text-align: center; margin-bottom: 30px; color: #4CAF50; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #aaa; font-size: 13px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #333; border-radius: 5px; background: #2a2a3e; color: #fff; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #4CAF50; }
+        .form-group input[type="checkbox"] { width: auto; margin-right: 10px; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .app-container { display: none; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card { background: #1e1e2f; border-radius: 10px; padding: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .card h3 { margin-bottom: 20px; color: #4CAF50; }
+        .card h4 { margin: 20px 0 10px; color: #2196F3; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .upload-area { border: 2px dashed #444; border-radius: 10px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s; margin-bottom: 15px; }
+        .upload-area:hover { border-color: #4CAF50; background: rgba(76, 175, 80, 0.1); }
+        .upload-area.dragover { border-color: #4CAF50; background: rgba(76, 175, 80, 0.2); }
+        .upload-area p { color: #888; margin-top: 10px; }
+        .file-name { color: #4CAF50; margin-top: 10px; font-weight: bold; }
+        .table-container { overflow-x: auto; margin-top: 15px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #333; }
+        th { background: #2a2a3e; color: #4CAF50; font-weight: 600; position: sticky; top: 0; }
+        tr:hover { background: rgba(76, 175, 80, 0.1); }
+        .status-badge { padding: 5px 10px; border-radius: 15px; font-size: 12px; }
+        .status-definitivo { background: #4CAF50; color: #fff; }
+        .status-presupuesto { background: #ff9800; color: #000; }
+        .actions { display: flex; gap: 3px; flex-wrap: wrap; }
+        .message { padding: 15px; border-radius: 5px; margin-bottom: 15px; display: none; }
+        .message.success { background: rgba(76, 175, 80, 0.2); border: 1px solid #4CAF50; color: #4CAF50; display: block; }
+        .message.error { background: rgba(244, 67, 54, 0.2); border: 1px solid #f44336; color: #f44336; display: block; }
+        .loading { display: none; text-align: center; padding: 20px; }
+        .loading.show { display: block; }
+        .spinner { border: 3px solid #333; border-top: 3px solid #4CAF50; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: flex-start; z-index: 1000; overflow-y: auto; padding: 20px; }
+        .modal.show { display: flex; }
+        .modal-content { background: #1e1e2f; padding: 30px; border-radius: 10px; width: 95%; max-width: 1200px; margin: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h3 { color: #4CAF50; }
+        .modal-close { background: none; border: none; color: #888; font-size: 28px; cursor: pointer; }
+        .modal-close:hover { color: #fff; }
+        .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+        .detail-item { padding: 10px; background: #2a2a3e; border-radius: 5px; }
+        .detail-label { color: #888; font-size: 12px; }
+        .detail-value { color: #fff; font-size: 16px; font-weight: bold; }
+        .detail-value.highlight { color: #4CAF50; }
+        .filtros { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; padding: 15px; background: #2a2a3e; border-radius: 8px; }
+        .filtros select { background: #1e1e2f; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 5px; min-width: 150px; }
+        .filtro-grupo { display: flex; flex-direction: column; gap: 5px; }
+        .filtro-grupo label { color: #aaa; font-size: 13px; }
+        .filtro-check { display: flex; align-items: center; gap: 8px; }
+        .filtro-check input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .criterio-container { display: none; margin-left: 25px; }
+        .criterio-container.show { display: block; }
+        .acciones-masivas { display: flex; gap: 10px; margin-bottom: 15px; padding: 15px; background: #2a2a3e; border-radius: 8px; align-items: center; flex-wrap: wrap; }
+        .acciones-masivas span { color: #aaa; font-size: 14px; }
+        .acciones-masivas .contador { color: #4CAF50; font-weight: bold; }
+        .checkbox-cell { width: 40px; text-align: center; }
+        .checkbox-cell input { width: 18px; height: 18px; cursor: pointer; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #333; }
+        .tab { padding: 10px 20px; background: transparent; border: none; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .tab:hover { color: #fff; }
+        .tab.active { color: #4CAF50; border-bottom-color: #4CAF50; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .articulos-tabla input, .gastos-tabla input, .gastos-tabla select { width: 100%; padding: 6px; border: 1px solid #444; border-radius: 4px; background: #1e1e2f; color: #fff; font-size: 12px; }
+        .articulos-tabla input:focus, .gastos-tabla input:focus { border-color: #4CAF50; outline: none; }
+    </style>
+</head>
+<body>
+<div class="login-container" id="loginContainer">
+        <h2>Sistema de Costeo</h2>
+        <div class="message" id="loginMessage"></div>
+        <form id="loginForm">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="email" value="lpardina@goodies.com.ar" required>
+            </div>
+            <div class="form-group">
+                <label>Contrasena</label>
+                <input type="password" id="password" value="admin123" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Iniciar Sesion</button>
+        </form>
+    </div>
+    <div class="app-container" id="appContainer">
+        <div class="container">
+            <header>
+                <div class="logo">Sistema de Costeo</div>
+                <div class="user-info">
+                    <span class="user-name" id="userName"></span>
+                    <button class="btn btn-danger" onclick="logout()">Cerrar Sesion</button>
+                </div>
+            </header>
+            <div class="cards">
+                <div class="card">
+                    <h3>Importar / Cargar Legajo</h3>
+                    <div class="message" id="importMessage"></div>
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <button class="btn btn-primary" onclick="abrirCargaManual()" style="flex:1;">+ Carga Manual</button>
+                        <button class="btn btn-secondary" onclick="toggleImportExcel()" style="flex:1;">Importar Excel</button>
+                    </div>
+                    <div id="importExcelArea" style="display:none;">
+                        <div class="upload-area" id="uploadArea">
+                            <div style="font-size: 48px;">📁</div>
+                            <p>Arrastra tu archivo Excel aqui</p>
+                            <p class="file-name" id="fileName"></p>
+                            <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;">
+                        </div>
+                        <button class="btn btn-primary" id="importBtn" onclick="importarExcel()" disabled style="width: 100%;">Importar</button>
+                    </div>
+                    <div class="loading" id="importLoading"><div class="spinner"></div><p>Procesando...</p></div>
+                </div>
+                <div class="card">
+                    <h3>Resumen</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">Total Costeos</div>
+                            <div class="detail-value highlight" id="totalCosteos">0</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Presupuestos</div>
+                            <div class="detail-value" id="costeosPresupuestos">0</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="cargarCosteos()" style="width: 100%; margin-top: 15px;">Actualizar Lista</button>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Listado de Costeos</h3>
+                <div class="filtros">
+                    <div class="filtro-grupo">
+                        <label>Proveedor</label>
+                        <select id="filtroProveedor" onchange="aplicarFiltros()"><option value="">Todos</option></select>
+                    </div>
+                    <div class="filtro-grupo">
+                        <label>Tipo</label>
+                        <select id="filtroTipo" onchange="aplicarFiltros()">
+                            <option value="">Todos</option>
+                            <option value="definitivo">Definitivo</option>
+                            <option value="presupuesto">Presupuesto</option>
+                        </select>
+                    </div>
+                    <div class="filtro-grupo">
+                        <div class="filtro-check">
+                            <input type="checkbox" id="filtroUltimo" onchange="toggleCriterio(); aplicarFiltros();">
+                            <label for="filtroUltimo">Solo ultima version</label>
+                        </div>
+                        <div class="criterio-container" id="criterioContainer">
+                            <select id="filtroCriterio" onchange="aplicarFiltros()">
+                                <option value="fecha_carga">Por fecha de carga</option>
+                                <option value="fecha_factura">Por fecha de factura</option>
+                                <option value="fecha_despacho">Por fecha de despacho</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="limpiarFiltros()">Limpiar</button>
+                </div>
+                <div class="acciones-masivas" id="accionesMasivas" style="display: none;">
+                    <span>Seleccionados: <span class="contador" id="contadorSeleccionados">0</span></span>
+                </div>
+                <div class="loading" id="tableLoading"><div class="spinner"></div><p>Cargando...</p></div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="checkbox-cell"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+                                <th>Nombre</th>
+                                <th>Proveedor</th>
+                                <th>Moneda</th>
+                                <th>Unidades</th>
+                                <th>Fecha Fact.</th>
+                                <th>Fecha Desp.</th>
+                                <th>Tipo</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="costeosBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card" style="margin-top: 20px;">
+                <h3>Último Costo por Artículo</h3>
+                <div class="filtros" style="margin-bottom: 15px;">
+                    <div class="filtro-grupo">
+                        <label>Buscar Artículo</label>
+                        <input type="text" id="buscarArticulo" placeholder="Código o nombre..." onkeyup="filtrarArticulos()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 250px;">
+                    </div>
+                    <div class="filtro-grupo">
+                        <label>Proveedor</label>
+                        <select id="filtroProveedorArticulo" onchange="filtrarArticulos()">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-secondary" onclick="cargarUltimosCostos()">Actualizar</button>
+                    <button class="btn btn-success" onclick="exportarUltimosCostos()">Exportar Excel</button>
+                </div>
+                <div class="loading" id="articulosLoading"><div class="spinner"></div><p>Cargando...</p></div>
+                <div class="table-container" style="max-height: 500px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Proveedor</th>
+                                <th>Nombre</th>
+                                <th>Mon. FOB</th>
+                                <th>Valor FOB</th>
+                                <th>Costo Neto</th>
+                                <th>Costo c/Imp</th>
+                                <th>Costo Ant.</th>
+                                <th>Dif %</th>
+                                <th>Fecha Desp.</th>
+                                <th>Costeo</th>
+                                <th>TC</th>
+                                <th>Detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody id="articulosUltimoCostoBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- HISTORIAL DE REVALUACIONES -->
+            <div class="card">
+                <h3>Historial de Revaluaciones</h3>
+                <div style="margin-bottom: 15px;">
+                    <button class="btn btn-primary" onclick="abrirModalRevaluar()">+ Nueva Revaluación</button>
+                </div>
+                <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Motivo</th>
+                                <th>TC USD</th>
+                                <th>TC EUR</th>
+                                <th>TC GBP</th>
+                                <th>Artículos</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historialRevaluacionesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+  
+<div class="modal" id="revaluarModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>Revaluación de Costos</h3>
+                <button class="modal-close" onclick="cerrarModal('revaluarModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="revaluarInfo" style="margin-bottom:15px;color:#aaa;"></p>
+                
+                <div class="form-group">
+                    <label>Motivo de Revaluación *</label>
+                    <select id="rev_motivo" style="width:100%;padding:10px;background:#1e1e2f;color:#fff;border:1px solid #444;border-radius:4px;">
+                        <option value="">Seleccionar...</option>
+                        <option value="Revaluación Contable">Revaluación Contable</option>
+                        <option value="Análisis de Margen">Análisis de Margen</option>
+                        <option value="Actualización Costos Reposición">Actualización Costos de Reposición</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="rev_otroMotivoGroup" style="display:none;">
+                    <label>Especificar Motivo</label>
+                    <input type="text" id="rev_otroMotivo" style="width:100%;padding:10px;background:#1e1e2f;color:#fff;border:1px solid #444;border-radius:4px;">
+                </div>
+                
+                <h4 style="margin-top:20px;margin-bottom:10px;">Nuevos Tipos de Cambio</h4>
+                <div style="display:flex;gap:15px;">
+                    <div class="form-group" style="flex:1;">
+                        <label>TC USD *</label>
+                        <input type="number" id="rev_tcUsd" step="0.0001" style="width:100%;padding:10px;background:#1e1e2f;color:#fff;border:1px solid #444;border-radius:4px;">
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label>TC EUR</label>
+                        <input type="number" id="rev_tcEur" step="0.0001" style="width:100%;padding:10px;background:#1e1e2f;color:#fff;border:1px solid #444;border-radius:4px;">
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label>TC GBP</label>
+                        <input type="number" id="rev_tcGbp" step="0.0001" style="width:100%;padding:10px;background:#1e1e2f;color:#fff;border:1px solid #444;border-radius:4px;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="cerrarModal('revaluarModal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="ejecutarRevaluacion()">Revaluar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="resultadoRevaluacionModal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>Resultado de Revaluación</h3>
+                <button class="modal-close" onclick="cerrarModal('resultadoRevaluacionModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="resumenRevaluacion" style="margin-bottom:15px;padding:10px;background:#1e1e2f;border-radius:4px;"></div>
+                <div style="max-height:400px;overflow-y:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nombre Artículo</th>
+                                <th>Costo Neto Original</th>
+                                <th>Costo Neto Revaluado</th>
+                                <th>Diferencia %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultadoRevaluacionBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="cerrarModal('resultadoRevaluacionModal')">Cerrar</button>
+                <button class="btn btn-success" id="btnExportarRevaluacion" onclick="exportarRevaluacionActual()">Exportar Excel</button>
+            </div>
+        </div>
+    </div>
+<div class="modal" id="detalleArticuloModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 id="detalleArticuloTitle">Detalle del Artículo</h3>
+                <button class="modal-close" onclick="cerrarModal('detalleArticuloModal')">×</button>
+            </div>
+            <div id="detalleArticuloBody" style="padding: 20px;"></div>
+        </div>
+    </div> 
+ <div class="modal" id="detalleModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="modalTitle">Detalle del Costeo</h3>
+                <button class="modal-close" onclick="cerrarModal('detalleModal')">×</button>
+            </div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+    <div class="modal" id="recalcularModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>Recalcular con Tipo de Cambio</h3>
+                <button class="modal-close" onclick="cerrarModal('recalcularModal')">×</button>
+            </div>
+            <p style="color: #aaa; margin-bottom: 15px;">Ingresa los tipos de cambio:</p>
+            <div class="form-row">
+                <div class="form-group"><label>TC USD</label><input type="number" id="tcUsdNuevo" step="0.01"></div>
+                <div class="form-group"><label>TC EUR</label><input type="number" id="tcEurNuevo" step="0.01"></div>
+                <div class="form-group"><label>TC GBP</label><input type="number" id="tcGbpNuevo" step="0.01"></div>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="cerrarModal('recalcularModal')">Cancelar</button>
+                <button class="btn btn-purple" onclick="ejecutarRecalcular()">Recalcular</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="cargaManualModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Carga Manual de Legajo</h3>
+                <button class="modal-close" onclick="cerrarModal('cargaManualModal')">×</button>
+            </div>
+            <div class="tabs">
+                <button class="tab active" onclick="cambiarTab('datosGenerales')">1. Datos Generales</button>
+                <button class="tab" onclick="cambiarTab('baseAduana')">2. Base Aduana</button>
+                <button class="tab" onclick="cambiarTab('articulos')">3. Articulos</button>
+                <button class="tab" onclick="cambiarTab('gastos')">4. Gastos</button>
+            </div>
+            <div id="tabDatosGenerales" class="tab-content active">
+                <h4>Datos del Costeo</h4>
+                <div class="form-row">
+                    <div class="form-group"><label>Nombre del Costeo *</label><input type="text" id="cm_nombre" placeholder="Ej: BACKUS 1-25"></div>
+                    <div class="form-group"><label>Proveedor de Origen *</label><input type="text" id="cm_proveedor" placeholder="Ej: STABZ"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><input type="checkbox" id="cm_tieneIntermediaria" onchange="toggleIntermediaria()"> Tiene Empresa Intermediaria</label>
+                    </div>
+                    <div class="form-group" id="cm_intermediariaGroup" style="display:none;">
+                        <label>Nombre Empresa Intermediaria</label>
+                        <input type="text" id="cm_intermediaria" placeholder="Ej: TRADING CO">
+                    </div>
+                    <div class="form-group" id="cm_facturaIntermGroup" style="display:none;">
+                        <label>Nro Factura Intermediaria</label>
+                        <input type="text" id="cm_facturaInterm" placeholder="Nro factura">
+                    </div>
+                    <div class="form-group" id="cm_fechaFacturaIntermGroup" style="display:none;">
+                        <label>Fecha Factura Intermediaria</label>
+                        <input type="date" id="cm_fechaFacturaInterm">
+                    </div>
+                    <div class="form-group" id="cm_fechaVencIntermGroup" style="display:none;">
+                        <label>Fecha Vencimiento Intermediaria</label>
+                        <input type="date" id="cm_fechaVencInterm">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Factura Nro</label><input type="text" id="cm_facturaNro"></div>
+                    <div class="form-group"><label>Moneda Principal *</label>
+                        <select id="cm_moneda"><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option></select>
+                    </div>
+                    <div class="form-group"><label>Monto Factura</label><input type="number" id="cm_monto" step="0.01"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Fecha Factura</label><input type="date" id="cm_fechaFactura"></div>
+                    <div class="form-group"><label>Fecha Vencimiento</label><input type="date" id="cm_fechaVenc"></div>
+                    <div class="form-group"><label>Fecha Despacho</label><input type="date" id="cm_fechaDespacho"></div>
+                </div>
+                <h4>Tipos de Cambio</h4>
+                <div class="form-row">
+                    <div class="form-group"><label>TC USD</label><input type="number" id="cm_tcUsd" step="0.0001" placeholder="Ej: 1450.00"></div>
+                    <div class="form-group"><label>TC EUR</label><input type="number" id="cm_tcEur" step="0.0001" placeholder="Ej: 1550.00"></div>
+                    <div class="form-group"><label>TC GBP</label><input type="number" id="cm_tcGbp" step="0.0001" placeholder="Ej: 1800.00"></div>
+                </div>
+                <div style="text-align: right; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="cambiarTab('baseAduana')">Siguiente →</button>
+                </div>
+            </div>
+            <div id="tabBaseAduana" class="tab-content">
+                <h4>Datos para Base Aduana</h4>
+                <div class="form-row">
+                    <div class="form-group"><label>Puesta FOB - Moneda</label>
+                        <select id="cm_fobMoneda"><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option></select>
+                    </div>
+                    <div class="form-group"><label>Puesta FOB - Monto</label><input type="number" id="cm_fobMonto" step="0.01"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Flete Aduana - Moneda</label>
+                        <select id="cm_fleteMoneda"><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option></select>
+                    </div>
+                    <div class="form-group"><label>Flete Aduana - Monto</label><input type="number" id="cm_fleteMonto" step="0.01"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Seguro Aduana - Moneda</label>
+                        <select id="cm_seguroMoneda"><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option></select>
+                    </div>
+                    <div class="form-group"><label>Seguro Aduana - Monto</label><input type="number" id="cm_seguroMonto" step="0.01"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="cambiarTab('datosGenerales')">← Anterior</button>
+                    <button class="btn btn-primary" onclick="cambiarTab('articulos')">Siguiente →</button>
+                </div>
+            </div>
+<div id="tabArticulos" class="tab-content">
+                <h4>Articulos</h4>
+                <div id="intermediariaMargenGroup" style="display:none; margin-bottom:15px; padding:15px; background:#252538; border-radius:8px;">
+                    <div class="form-row">
+                        <div class="form-group"><label>% Margen para calcular Valor Intermediaria</label><input type="number" id="cm_margenIntermediaria" step="0.01" placeholder="Ej: 20"></div>
+                        <div class="form-group" style="display:flex; align-items:flex-end;"><button class="btn btn-warning" onclick="calcularValoresIntermediaria()">Calcular Valores Intermediaria</button></div>
+                    </div>
+                </div>
+                <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                    <button class="btn btn-secondary" onclick="descargarTemplateArticulos()">📥 Descargar Template</button>
+                    <label class="btn btn-primary" style="margin:0; cursor:pointer;">
+                        📤 Importar desde Excel
+                        <input type="file" accept=".xlsx,.xls,.txt,.csv" onchange="importarArticulosExcel(this)" style="display:none;">
+                    </label>
+                </div>
+                <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                    <table class="articulos-tabla">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;">#</th>
+                                <th>Cod. Goodies</th>
+                                <th>Cod. Proveedor</th>
+                                <th>Nombre</th>
+                                <th>Cajas</th>
+                                <th>Und/Caja</th>
+                                <th>Valor Origen</th>
+                                <th>Valor Interm.</th>
+                                <th>% Derecho</th>
+                                <th>% Imp.Int.</th>
+                                <th style="width:40px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="articulosBody"></tbody>
+                    </table>
+                </div>
+                <button class="btn btn-success" onclick="agregarArticulo()" style="margin-top: 10px;">+ Agregar Articulo</button>
+                <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="cambiarTab('baseAduana')">← Anterior</button>
+                    <button class="btn btn-primary" onclick="cambiarTab('gastos')">Siguiente →</button>
+                </div>
+            </div>
+            <div id="tabGastos" class="tab-content">
+                <h4>Gastos</h4>
+                <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                    <button class="btn btn-secondary" onclick="descargarTemplateGastos()">📥 Descargar Template</button>
+                    <label class="btn btn-primary" style="margin:0; cursor:pointer;">
+                        📤 Importar desde Excel
+                        <input type="file" accept=".xlsx,.xls,.txt,.csv" onchange="importarGastosExcel(this)" style="display:none;">
+                    </label>
+                </div>
+                <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                    <table class="gastos-tabla">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;">#</th>
+                                <th>Descripcion</th>
+                                <th>Proveedor</th>
+                                <th>Nro Comprob.</th>
+                                <th>Moneda</th>
+                                <th>Monto</th>
+                                <th>% Recargo</th>
+                                <th>Observaciones</th>
+                                <th style="width:40px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="gastosBody"></tbody>
+                    </table>
+                </div>
+                <button class="btn btn-success" onclick="agregarGasto()" style="margin-top: 10px;">+ Agregar Gasto</button>
+                <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="cambiarTab('articulos')">← Anterior</button>
+                    <button class="btn btn-primary" onclick="guardarCargaManual()">💾 Guardar Costeo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+<script>
+        const API_URL = 'http://localhost:3000';
+        let token = localStorage.getItem('token');
+        let usuario = JSON.parse(localStorage.getItem('usuario') || 'null');
+        let selectedFile = null;
+        let todosLosCosteos = [];
+        let costeosFiltrados = [];
+        let seleccionados = new Set();
+        let articulosManual = [];
+        let gastosManual = [];
+
+        document.addEventListener('DOMContentLoaded', () => { if (token && usuario) { mostrarApp(); } });
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const msgEl = document.getElementById('loginMessage');
+            try {
+                const res = await fetch(API_URL + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+                const data = await res.json();
+                if (res.ok) { token = data.token; usuario = data.usuario; localStorage.setItem('token', token); localStorage.setItem('usuario', JSON.stringify(usuario)); mostrarApp(); }
+                else { msgEl.className = 'message error'; msgEl.textContent = data.error || 'Error al iniciar sesion'; }
+            } catch (err) { msgEl.className = 'message error'; msgEl.textContent = 'Error de conexion.'; }
+        });
+
+        function mostrarApp() { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'block'; document.getElementById('userName').textContent = usuario.nombre; cargarCosteos(); cargarUltimosCostos(); cargarHistorialRevaluaciones(); }
+        function logout() { token = null; usuario = null; localStorage.removeItem('token'); localStorage.removeItem('usuario'); document.getElementById('loginContainer').style.display = 'block'; document.getElementById('appContainer').style.display = 'none'; }
+        function toggleImportExcel() { const area = document.getElementById('importExcelArea'); area.style.display = area.style.display === 'none' ? 'block' : 'none'; }
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+        uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('dragover'); });
+        uploadArea.addEventListener('drop', (e) => { e.preventDefault(); uploadArea.classList.remove('dragover'); const file = e.dataTransfer.files[0]; if (file) seleccionarArchivo(file); });
+        fileInput.addEventListener('change', (e) => { if (e.target.files[0]) seleccionarArchivo(e.target.files[0]); });
+
+        function seleccionarArchivo(file) { if (!file.name.match(/\.xlsx?$/i)) { alert('Solo se permiten archivos Excel'); return; } selectedFile = file; document.getElementById('fileName').textContent = file.name; document.getElementById('importBtn').disabled = false; }
+
+        async function importarExcel() {
+            if (!selectedFile) return;
+            const msgEl = document.getElementById('importMessage'); const loading = document.getElementById('importLoading'); const btn = document.getElementById('importBtn');
+            btn.disabled = true; loading.classList.add('show'); msgEl.className = 'message';
+            const formData = new FormData(); formData.append('archivo', selectedFile);
+            try {
+                const res = await fetch(API_URL + '/api/costeos/precargar', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: formData });
+                const data = await res.json();
+                if (res.ok) {
+                    msgEl.className = 'message success'; 
+                    msgEl.textContent = 'Excel leido - Revisá los datos y guardá';
+                    selectedFile = null; 
+                    document.getElementById('fileName').textContent = '';
+                    document.getElementById('importExcelArea').style.display = 'none';
+                    precargarDatosEnFormulario(data);
+                }
+                else { msgEl.className = 'message error'; msgEl.textContent = data.error || 'Error al leer Excel'; }
+            } catch (err) { msgEl.className = 'message error'; msgEl.textContent = 'Error de conexion'; }
+            finally { loading.classList.remove('show'); btn.disabled = !selectedFile; }
+        }
+
+        function precargarDatosEnFormulario(data) {
+            document.getElementById('cm_nombre').value = data.nombre_costeo || '';
+            document.getElementById('cm_proveedor').value = data.proveedor || '';
+            document.getElementById('cm_tieneIntermediaria').checked = false;
+            const tieneInterm = !!data.empresa_intermediaria;
+            document.getElementById('cm_tieneIntermediaria').checked = tieneInterm;
+            document.getElementById('cm_intermediaria').value = data.empresa_intermediaria || '';
+            document.getElementById('cm_facturaInterm').value = data.factura_intermediaria || '';
+            document.getElementById('cm_fechaFacturaInterm').value = data.fecha_factura_intermediaria ? data.fecha_factura_intermediaria.split('T')[0] : '';
+            document.getElementById('cm_fechaVencInterm').value = data.fecha_vencimiento_intermediaria ? data.fecha_vencimiento_intermediaria.split('T')[0] : '';
+            document.getElementById('cm_facturaNro').value = data.factura_nro || '';
+            document.getElementById('cm_moneda').value = data.moneda_principal || 'USD';
+            document.getElementById('cm_monto').value = data.monto_factura || '';
+            document.getElementById('cm_fechaFactura').value = data.fecha_factura ? data.fecha_factura.split('T')[0] : '';
+            document.getElementById('cm_fechaVenc').value = data.fecha_vencimiento_factura ? data.fecha_vencimiento_factura.split('T')[0] : '';
+            document.getElementById('cm_fechaDespacho').value = data.fecha_despacho ? data.fecha_despacho.split('T')[0] : '';
+            document.getElementById('cm_tcUsd').value = data.tc_usd || '';
+            document.getElementById('cm_tcEur').value = data.tc_eur || '';
+            document.getElementById('cm_tcGbp').value = data.tc_gbp || '';
+            document.getElementById('cm_fobMoneda').value = data.fob_moneda || 'USD';
+            document.getElementById('cm_fobMonto').value = data.fob_monto || '';
+            document.getElementById('cm_fleteMoneda').value = data.flete_moneda || 'USD';
+            document.getElementById('cm_fleteMonto').value = data.flete_monto || '';
+            document.getElementById('cm_seguroMoneda').value = data.seguro_moneda || 'USD';
+            document.getElementById('cm_seguroMonto').value = data.seguro_monto || '';
+            document.getElementById('cm_intermediariaGroup').style.display = tieneInterm ? 'block' : 'none';
+            document.getElementById('cm_facturaIntermGroup').style.display = tieneInterm ? 'block' : 'none';
+            document.getElementById('cm_fechaFacturaIntermGroup').style.display = tieneInterm ? 'block' : 'none';
+            document.getElementById('cm_fechaVencIntermGroup').style.display = tieneInterm ? 'block' : 'none';
+            document.getElementById('intermediariaMargenGroup').style.display = tieneInterm ? 'flex' : 'none';
+            articulosManual = (data.articulos || []).map(a => ({
+                codigo_goodies: a.codigo_goodies || '',
+                codigo_proveedor: a.codigo_proveedor || '',
+                nombre: a.nombre || '',
+                cajas: a.cantidad_cajas || '',
+                und_caja: a.unidades_por_caja || '',
+                valor_origen: a.valor_unitario_origen || '',
+                valor_intermediaria: a.valor_unitario_origen || '',
+                derechos: ((a.derechos_porcentaje || 0) * 100) || '',
+                imp_interno: ((a.impuesto_interno_porcentaje || 0) * 100) || ''
+            }));
+            if (articulosManual.length === 0) agregarArticulo();
+            renderizarArticulos();
+            gastosManual = (data.gastos || []).map(g => ({
+                descripcion: g.descripcion || '',
+                proveedor: g.proveedor_gasto || '',
+                nro_comprobante: g.nro_comprobante || '',
+                moneda: g.moneda || 'USD',
+                monto: g.monto || '',
+                recargo: g.recargo || '',
+                observaciones: g.observaciones || ''
+            }));
+            if (gastosManual.length === 0) agregarGasto();
+            renderizarGastos();
+            window.costeoEditandoId = null;
+            cambiarTab('datosGenerales');
+            document.getElementById('cargaManualModal').classList.add('show');
+        }
+        
+let todosLosArticulos = [];
+        let articulosFiltrados = [];
+
+        async function cargarUltimosCostos() {
+            const loading = document.getElementById('articulosLoading');
+            loading.classList.add('show');
+            try {
+                const res = await fetch(API_URL + '/api/costeos/ultimos-costos', { headers: { 'Authorization': 'Bearer ' + token } });
+                const data = await res.json();
+                if (res.ok && Array.isArray(data)) {
+                    todosLosArticulos = data;
+                    actualizarDropdownProveedorArticulo();
+                    filtrarArticulos();
+                }
+            } catch (err) { console.error(err); }
+            finally { loading.classList.remove('show'); }
+        }
+
+        function actualizarDropdownProveedorArticulo() {
+            const select = document.getElementById('filtroProveedorArticulo');
+            const proveedores = [...new Set(todosLosArticulos.map(a => a.proveedor).filter(p => p))].sort();
+            select.innerHTML = '<option value="">Todos</option>' + proveedores.map(p => '<option value="' + p + '">' + p + '</option>').join('');
+        }
+
+        function filtrarArticulos() {
+            const busqueda = document.getElementById('buscarArticulo').value.toLowerCase();
+            const proveedor = document.getElementById('filtroProveedorArticulo').value;
+            
+            articulosFiltrados = todosLosArticulos.filter(a => {
+                const coincideBusqueda = !busqueda || 
+                    (a.codigo_goodies || '').toLowerCase().includes(busqueda) ||
+                    (a.nombre || '').toLowerCase().includes(busqueda);
+                const coincideProveedor = !proveedor || a.proveedor === proveedor;
+                return coincideBusqueda && coincideProveedor;
+            });
+            
+            renderizarArticulosUltimoCosto(articulosFiltrados);
+        }
+
+        function renderizarArticulosUltimoCosto(articulos) {
+            const tbody = document.getElementById('articulosUltimoCostoBody');
+            if (articulos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;">No hay artículos</td></tr>';
+                return;
+            }
+            tbody.innerHTML = articulos.map(art => {
+                const tcInfo = [];
+                if (art.tc_usd) tcInfo.push('USD: ' + art.tc_usd);
+                if (art.tc_eur) tcInfo.push('EUR: ' + art.tc_eur);
+                if (art.tc_gbp) tcInfo.push('GBP: ' + art.tc_gbp);
+                
+                const colorDifCosto = art.diferencia_pct > 0 ? '#f44336' : art.diferencia_pct < 0 ? '#4CAF50' : '#fff';
+                
+                return '<tr>' +
+                    '<td>' + (art.codigo_goodies || '-') + '</td>' +
+                    '<td>' + (art.proveedor || '-') + '</td>' +
+                    '<td>' + (art.nombre || '-') + '</td>' +
+                    '<td>' + (art.moneda_fob || '-') + '</td>' +
+                    '<td>' + (art.valor_fob ? parseFloat(art.valor_fob).toFixed(2) : '-') + '</td>' +
+                    '<td>$' + (art.costo_neto ? parseFloat(art.costo_neto).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-') + '</td>' +
+                    '<td>$' + (art.costo_con_impuestos ? parseFloat(art.costo_con_impuestos).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-') + '</td>' +
+                    '<td>$' + (art.costo_anterior ? parseFloat(art.costo_anterior).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-') + '</td>' +
+                    '<td style="color:' + colorDifCosto + ';font-weight:bold;">' + (art.diferencia_pct !== null ? (art.diferencia_pct > 0 ? '+' : '') + art.diferencia_pct.toFixed(2) + '%' : '-') + '</td>' +
+                    '<td>' + formatearFecha(art.fecha_despacho) + '</td>' +
+                    '<td>' + (art.nombre_costeo || '-') + '</td>' +
+                    '<td style="font-size:11px;">' + (tcInfo.join('<br>') || '-') + '</td>' +
+                    '<td><button class="btn btn-secondary btn-sm" onclick="verDetalleArticulo(\'' + art.codigo_goodies + '\')">Ver</button></td>' +
+                    '</tr>';
+            }).join('');
+        }
+        
+// ========== REVALUACIONES ==========
+        let revaluacionActualId = null;
+        
+        function abrirModalRevaluar() {
+            // Verificar si hay costeos seleccionados
+            const seleccionados = document.querySelectorAll('.costeo-check:checked');
+            if (seleccionados.length > 0) {
+                document.getElementById('revaluarInfo').textContent = `Se revaluarán los artículos de ${seleccionados.length} costeo(s) seleccionado(s)`;
+            } else {
+                document.getElementById('revaluarInfo').textContent = 'Se revaluarán todos los artículos (último costo de cada uno)';
+            }
+            
+            // Limpiar campos
+            document.getElementById('rev_motivo').value = '';
+            document.getElementById('rev_otroMotivo').value = '';
+            document.getElementById('rev_otroMotivoGroup').style.display = 'none';
+            document.getElementById('rev_tcUsd').value = '';
+            document.getElementById('rev_tcEur').value = '';
+            document.getElementById('rev_tcGbp').value = '';
+            
+            document.getElementById('revaluarModal').style.display = 'flex';
+        }
+        
+        document.getElementById('rev_motivo').addEventListener('change', function() {
+            document.getElementById('rev_otroMotivoGroup').style.display = this.value === 'Otro' ? 'block' : 'none';
+        });
+        
+        async function ejecutarRevaluacion() {
+            const motivoSelect = document.getElementById('rev_motivo').value;
+            const motivoOtro = document.getElementById('rev_otroMotivo').value;
+            const tcUsd = document.getElementById('rev_tcUsd').value;
+            const tcEur = document.getElementById('rev_tcEur').value;
+            const tcGbp = document.getElementById('rev_tcGbp').value;
+            
+            if (!motivoSelect) {
+                alert('Debe seleccionar un motivo');
+                return;
+            }
+            if (!tcUsd) {
+                alert('Debe ingresar el TC USD');
+                return;
+            }
+            
+            const motivo = motivoSelect === 'Otro' ? motivoOtro : motivoSelect;
+            if (!motivo) {
+                alert('Debe especificar el motivo');
+                return;
+            }
+            
+            // Obtener costeos seleccionados
+            const seleccionados = document.querySelectorAll('.costeo-check:checked');
+            const costeoIds = Array.from(seleccionados).map(cb => cb.dataset.id);
+            
+            try {
+                const res = await fetch(API_URL + '/api/revaluaciones/generar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        costeo_ids: costeoIds,
+                        tc_usd: tcUsd,
+                        tc_eur: tcEur || null,
+                        tc_gbp: tcGbp || null,
+                        motivo: motivo
+                    })
+                });
+                
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+                
+                cerrarModal('revaluarModal');
+                
+                // Guardar ID para exportar
+                revaluacionActualId = data.revaluacion_id;
+                
+                // Mostrar resultado
+                document.getElementById('resumenRevaluacion').innerHTML = `
+                    <strong>Motivo:</strong> ${data.motivo} | 
+                    <strong>TC USD:</strong> ${data.tc_usd_nuevo} | 
+                    <strong>TC EUR:</strong> ${data.tc_eur_nuevo || '-'} | 
+                    <strong>TC GBP:</strong> ${data.tc_gbp_nuevo || '-'} | 
+                    <strong>Artículos:</strong> ${data.cantidad_articulos}
+                `;
+                
+                let html = '';
+                for (const art of data.articulos) {
+                    const difColor = art.diferencia_pct > 0 ? '#f44336' : (art.diferencia_pct < 0 ? '#4CAF50' : '#fff');
+                    html += `<tr>
+                        <td>${art.nombre}</td>
+                        <td style="font-weight:bold;">$${parseFloat(art.costo_neto_original).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+                        <td style="font-weight:bold;">$${parseFloat(art.costo_neto_revaluado).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+                        <td style="color:${difColor};">${art.diferencia_pct ? art.diferencia_pct.toFixed(2) + '%' : '-'}</td>
+                    </tr>`;
+                }
+                document.getElementById('resultadoRevaluacionBody').innerHTML = html;
+                document.getElementById('resultadoRevaluacionModal').style.display = 'flex';
+                
+                // Actualizar historial
+                cargarHistorialRevaluaciones();
+                
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+        
+        function exportarRevaluacionActual() {
+            if (revaluacionActualId) {
+                window.open(API_URL + '/api/revaluaciones/exportar/' + revaluacionActualId + '?token=' + token, '_blank');
+            }
+        }
+        
+        async function cargarHistorialRevaluaciones() {
+            try {
+                const res = await fetch(API_URL + '/api/revaluaciones/historial', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                
+                let html = '';
+                if (data.length === 0) {
+                    html = '<tr><td colspan="7" style="text-align:center;color:#888;">No hay revaluaciones</td></tr>';
+                } else {
+                    for (const rev of data) {
+                        const fecha = new Date(rev.fecha_revaluacion).toLocaleDateString('es-AR');
+                        html += `<tr>
+                            <td>${fecha}</td>
+                            <td>${rev.motivo}</td>
+                            <td>${parseFloat(rev.tc_usd_nuevo).toFixed(4)}</td>
+                            <td>${rev.tc_eur_nuevo ? parseFloat(rev.tc_eur_nuevo).toFixed(4) : '-'}</td>
+                            <td>${rev.tc_gbp_nuevo ? parseFloat(rev.tc_gbp_nuevo).toFixed(4) : '-'}</td>
+                            <td>${rev.cantidad_articulos}</td>
+                            <td>
+                                <button class="btn btn-small btn-info" onclick="verDetalleRevaluacion('${rev.id}')">Ver</button>
+                                <button class="btn btn-small btn-success" onclick="exportarRevaluacion('${rev.id}')">Excel</button>
+                                <button class="btn btn-small btn-danger" onclick="eliminarRevaluacion('${rev.id}')">X</button>
+                            </td>
+                        </tr>`;
+                    }
+                }
+                document.getElementById('historialRevaluacionesBody').innerHTML = html;
+            } catch (error) {
+                console.error('Error al cargar historial:', error);
+            }
+        }
+        
+        async function verDetalleRevaluacion(id) {
+            try {
+                const res = await fetch(API_URL + '/api/revaluaciones/detalle/' + id, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+                
+                revaluacionActualId = id;
+                
+                document.getElementById('resumenRevaluacion').innerHTML = `
+                    <strong>Fecha:</strong> ${new Date(data.fecha_revaluacion).toLocaleDateString('es-AR')} | 
+                    <strong>Motivo:</strong> ${data.motivo} | 
+                    <strong>TC USD:</strong> ${data.tc_usd_nuevo} | 
+                    <strong>TC EUR:</strong> ${data.tc_eur_nuevo || '-'} | 
+                    <strong>TC GBP:</strong> ${data.tc_gbp_nuevo || '-'}
+                `;
+                
+                let html = '';
+                for (const art of data.articulos) {
+                    const difColor = art.diferencia_costo_pct > 0 ? '#f44336' : (art.diferencia_costo_pct < 0 ? '#4CAF50' : '#fff');
+                    html += `<tr>
+                        <td>${art.nombre}</td>
+                        <td style="font-weight:bold;">$${parseFloat(art.costo_neto_original).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+                        <td style="font-weight:bold;">$${parseFloat(art.costo_neto_revaluado).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+                        <td style="color:${difColor};">${art.diferencia_costo_pct ? parseFloat(art.diferencia_costo_pct).toFixed(2) + '%' : '-'}</td>
+                    </tr>`;
+                }
+                document.getElementById('resultadoRevaluacionBody').innerHTML = html;
+                document.getElementById('resultadoRevaluacionModal').style.display = 'flex';
+                
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+        
+        function exportarRevaluacion(id) {
+            window.open(API_URL + '/api/revaluaciones/exportar/' + id + '?token=' + token, '_blank');
+        }
+        
+        async function eliminarRevaluacion(id) {
+            if (!confirm('¿Eliminar esta revaluación?')) return;
+            
+            try {
+                const res = await fetch(API_URL + '/api/revaluaciones/' + id, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                if (res.ok) {
+                    cargarHistorialRevaluaciones();
+                } else {
+                    const data = await res.json();
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+async function verDetalleArticulo(codigo) {
+            try {
+                const res = await fetch(API_URL + '/api/costeos/detalle-articulo/' + encodeURIComponent(codigo), { 
+                    headers: { 'Authorization': 'Bearer ' + token } 
+                });
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+                
+                const ultimo = data.ultimo;
+                const anterior = data.anterior;
+                
+               let html = '<div style="display:flex;gap:20px;flex-wrap:wrap;">';
+                
+                // Calcular variaciones (si hay anterior)
+                let varTcUsd = null, varTcEur = null, varTcGbp = null;
+                let varFobOrigen = null, varFobInterm = null;
+                let varCostoNeto = null, varCostoImp = null;
+                
+                if (anterior) {
+                    varTcUsd = ultimo.tc_usd && anterior.tc_usd ? (((ultimo.tc_usd - anterior.tc_usd) / anterior.tc_usd) * 100).toFixed(2) : null;
+                    varTcEur = ultimo.tc_eur && anterior.tc_eur ? (((ultimo.tc_eur - anterior.tc_eur) / anterior.tc_eur) * 100).toFixed(2) : null;
+                    varTcGbp = ultimo.tc_gbp && anterior.tc_gbp ? (((ultimo.tc_gbp - anterior.tc_gbp) / anterior.tc_gbp) * 100).toFixed(2) : null;
+                    varFobOrigen = ultimo.fob_origen && anterior.fob_origen ? (((ultimo.fob_origen - anterior.fob_origen) / anterior.fob_origen) * 100).toFixed(2) : null;
+                    varFobInterm = ultimo.fob_interm && anterior.fob_interm ? (((ultimo.fob_interm - anterior.fob_interm) / anterior.fob_interm) * 100).toFixed(2) : null;
+                    varCostoNeto = ultimo.costo_neto && anterior.costo_neto ? (((ultimo.costo_neto - anterior.costo_neto) / anterior.costo_neto) * 100).toFixed(2) : null;
+                    varCostoImp = ultimo.costo_con_impuestos && anterior.costo_con_impuestos ? (((ultimo.costo_con_impuestos - anterior.costo_con_impuestos) / anterior.costo_con_impuestos) * 100).toFixed(2) : null;
+                }
+                
+                const colorVar = (v) => v > 0 ? '#f44336' : v < 0 ? '#4CAF50' : '#fff';
+                const formatVar = (v) => v !== null ? ' <span style="color:' + colorVar(v) + ';">(' + (v > 0 ? '+' : '') + v + '%)</span>' : '';
+                
+                // Columna ÚLTIMO
+                html += '<div style="flex:1;min-width:280px;background:#1e1e2f;padding:15px;border-radius:8px;">';
+                html += '<h4 style="color:#4CAF50;margin-top:0;">ÚLTIMO COSTEO</h4>';
+                html += '<p><strong>Costeo:</strong> ' + (ultimo.nombre_costeo || '-') + '</p>';
+                html += '<p><strong>Fecha Despacho:</strong> ' + formatearFecha(ultimo.fecha_despacho) + '</p>';
+                html += '<hr style="border-color:#444;">';
+                html += '<p><strong>TC USD:</strong> ' + (ultimo.tc_usd || '-') + formatVar(varTcUsd) + '</p>';
+                html += '<p><strong>TC EUR:</strong> ' + (ultimo.tc_eur || '-') + formatVar(varTcEur) + '</p>';
+                html += '<p><strong>TC GBP:</strong> ' + (ultimo.tc_gbp || '-') + formatVar(varTcGbp) + '</p>';
+                html += '<hr style="border-color:#444;">';
+                html += '<p><strong>FOB Origen:</strong> ' + (ultimo.fob_origen ? parseFloat(ultimo.fob_origen).toFixed(varFobOrigen && parseFloat(varFobOrigen) !== 0 ? 4 : 2) : '-') + ' ' + (ultimo.moneda || '') + formatVar(varFobOrigen) + '</p>';
+                html += '<p><strong>FOB Interm:</strong> ' + (ultimo.fob_interm ? parseFloat(ultimo.fob_interm).toFixed(varFobInterm && parseFloat(varFobInterm) !== 0 ? 4 : 2) : '-') + ' ' + (ultimo.moneda || '') + formatVar(varFobInterm) + '</p>';
+                html += '<p><strong>FOB Interm:</strong> ' + (ultimo.fob_interm ? parseFloat(ultimo.fob_interm).toFixed(4) : '-') + ' ' + (ultimo.moneda || '') + formatVar(varFobInterm) + '</p>';
+                html += '<hr style="border-color:#444;">';
+                html += '<p><strong>Costo Neto:</strong> $' + (ultimo.costo_neto ? parseFloat(ultimo.costo_neto).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-') + formatVar(varCostoNeto) + '</p>';
+                html += '<p><strong>Costo c/Imp:</strong> $' + (ultimo.costo_con_impuestos ? parseFloat(ultimo.costo_con_impuestos).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-') + formatVar(varCostoImp) + '</p>';
+                html += '</div>';
+                
+                // Columna ANTERIOR
+                html += '<div style="flex:1;min-width:280px;background:#1e1e2f;padding:15px;border-radius:8px;">';
+                html += '<h4 style="color:#ff9800;margin-top:0;">COSTEO ANTERIOR</h4>';
+                if (anterior) {
+                    html += '<p><strong>Costeo:</strong> ' + (anterior.nombre_costeo || '-') + '</p>';
+                    html += '<p><strong>Fecha Despacho:</strong> ' + formatearFecha(anterior.fecha_despacho) + '</p>';
+                    html += '<hr style="border-color:#444;">';
+                    html += '<p><strong>TC USD:</strong> ' + (anterior.tc_usd || '-') + '</p>';
+                    html += '<p><strong>TC EUR:</strong> ' + (anterior.tc_eur || '-') + '</p>';
+                    html += '<p><strong>TC GBP:</strong> ' + (anterior.tc_gbp || '-') + '</p>';
+                    html += '<hr style="border-color:#444;">';
+                    html += '<p><strong>FOB Origen:</strong> ' + (anterior.fob_origen ? parseFloat(anterior.fob_origen).toFixed(varFobOrigen && parseFloat(varFobOrigen) !== 0 ? 4 : 2) : '-') + ' ' + (anterior.moneda || '') + '</p>';
+                    html += '<p><strong>FOB Interm:</strong> ' + (anterior.fob_interm ? parseFloat(anterior.fob_interm).toFixed(varFobInterm && parseFloat(varFobInterm) !== 0 ? 4 : 2) : '-') + ' ' + (anterior.moneda || '') + '</p>';
+                    html += '<hr style="border-color:#444;">';
+                    html += '<p><strong>Costo Neto:</strong> $' + (anterior.costo_neto ? parseFloat(anterior.costo_neto).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-') + '</p>';
+                    html += '<p><strong>Costo c/Imp:</strong> $' + (anterior.costo_con_impuestos ? parseFloat(anterior.costo_con_impuestos).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-') + '</p>';
+                } else {
+                    html += '<p style="color:#888;">No hay costeo anterior para comparar</p>';
+                }
+                html += '</div>';
+                
+                html += '</div>';
+                
+                document.getElementById('detalleArticuloBody').innerHTML = html;
+                document.getElementById('detalleArticuloTitle').textContent = 'Detalle: ' + codigo + ' - ' + (ultimo.nombre || '');
+                document.getElementById('detalleArticuloModal').classList.add('show');
+                
+            } catch (err) {
+                console.error(err);
+                alert('Error al cargar detalle del artículo');
+            }
+        }
+function exportarUltimosCostos() {
+            if (articulosFiltrados.length === 0) {
+                alert('No hay artículos para exportar');
+                return;
+            }
+            let contenido = 'Codigo\tProveedor\tNombre\tMoneda FOB\tFOB Origen\tFOB Orig.Ant\tVar%Orig\tFOB Interm\tFOB Int.Ant\tVar%Int\tCosto Neto\tCosto c/Imp\tCosto Anterior\tDif %\tFecha Despacho\tCosteo\tTC USD\tTC EUR\tTC GBP\n';
+            articulosFiltrados.forEach(art => {
+                contenido += (art.codigo_goodies || '') + '\t';
+                contenido += (art.proveedor || '') + '\t';
+                contenido += (art.nombre || '') + '\t';
+                articulosFiltrados.forEach(art => {
+                contenido += (art.codigo_goodies || '') + '\t';
+                contenido += (art.proveedor || '') + '\t';
+                contenido += (art.nombre || '') + '\t';
+                contenido += (art.moneda_fob || '') + '\t';
+                contenido += (art.fob_origen_actual || '') + '\t';
+                contenido += (art.fob_origen_anterior || '') + '\t';
+                contenido += (art.var_fob_origen_pct !== null ? art.var_fob_origen_pct.toFixed(2) : '') + '\t';
+                contenido += (art.fob_interm_actual || '') + '\t';
+                contenido += (art.fob_interm_anterior || '') + '\t';
+                contenido += (art.var_fob_interm_pct !== null ? art.var_fob_interm_pct.toFixed(2) : '') + '\t';
+                contenido += (art.costo_neto || '') + '\t';
+                contenido += (art.costo_con_impuestos || '') + '\t';
+                contenido += (art.costo_anterior || '') + '\t';
+                contenido += (art.diferencia_pct !== null ? art.diferencia_pct.toFixed(2) : '') + '\t';
+                contenido += (art.fecha_despacho ? art.fecha_despacho.split('T')[0] : '') + '\t';
+                contenido += (art.nombre_costeo || '') + '\t';
+                contenido += (art.tc_usd || '') + '\t';
+                contenido += (art.tc_eur || '') + '\t';
+                contenido += (art.tc_gbp || '') + '\n';
+            });
+                contenido += (art.costo_con_impuestos || '') + '\t';
+                contenido += (art.fecha_despacho ? art.fecha_despacho.split('T')[0] : '') + '\t';
+                contenido += (art.nombre_costeo || '') + '\t';
+                contenido += (art.costo_anterior || '') + '\t';
+                contenido += (art.diferencia_pct !== null ? art.diferencia_pct.toFixed(2) : '') + '\t';
+                contenido += (art.tc_usd || '') + '\t';
+                contenido += (art.tc_eur || '') + '\t';
+                contenido += (art.tc_gbp || '') + '\n';
+            });
+            const blob = new Blob([contenido], { type: 'text/tab-separated-values;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Ultimos_Costos_' + new Date().toISOString().split('T')[0] + '.xls';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+async function cargarCosteos() {
+            const loading = document.getElementById('tableLoading');
+            loading.classList.add('show');
+            try {
+                const res = await fetch(API_URL + '/api/costeos/listar', { headers: { 'Authorization': 'Bearer ' + token } });
+                const data = await res.json();
+                if (res.ok && Array.isArray(data)) {
+                    todosLosCosteos = data;
+                    actualizarDropdownProveedores();
+                    aplicarFiltros();
+                    document.getElementById('totalCosteos').textContent = data.length;
+                    document.getElementById('costeosPresupuestos').textContent = data.filter(c => !esDefinitivo(c)).length;
+                }
+            } catch (err) { console.error(err); }
+            finally { loading.classList.remove('show'); }
+        }
+
+        function esDefinitivo(costeo) { return costeo.fecha_despacho && costeo.fecha_factura; }
+        function actualizarDropdownProveedores() {
+            const select = document.getElementById('filtroProveedor');
+            const proveedores = [...new Set(todosLosCosteos.map(c => c.proveedor).filter(p => p))].sort();
+            select.innerHTML = '<option value="">Todos</option>' + proveedores.map(p => '<option value="' + p + '">' + p + '</option>').join('');
+        }
+        function toggleCriterio() { const cb = document.getElementById('filtroUltimo'); document.getElementById('criterioContainer').classList.toggle('show', cb.checked); }
+        function limpiarFiltros() {
+            document.getElementById('filtroProveedor').value = '';
+            document.getElementById('filtroTipo').value = '';
+            document.getElementById('filtroUltimo').checked = false;
+            document.getElementById('criterioContainer').classList.remove('show');
+            seleccionados.clear();
+            aplicarFiltros();
+        }
+
+        function aplicarFiltros() {
+            const proveedor = document.getElementById('filtroProveedor').value;
+            const tipo = document.getElementById('filtroTipo').value;
+            const soloUltimo = document.getElementById('filtroUltimo').checked;
+            const criterio = document.getElementById('filtroCriterio').value;
+            let filtrados = [...todosLosCosteos];
+            if (proveedor) filtrados = filtrados.filter(c => c.proveedor === proveedor);
+            if (tipo === 'definitivo') filtrados = filtrados.filter(c => esDefinitivo(c));
+            else if (tipo === 'presupuesto') filtrados = filtrados.filter(c => !esDefinitivo(c));
+            if (soloUltimo) {
+                if (criterio === 'fecha_factura') filtrados = filtrados.filter(c => c.fecha_factura);
+                else if (criterio === 'fecha_despacho') filtrados = filtrados.filter(c => c.fecha_despacho);
+                const ultimosPorProveedor = {};
+                filtrados.forEach(c => {
+                    const prov = c.proveedor || 'Sin Proveedor';
+                    let fechaComparar;
+                    if (criterio === 'fecha_factura') fechaComparar = new Date(c.fecha_factura);
+                    else if (criterio === 'fecha_despacho') fechaComparar = new Date(c.fecha_despacho);
+                    else fechaComparar = c.created_at ? new Date(c.created_at) : new Date(0);
+                    if (!ultimosPorProveedor[prov] || fechaComparar > ultimosPorProveedor[prov].fecha) {
+                        ultimosPorProveedor[prov] = { costeo: c, fecha: fechaComparar };
+                    }
+                });
+                filtrados = Object.values(ultimosPorProveedor).map(u => u.costeo);
+            }
+            costeosFiltrados = filtrados;
+            renderizarTabla(filtrados);
+            actualizarAccionesMasivas();
+        }
+
+        function formatearFecha(fecha) { if (!fecha) return '-'; const d = new Date(fecha); if (isNaN(d.getTime())) return '-'; return d.toLocaleDateString('es-AR'); }
+        function toggleSelectAll() {
+            const checkAll = document.getElementById('selectAll').checked;
+            if (checkAll) costeosFiltrados.forEach(c => seleccionados.add(c.id));
+            else seleccionados.clear();
+            renderizarTabla(costeosFiltrados);
+            actualizarAccionesMasivas();
+        }
+        function toggleSeleccion(id) {
+            if (seleccionados.has(id)) seleccionados.delete(id);
+            else seleccionados.add(id);
+            actualizarAccionesMasivas();
+            document.getElementById('selectAll').checked = costeosFiltrados.length > 0 && costeosFiltrados.every(c => seleccionados.has(c.id));
+        }
+        function actualizarAccionesMasivas() {
+            document.getElementById('contadorSeleccionados').textContent = seleccionados.size;
+            document.getElementById('accionesMasivas').style.display = seleccionados.size > 0 ? 'flex' : 'none';
+        }
+
+        function renderizarTabla(costeos) {
+            const tbody = document.getElementById('costeosBody');
+            if (costeos.length === 0) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">No hay costeos</td></tr>'; return; }
+            tbody.innerHTML = costeos.map(costeo => {
+                const def = esDefinitivo(costeo);
+                const checked = seleccionados.has(costeo.id) ? 'checked' : '';
+                return '<tr>' +
+                    '<td class="checkbox-cell"><input type="checkbox" ' + checked + ' onchange="toggleSeleccion(\'' + costeo.id + '\')"></td>' +
+                    '<td>' + (costeo.nombre_costeo || '-') + '</td>' +
+                    '<td>' + (costeo.proveedor || '-') + '</td>' +
+                    '<td>' + (costeo.moneda_principal || 'USD') + '</td>' +
+                    '<td>' + (costeo.unidades_totales || 0) + '</td>' +
+                    '<td>' + formatearFecha(costeo.fecha_factura) + '</td>' +
+                    '<td>' + formatearFecha(costeo.fecha_despacho) + '</td>' +
+                    '<td><span class="status-badge ' + (def ? 'status-definitivo' : 'status-presupuesto') + '">' + (def ? 'Definitivo' : 'Presupuesto') + '</span></td>' +
+                    '<td class="actions">' +
+                    '<button class="btn btn-warning btn-sm" onclick="calcularCosteo(\'' + costeo.id + '\')">Calc</button>' +
+                    '<button class="btn btn-primary btn-sm" onclick="editarCosteo(\'' + costeo.id + '\')">Edit</button>' +
+                    '<button class="btn btn-purple btn-sm" onclick="duplicarCosteo(\'' + costeo.id + '\')" title="Duplicar">Dup</button>' +
+                    '<button class="btn btn-secondary btn-sm" onclick="exportarLegajo(\'' + costeo.id + '\')" title="Exportar Legajo">Leg</button>' +
+                    '<button class="btn btn-secondary btn-sm" onclick="verDetalle(\'' + costeo.id + '\')">Ver</button>' +
+                    '<button class="btn btn-success btn-sm" onclick="exportarCosteo(\'' + costeo.id + '\')">Excel</button>' +
+                    '<button class="btn btn-danger btn-sm" onclick="eliminarCosteo(\'' + costeo.id + '\')">X</button>' +
+                    '</td></tr>';
+            }).join('');
+        }
+
+async function exportarLegajo(id) {
+            try {
+                const res = await fetch(API_URL + '/api/costeos/' + id, { headers: { 'Authorization': 'Bearer ' + token } });
+                const costeo = await res.json();
+                if (res.ok) {
+                    let contenido = 'DATOS GENERALES\n';
+                    contenido += 'Campo\tValor\n';
+                    contenido += 'Nombre Costeo\t' + (costeo.nombre_costeo || '') + '\n';
+                    contenido += 'Proveedor\t' + (costeo.proveedor || '') + '\n';
+                    contenido += 'Empresa Intermediaria\t' + (costeo.empresa_intermediaria || '') + '\n';
+                    contenido += 'Factura Nro\t' + (costeo.factura_nro || '') + '\n';
+                    contenido += 'Fecha Factura\t' + (costeo.fecha_factura ? costeo.fecha_factura.split('T')[0] : '') + '\n';
+                    contenido += 'Fecha Vencimiento\t' + (costeo.fecha_vencimiento_factura ? costeo.fecha_vencimiento_factura.split('T')[0] : '') + '\n';
+                    contenido += 'Fecha Despacho\t' + (costeo.fecha_despacho ? costeo.fecha_despacho.split('T')[0] : '') + '\n';
+                    contenido += 'Moneda Principal\t' + (costeo.moneda_principal || '') + '\n';
+                    contenido += 'Monto Factura\t' + (costeo.monto_factura || '') + '\n';
+                    contenido += 'TC USD\t' + (costeo.tc_usd || '') + '\n';
+                    contenido += 'TC EUR\t' + (costeo.tc_eur || '') + '\n';
+                    contenido += 'TC GBP\t' + (costeo.tc_gbp || '') + '\n';
+                    contenido += 'FOB Monto\t' + (costeo.fob_monto || '') + '\n';
+                    contenido += 'Flete Monto\t' + (costeo.flete_monto || '') + '\n';
+                    contenido += 'Seguro Monto\t' + (costeo.seguro_monto || '') + '\n';
+                    contenido += '\nARTICULOS\n';
+                    contenido += 'Cod_Goodies\tCod_Proveedor\tNombre\tCajas\tUnd_Caja\tUnidades\tValor_Origen\tValor_Unit\tPct_Derecho\tPct_Imp_Interno\n';
+                    (costeo.articulos || []).forEach(a => {
+                        contenido += (a.codigo_goodies || '') + '\t';
+                        contenido += (a.codigo_proveedor || '') + '\t';
+                        contenido += (a.nombre || '') + '\t';
+                        contenido += (a.cantidad_cajas || '') + '\t';
+                        contenido += (a.unidades_por_caja || '') + '\t';
+                        contenido += (a.unidades_totales || '') + '\t';
+                        contenido += (a.valor_proveedor_origen || '') + '\t';
+                        contenido += (a.valor_unitario_origen || '') + '\t';
+                        contenido += ((a.derechos_porcentaje || 0) * 100) + '\t';
+                        contenido += ((a.impuesto_interno_porcentaje || 0) * 100) + '\n';
+                    });
+                    contenido += '\nGASTOS\n';
+                    contenido += 'Descripcion\tProveedor\tNro_Comprobante\tMoneda\tMonto\tPct_Recargo\tObservaciones\n';
+                    (costeo.gastos_varios || []).forEach(g => {
+                        contenido += (g.descripcion || '') + '\t';
+                        contenido += (g.proveedor_gasto || '') + '\t';
+                        contenido += (g.nro_comprobante || '') + '\t';
+                        contenido += (g.moneda || '') + '\t';
+                        contenido += (g.monto || '') + '\t';
+                        contenido += (g.recargo || '') + '\t';
+                        contenido += (g.observaciones || '') + '\n';
+                    });
+                    const blob = new Blob([contenido], { type: 'text/tab-separated-values;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'Legajo_' + (costeo.nombre_costeo || 'costeo').replace(/[^a-zA-Z0-9]/g, '_') + '.xls';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+            } catch (err) { alert('Error al exportar legajo'); console.error(err); }
+        }
+async function duplicarCosteo(id) {
+            try {
+                const res = await fetch(API_URL + '/api/costeos/' + id, { headers: { 'Authorization': 'Bearer ' + token } });
+                const costeo = await res.json();
+                if (res.ok) {
+                    document.getElementById('cm_nombre').value = (costeo.nombre_costeo || '') + ' - COPIA';
+                    document.getElementById('cm_proveedor').value = costeo.proveedor || '';
+                    document.getElementById('cm_tieneIntermediaria').checked = !!costeo.empresa_intermediaria;
+                    document.getElementById('cm_intermediaria').value = costeo.empresa_intermediaria || '';
+                    document.getElementById('cm_facturaInterm').value = '';
+                    document.getElementById('cm_fechaFacturaInterm').value = '';
+                    document.getElementById('cm_facturaNro').value = '';
+                    document.getElementById('cm_moneda').value = costeo.moneda_principal || 'USD';
+                    document.getElementById('cm_monto').value = '';
+                    document.getElementById('cm_fechaFactura').value = '';
+                    document.getElementById('cm_fechaVenc').value = '';
+                    document.getElementById('cm_fechaDespacho').value = '';
+                    document.getElementById('cm_tcUsd').value = costeo.tc_usd || '';
+                    document.getElementById('cm_tcEur').value = costeo.tc_eur || '';
+                    document.getElementById('cm_tcGbp').value = costeo.tc_gbp || '';
+                    document.getElementById('cm_fobMoneda').value = costeo.fob_moneda || 'USD';
+                    document.getElementById('cm_fobMonto').value = '';
+                    document.getElementById('cm_fleteMoneda').value = costeo.flete_moneda || 'USD';
+                    document.getElementById('cm_fleteMonto').value = '';
+                    document.getElementById('cm_seguroMoneda').value = costeo.seguro_moneda || 'USD';
+                    document.getElementById('cm_seguroMonto').value = '';
+                    toggleIntermediaria();
+                    articulosManual = (costeo.articulos || []).map(a => ({
+                        codigo_goodies: a.codigo_goodies || '',
+                        codigo_proveedor: a.codigo_proveedor || '',
+                        nombre: a.nombre || '',
+                        cajas: a.cantidad_cajas || '',
+                        und_caja: a.unidades_por_caja || '',
+                        valor_origen: '',
+                        valor_intermediaria: '',
+                        derechos: (a.derechos_porcentaje * 100) || '',
+                        imp_interno: (a.impuesto_interno_porcentaje * 100) || ''
+                    }));
+                    if (articulosManual.length === 0) agregarArticulo();
+                    renderizarArticulos();
+                    gastosManual = (costeo.gastos_varios || []).map(g => ({
+                        descripcion: g.descripcion || '',
+                        proveedor: g.proveedor_gasto || '',
+                        nro_comprobante: '',
+                        moneda: g.moneda || 'USD',
+                        monto: '',
+                        recargo: g.recargo || '',
+                        observaciones: ''
+                    }));
+                    if (gastosManual.length === 0) agregarGasto();
+                    renderizarGastos();
+                    window.costeoEditandoId = null;
+                    cambiarTab('datosGenerales');
+                    document.getElementById('cargaManualModal').classList.add('show');
+                }
+            } catch (err) { alert('Error al duplicar costeo'); console.error(err); }
+        }
+async function editarCosteo(id) {
+            try {
+                const res = await fetch(API_URL + '/api/costeos/' + id, { headers: { 'Authorization': 'Bearer ' + token } });
+                const costeo = await res.json();
+                if (res.ok) {
+                    document.getElementById('cm_nombre').value = costeo.nombre_costeo || '';
+                    document.getElementById('cm_proveedor').value = costeo.proveedor || '';
+                    document.getElementById('cm_tieneIntermediaria').checked = !!costeo.empresa_intermediaria;
+                    document.getElementById('cm_intermediaria').value = costeo.empresa_intermediaria || '';
+                    document.getElementById('cm_facturaInterm').value = costeo.factura_intermediaria || '';
+                    document.getElementById('cm_fechaFacturaInterm').value = costeo.fecha_factura_intermediaria ? costeo.fecha_factura_intermediaria.split('T')[0] : '';
+                    document.getElementById('cm_facturaNro').value = costeo.factura_nro || '';
+                    document.getElementById('cm_moneda').value = costeo.moneda_principal || 'USD';
+                    document.getElementById('cm_monto').value = costeo.monto_factura || '';
+                    document.getElementById('cm_fechaFactura').value = costeo.fecha_factura ? costeo.fecha_factura.split('T')[0] : '';
+                    document.getElementById('cm_fechaVenc').value = costeo.fecha_vencimiento_factura ? costeo.fecha_vencimiento_factura.split('T')[0] : '';
+                    document.getElementById('cm_fechaDespacho').value = costeo.fecha_despacho ? costeo.fecha_despacho.split('T')[0] : '';
+                    document.getElementById('cm_tcUsd').value = costeo.tc_usd || '';
+                    document.getElementById('cm_tcEur').value = costeo.tc_eur || '';
+                    document.getElementById('cm_tcGbp').value = costeo.tc_gbp || '';
+                    document.getElementById('cm_fobMoneda').value = costeo.fob_moneda || 'USD';
+                    document.getElementById('cm_fobMonto').value = costeo.fob_monto || '';
+                    document.getElementById('cm_fleteMoneda').value = costeo.flete_moneda || 'USD';
+                    document.getElementById('cm_fleteMonto').value = costeo.flete_monto || '';
+                    document.getElementById('cm_seguroMoneda').value = costeo.seguro_moneda || 'USD';
+                    document.getElementById('cm_seguroMonto').value = costeo.seguro_monto || '';
+                    toggleIntermediaria();
+                    articulosManual = (costeo.articulos || []).map(a => ({
+                        codigo_goodies: a.codigo_goodies || '',
+                        codigo_proveedor: a.codigo_proveedor || '',
+                        nombre: a.nombre || '',
+                        cajas: a.cantidad_cajas || '',
+                        und_caja: a.unidades_por_caja || '',
+                        valor_origen: a.valor_proveedor_origen || a.valor_unitario_origen || '',
+                        valor_intermediaria: a.valor_unitario_origen || '',
+                        derechos: (a.derechos_porcentaje * 100) || '',
+                        imp_interno: (a.impuesto_interno_porcentaje * 100) || ''
+                    }));
+                    if (articulosManual.length === 0) agregarArticulo();
+                    renderizarArticulos();
+                    gastosManual = (costeo.gastos_varios || []).map(g => ({
+                        descripcion: g.descripcion || '',
+                        proveedor: g.proveedor_gasto || '',
+                        nro_comprobante: g.nro_comprobante || '',
+                        moneda: g.moneda || 'USD',
+                        monto: g.monto || '',
+                        recargo: g.recargo || '',
+                        observaciones: g.observaciones || ''
+                    }));
+                    if (gastosManual.length === 0) agregarGasto();
+                    renderizarGastos();
+                    window.costeoEditandoId = id;
+                    cambiarTab('datosGenerales');
+                    document.getElementById('cargaManualModal').classList.add('show');
+                }
+            } catch (err) { alert('Error al cargar costeo'); console.error(err); }
+        }
+async function calcularCosteo(id) {
+            if (!confirm('Calcular este costeo?')) return;
+            try {
+                const res = await fetch(API_URL + '/api/costeos/' + id + '/calcular', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+                const data = await res.json();
+                if (res.ok) { alert('Costeo calculado!\n\nCosto Total: $' + parseFloat(data.resumen?.costo_total_final_ars || 0).toLocaleString('es-AR')); cargarCosteos(); }
+                else { alert('Error: ' + (data.error || 'No se pudo calcular')); }
+            } catch (err) { alert('Error de conexion'); }
+        }
+
+        async function exportarCosteo(id) {
+            try {
+                const res = await fetch(API_URL + '/api/costeos/' + id + '/exportar', { headers: { 'Authorization': 'Bearer ' + token } });
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const cd = res.headers.get('Content-Disposition');
+                    a.download = cd && cd.match(/filename="(.+)"/) ? cd.match(/filename="(.+)"/)[1] : 'costeo.xlsx';
+                    document.body.appendChild(a); a.click(); a.remove();
+                    window.URL.revokeObjectURL(url);
+                } else { alert('Error al exportar'); }
+            } catch (err) { alert('Error de conexion'); }
+        }
+
+        async function eliminarCosteo(id) {
+            if (!confirm('Seguro que deseas eliminar este costeo?')) return;
+            try {
+                const res = await fetch(API_URL + '/api/costeos/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+                if (res.ok) { alert('Costeo eliminado'); seleccionados.delete(id); cargarCosteos(); }
+                else { alert('Error al eliminar'); }
+            } catch (err) { alert('Error de conexion'); }
+        }
+
+        async function verDetalle(id) {
+            try {
+                const res = await fetch(API_URL + '/api/costeos/' + id, { headers: { 'Authorization': 'Bearer ' + token } });
+                const costeo = await res.json();
+                if (res.ok) {
+                    document.getElementById('modalTitle').textContent = costeo.nombre_costeo || 'Detalle';
+                    document.getElementById('modalBody').innerHTML = '<div class="detail-grid">' +
+                        '<div class="detail-item"><div class="detail-label">Proveedor</div><div class="detail-value">' + (costeo.proveedor || '-') + '</div></div>' +
+                        '<div class="detail-item"><div class="detail-label">Factura</div><div class="detail-value">' + (costeo.factura_nro || '-') + '</div></div>' +
+                        '<div class="detail-item"><div class="detail-label">Moneda</div><div class="detail-value">' + (costeo.moneda_principal || 'USD') + '</div></div>' +
+                        '<div class="detail-item"><div class="detail-label">TC USD</div><div class="detail-value">' + (costeo.tc_usd || '-') + '</div></div>' +
+                        '<div class="detail-item"><div class="detail-label">TC EUR</div><div class="detail-value">' + (costeo.tc_eur || '-') + '</div></div>' +
+                        '<div class="detail-item"><div class="detail-label">TC GBP</div><div class="detail-value">' + (costeo.tc_gbp || '-') + '</div></div>' +
+                        '<div class="detail-item"><div class="detail-label">Unidades</div><div class="detail-value">' + (costeo.unidades_totales || 0) + '</div></div>' +
+                        '<div class="detail-item"><div class="detail-label">Total Gastos</div><div class="detail-value">$' + parseFloat(costeo.total_gastos_ars || 0).toLocaleString('es-AR') + '</div></div>' +
+                        '<div class="detail-item" style="grid-column: span 2;"><div class="detail-label">INVERSION TOTAL</div><div class="detail-value highlight" style="font-size:24px;">$' + parseFloat(costeo.costo_total_ars || 0).toLocaleString('es-AR') + '</div></div>' +
+                        '</div>';
+                    document.getElementById('detalleModal').classList.add('show');
+                }
+            } catch (err) { alert('Error al cargar detalle'); }
+        }
+
+        function exportarSeleccionados() {
+            if (seleccionados.size === 0) { alert('No hay costeos seleccionados'); return; }
+            alert('Funcion en desarrollo: Exportar ' + seleccionados.size + ' costeos');
+        }
+
+        function abrirRecalcular() {
+            if (seleccionados.size === 0) { alert('No hay costeos seleccionados'); return; }
+            document.getElementById('recalcularModal').classList.add('show');
+        }
+
+        async function ejecutarRecalcular() {
+            const tcUsd = document.getElementById('tcUsdNuevo').value;
+            const tcEur = document.getElementById('tcEurNuevo').value;
+            const tcGbp = document.getElementById('tcGbpNuevo').value;
+            if (!tcUsd && !tcEur && !tcGbp) { alert('Ingresa al menos un tipo de cambio'); return; }
+            const ids = Array.from(seleccionados);
+            let exitosos = 0, errores = 0;
+            for (const id of ids) {
+                try {
+                    const res = await fetch(API_URL + '/api/costeos/' + id + '/recalcular', {
+                        method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tc_usd: tcUsd, tc_eur: tcEur, tc_gbp: tcGbp })
+                    });
+                    if (res.ok) exitosos++; else errores++;
+                } catch (err) { errores++; }
+            }
+            cerrarModal('recalcularModal');
+            alert('Recalculo completado:\n- Exitosos: ' + exitosos + '\n- Errores: ' + errores);
+            cargarCosteos();
+        }
+
+        function cerrarModal(id) { 
+            const modal = document.getElementById(id);
+            if (modal) {
+                modal.classList.remove('show');
+                modal.style.display = '';
+            }
+        }
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { cerrarModal('detalleModal'); cerrarModal('recalcularModal'); cerrarModal('cargaManualModal'); } });
+function abrirCargaManual() {
+            window.costeoEditandoId = null;
+            articulosManual = [];
+            gastosManual = [];
+            document.getElementById('cm_nombre').value = '';
+            document.getElementById('cm_proveedor').value = '';
+            document.getElementById('cm_tieneIntermediaria').checked = false;
+            document.getElementById('cm_intermediaria').value = '';
+            document.getElementById('cm_intermediariaGroup').style.display = 'none';
+           document.getElementById('cm_facturaIntermGroup').style.display = 'none';
+            document.getElementById('cm_fechaFacturaIntermGroup').style.display = 'none';
+            document.getElementById('cm_fechaVencIntermGroup').style.display = 'none';
+            document.getElementById('cm_facturaInterm').value = '';
+            document.getElementById('cm_fechaVencInterm').value = '';
+            document.getElementById('cm_fechaFacturaInterm').value = '';
+            document.getElementById('cm_facturaNro').value = '';
+            document.getElementById('cm_moneda').value = 'USD';
+            document.getElementById('cm_monto').value = '';
+            document.getElementById('cm_fechaFactura').value = '';
+            document.getElementById('cm_fechaVenc').value = '';
+            document.getElementById('cm_fechaDespacho').value = '';
+            document.getElementById('cm_tcUsd').value = '';
+            document.getElementById('cm_tcEur').value = '';
+            document.getElementById('cm_tcGbp').value = '';
+            document.getElementById('cm_fobMoneda').value = 'USD';
+            document.getElementById('cm_fobMonto').value = '';
+            document.getElementById('cm_fleteMoneda').value = 'USD';
+            document.getElementById('cm_fleteMonto').value = '';
+            document.getElementById('cm_seguroMoneda').value = 'USD';
+            document.getElementById('cm_seguroMonto').value = '';
+            document.getElementById('cm_margenIntermediaria').value = '';
+            document.getElementById('intermediariaMargenGroup').style.display = 'none';
+            agregarArticulo();
+            agregarGasto();
+            cambiarTab('datosGenerales');
+            document.getElementById('cargaManualModal').classList.add('show');
+        }
+
+        function toggleIntermediaria() {
+            const tiene = document.getElementById('cm_tieneIntermediaria').checked;
+            document.getElementById('cm_intermediariaGroup').style.display = tiene ? 'block' : 'none';
+            document.getElementById('cm_facturaIntermGroup').style.display = tiene ? 'block' : 'none';
+            document.getElementById('cm_fechaFacturaIntermGroup').style.display = tiene ? 'block' : 'none';
+            document.getElementById('cm_fechaVencIntermGroup').style.display = tiene ? 'block' : 'none';
+            document.getElementById('intermediariaMargenGroup').style.display = tiene ? 'flex' : 'none';
+            renderizarArticulos();
+        }
+
+        function cambiarTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelector('.tab[onclick*="' + tabId + '"]').classList.add('active');
+            document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1)).classList.add('active');
+        }
+
+        function agregarArticulo() {
+            const idx = articulosManual.length;
+            articulosManual.push({ codigo_goodies: '', codigo_proveedor: '', nombre: '', cajas: '', und_caja: '', valor_origen: '', valor_intermediaria: '', derechos: '', imp_interno: '' });
+            renderizarArticulos();
+        }
+
+        function eliminarArticulo(idx) {
+            articulosManual.splice(idx, 1);
+            renderizarArticulos();
+        }
+
+        function renderizarArticulos() {
+            const tbody = document.getElementById('articulosBody');
+            const tieneInterm = document.getElementById('cm_tieneIntermediaria').checked;
+            tbody.innerHTML = articulosManual.map((art, idx) => {
+                return '<tr>' +
+                    '<td>' + (idx + 1) + '</td>' +
+                    '<td><input type="text" value="' + (art.codigo_goodies || '') + '" onchange="articulosManual[' + idx + '].codigo_goodies=this.value"></td>' +
+                    '<td><input type="text" value="' + (art.codigo_proveedor || '') + '" onchange="articulosManual[' + idx + '].codigo_proveedor=this.value"></td>' +
+                    '<td><input type="text" value="' + (art.nombre || '') + '" onchange="articulosManual[' + idx + '].nombre=this.value"></td>' +
+                    '<td><input type="number" step="0.01" value="' + (art.cajas || '') + '" onchange="articulosManual[' + idx + '].cajas=this.value" style="width:60px;"></td>' +
+                    '<td><input type="number" step="0.01" value="' + (art.und_caja || '') + '" onchange="articulosManual[' + idx + '].und_caja=this.value" style="width:60px;"></td>' +
+                    '<td><input type="number" step="0.0001" value="' + (art.valor_origen || '') + '" onchange="actualizarValorOrigen(' + idx + ', this.value)" style="width:80px;"></td>' +
+                    '<td><input type="number" step="0.0001" value="' + (art.valor_intermediaria || '') + '" onchange="articulosManual[' + idx + '].valor_intermediaria=this.value" style="width:80px;" ' + (tieneInterm ? '' : 'readonly') + '></td>' +
+                    '<td><input type="number" step="0.01" value="' + (art.derechos || '') + '" onchange="articulosManual[' + idx + '].derechos=this.value" style="width:60px;"></td>' +
+                    '<td><input type="number" step="0.01" value="' + (art.imp_interno || '') + '" onchange="articulosManual[' + idx + '].imp_interno=this.value" style="width:60px;"></td>' +
+                    '<td><button class="btn btn-danger btn-sm" onclick="eliminarArticulo(' + idx + ')">X</button></td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+function actualizarValorOrigen(idx, valor) {
+            articulosManual[idx].valor_origen = valor;
+            const tieneInterm = document.getElementById('cm_tieneIntermediaria').checked;
+            if (!tieneInterm) {
+                articulosManual[idx].valor_intermediaria = valor;
+                renderizarArticulos();
+            }
+        }
+
+        function calcularValoresIntermediaria() {
+            const margen = parseFloat(document.getElementById('cm_margenIntermediaria').value) || 0;
+            if (margen <= 0 || margen >= 100) { alert('Ingresa un margen valido (entre 0 y 100)'); return; }
+            articulosManual.forEach(art => {
+                const origen = parseFloat(art.valor_origen) || 0;
+                if (origen > 0) {
+                    art.valor_intermediaria = (origen / (1 - margen / 100)).toFixed(4);
+                }
+            });
+            renderizarArticulos();
+            alert('Valores Intermediaria calculados con margen ' + margen + '%');
+        }
+function agregarGasto() {
+            gastosManual.push({ descripcion: '', proveedor: '', nro_comprobante: '', moneda: 'USD', monto: '', recargo: '', observaciones: '' });
+            renderizarGastos();
+        }
+
+        function eliminarGasto(idx) {
+            gastosManual.splice(idx, 1);
+            renderizarGastos();
+        }
+
+        function renderizarGastos() {
+            const tbody = document.getElementById('gastosBody');
+            tbody.innerHTML = gastosManual.map((g, idx) => {
+                return '<tr>' +
+                    '<td>' + (idx + 1) + '</td>' +
+                    '<td><input type="text" value="' + (g.descripcion || '') + '" onchange="gastosManual[' + idx + '].descripcion=this.value"></td>' +
+                    '<td><input type="text" value="' + (g.proveedor || '') + '" onchange="gastosManual[' + idx + '].proveedor=this.value" style="width:100px;"></td>' +
+                    '<td><input type="text" value="' + (g.nro_comprobante || '') + '" onchange="gastosManual[' + idx + '].nro_comprobante=this.value" style="width:100px;"></td>' +
+                    '<td><select onchange="gastosManual[' + idx + '].moneda=this.value"><option value="USD" ' + (g.moneda === 'USD' ? 'selected' : '') + '>USD</option><option value="EUR" ' + (g.moneda === 'EUR' ? 'selected' : '') + '>EUR</option><option value="GBP" ' + (g.moneda === 'GBP' ? 'selected' : '') + '>GBP</option><option value="ARS" ' + (g.moneda === 'ARS' ? 'selected' : '') + '>ARS</option></select></td>' +
+                    '<td><input type="number" step="0.01" value="' + (g.monto || '') + '" onchange="gastosManual[' + idx + '].monto=this.value" style="width:100px;"></td>' +
+                    '<td><input type="number" step="0.01" value="' + (g.recargo || '') + '" onchange="gastosManual[' + idx + '].recargo=this.value" style="width:60px;"></td>' +
+                    '<td><input type="text" value="' + (g.observaciones || '') + '" onchange="gastosManual[' + idx + '].observaciones=this.value" style="width:120px;"></td>' +
+                    '<td><button class="btn btn-danger btn-sm" onclick="eliminarGasto(' + idx + ')">X</button></td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        function descargarTemplateArticulos() {
+            const contenido = 'Cod_Goodies\tCod_Proveedor\tNombre\tCajas\tUnd_Caja\tValor_Origen\tValor_Interm\tPct_Derecho\tPct_Imp_Interno\n' +
+                'COD001\tPROV001\tProducto Ejemplo\t10\t24\t5.50\t6.00\t18\t0\n';
+            const blob = new Blob([contenido], { type: 'text/tab-separated-values' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'template_articulos.xls';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function descargarTemplateGastos() {
+            const contenido = 'Descripcion\tProveedor\tNro_Comprobante\tMoneda\tMonto\tPct_Recargo\tObservaciones\n' +
+                'Flete Internacional\tTransporte SA\tFC-0001\tUSD\t1500\t3\tEjemplo de gasto\n';
+            const blob = new Blob([contenido], { type: 'text/tab-separated-values' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'template_gastos.xls';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importarArticulosExcel(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = e.target.result;
+                    const lines = data.split('\n').filter(l => l.trim());
+                    if (lines.length < 2) { alert('El archivo no tiene datos'); return; }
+                    const tieneInterm = document.getElementById('cm_tieneIntermediaria').checked;
+                    articulosManual = [];
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = lines[i].split('\t');
+                        if (cols.length >= 6) {
+                            const valorOrigen = cols[5] || '';
+                            const valorInterm = cols[6] || valorOrigen;
+                            articulosManual.push({
+                                codigo_goodies: cols[0] || '',
+                                codigo_proveedor: cols[1] || '',
+                                nombre: cols[2] || '',
+                                cajas: cols[3] || '',
+                                und_caja: cols[4] || '',
+                                valor_origen: valorOrigen,
+                                valor_intermediaria: tieneInterm ? valorInterm : valorOrigen,
+                                derechos: cols[7] || '',
+                                imp_interno: cols[8] || ''
+                            });
+                        }
+                    }
+                    renderizarArticulos();
+                    alert('Se importaron ' + articulosManual.length + ' articulos');
+                } catch (err) {
+                    alert('Error al leer el archivo: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            input.value = '';
+        }
+
+        function importarGastosExcel(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = e.target.result;
+                    const lines = data.split('\n').filter(l => l.trim());
+                    if (lines.length < 2) { alert('El archivo no tiene datos'); return; }
+                    gastosManual = [];
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = lines[i].split('\t');
+                        if (cols.length >= 5) {
+                            gastosManual.push({
+                                descripcion: cols[0] || '',
+                                proveedor: cols[1] || '',
+                                nro_comprobante: cols[2] || '',
+                                moneda: cols[3] || 'USD',
+                                monto: cols[4] || '',
+                                recargo: cols[5] || '',
+                                observaciones: cols[6] || ''
+                            });
+                        }
+                    }
+                    renderizarGastos();
+                    alert('Se importaron ' + gastosManual.length + ' gastos');
+                } catch (err) {
+                    alert('Error al leer el archivo: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            input.value = '';
+        }
+
+        async function guardarCargaManual() {
+            const nombre = document.getElementById('cm_nombre').value.trim();
+            const proveedor = document.getElementById('cm_proveedor').value.trim();
+            const moneda = document.getElementById('cm_moneda').value;
+            if (!nombre) { alert('El nombre del costeo es obligatorio'); cambiarTab('datosGenerales'); return; }
+            if (!proveedor) { alert('El proveedor es obligatorio'); cambiarTab('datosGenerales'); return; }
+            if (articulosManual.length === 0 || !articulosManual[0].nombre) { alert('Debe agregar al menos un articulo'); cambiarTab('articulos'); return; }
+            const tieneIntermediaria = document.getElementById('cm_tieneIntermediaria').checked;
+            const articulos = articulosManual.filter(a => a.nombre).map(a => {
+                const valorInterm = tieneIntermediaria ? (parseFloat(a.valor_intermediaria) || 0) : (parseFloat(a.valor_origen) || 0);
+                return {
+                    codigo_goodies: a.codigo_goodies || 'S/COD',
+                    codigo_proveedor: a.codigo_proveedor || '',
+                    nombre: a.nombre,
+                    cantidad_cajas: parseFloat(a.cajas) || 0,
+                    unidades_por_caja: parseFloat(a.und_caja) || 0,
+                    valor_unitario_origen: parseFloat(a.valor_origen) || 0,
+                    valor_unitario_intermediaria: valorInterm,
+                    derechos_porcentaje: (parseFloat(a.derechos) || 0) / 100,
+                    impuesto_interno_porcentaje: (parseFloat(a.imp_interno) || 0) / 100
+                };
+            });
+            const gastos = gastosManual.filter(g => g.descripcion).map(g => ({
+                descripcion: g.descripcion,
+                proveedor_gasto: g.proveedor || '',
+                nro_comprobante: g.nro_comprobante || 'ESTIMADO',
+                moneda: g.moneda || 'USD',
+                monto: parseFloat(g.monto) || 0,
+                recargo: parseFloat(g.recargo) || 0,
+                observaciones: g.observaciones || ''
+            }));
+            const datos = {
+                nombre_costeo: nombre,
+                proveedor: proveedor,
+                tiene_intermediaria: tieneIntermediaria,
+                empresa_intermediaria: tieneIntermediaria ? document.getElementById('cm_intermediaria').value : null,
+                factura_intermediaria: tieneIntermediaria ? document.getElementById('cm_facturaInterm').value : null,
+                fecha_factura_intermediaria: tieneIntermediaria ? document.getElementById('cm_fechaFacturaInterm').value : null,
+                factura_nro: document.getElementById('cm_facturaNro').value,
+                moneda_principal: moneda,
+                monto_factura: parseFloat(document.getElementById('cm_monto').value) || 0,
+                fecha_factura: document.getElementById('cm_fechaFactura').value || null,
+                fecha_vencimiento_factura: document.getElementById('cm_fechaVenc').value || null,
+                fecha_despacho: document.getElementById('cm_fechaDespacho').value || null,
+                tc_usd: parseFloat(document.getElementById('cm_tcUsd').value) || null,
+                tc_eur: parseFloat(document.getElementById('cm_tcEur').value) || null,
+                tc_gbp: parseFloat(document.getElementById('cm_tcGbp').value) || null,
+                fob_moneda: document.getElementById('cm_fobMoneda').value,
+                fob_monto: parseFloat(document.getElementById('cm_fobMonto').value) || 0,
+                flete_moneda: document.getElementById('cm_fleteMoneda').value,
+                flete_monto: parseFloat(document.getElementById('cm_fleteMonto').value) || 0,
+                seguro_moneda: document.getElementById('cm_seguroMoneda').value,
+                seguro_monto: parseFloat(document.getElementById('cm_seguroMonto').value) || 0,
+                articulos: articulos,
+                gastos: gastos
+            };
+            try {
+                let url = API_URL + '/api/costeos/manual';
+                let method = 'POST';
+                if (window.costeoEditandoId) {
+                    url = API_URL + '/api/costeos/' + window.costeoEditandoId + '/actualizar';
+                    method = 'PUT';
+                }
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(window.costeoEditandoId ? 'Costeo actualizado exitosamente!' : 'Costeo guardado exitosamente!');
+                    window.costeoEditandoId = null;
+                    cerrarModal('cargaManualModal');
+                    cargarCosteos();
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudo guardar'));
+                }
+            } catch (err) {
+                alert('Error de conexion');
+                console.error(err);
+            }
+        }
+    </script>
+</body>
+</html>
