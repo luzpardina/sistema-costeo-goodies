@@ -548,7 +548,7 @@
         </div>
     </div>
 <script>
-        const API_URL = 'http://localhost:3000';
+        const API_URL = window.location.origin;
         let token = localStorage.getItem('token');
         let usuario = JSON.parse(localStorage.getItem('usuario') || 'null');
         let selectedFile = null;
