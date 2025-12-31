@@ -70,11 +70,11 @@ class CalculosService {
                     
                     let tcGasto = 1;
                     if (monedaGasto === 'USD') {
-                        tcGasto = tcUSD;
+                        tcGasto = tc_usd;
                     } else if (monedaGasto === 'EUR') {
-                        tcGasto = tcEUR || tcUSD;
+                        tcGasto = tc_eur || tc_usd;
                     } else if (monedaGasto === 'GBP') {
-                        tcGasto = tcGBP || tcUSD;
+                        tcGasto = tc_gbp || tc_usd;
                     }
                     // Si es ARS, tcGasto queda en 1
                     
