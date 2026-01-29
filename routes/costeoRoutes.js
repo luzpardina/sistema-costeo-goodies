@@ -36,7 +36,7 @@ router.get('/detalle-articulo/:codigo', auth, async (req, res) => {
             include: [{
                 model: Costeo,
                 as: 'costeo',
-                where: { usuario_id: req.usuario.id },
+               
                 attributes: ['id', 'nombre_costeo', 'proveedor', 'moneda_principal', 'fecha_despacho', 'tc_usd', 'tc_eur', 'tc_gbp']
             }],
             order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'DESC']]
@@ -90,7 +90,7 @@ router.get('/ultimos-costos', auth, async (req, res) => {
             include: [{
                 model: Costeo,
                 as: 'costeo',
-                where: { usuario_id: req.usuario.id },
+                
                 attributes: ['id', 'nombre_costeo', 'proveedor', 'moneda_principal', 'fecha_despacho', 'tc_usd', 'tc_eur', 'tc_gbp']
             }],
             order: [['created_at', 'DESC']]
@@ -188,7 +188,7 @@ router.get('/ultimos-costos', auth, async (req, res) => {
 router.get('/listar', auth, async (req, res) => {
     try {
         const costeos = await Costeo.findAll({
-            where: { usuario_id: req.usuario.id },
+           
             order: [['created_at', 'DESC']],
             attributes: ['id', 'nombre_costeo', 'proveedor', 'moneda_principal', 'unidades_totales', 'costo_total_ars', 'estado', 'fecha_factura', 'fecha_despacho', 'created_at']
         });
