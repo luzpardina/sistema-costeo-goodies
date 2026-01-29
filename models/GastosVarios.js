@@ -11,8 +11,11 @@ const GastosVarios = sequelize.define('GastosVarios', {
         type: DataTypes.STRING(255),
         allowNull: false
     },
-    proveedor: {
+    proveedor_gasto: {
         type: DataTypes.STRING(255)
+    },
+    nro_comprobante: {
+        type: DataTypes.STRING(100)
     },
     moneda: {
         type: DataTypes.STRING(10),
@@ -22,8 +25,15 @@ const GastosVarios = sequelize.define('GastosVarios', {
         type: DataTypes.DECIMAL(15, 2),
         allowNull: false
     },
+    recargo: {
+        type: DataTypes.DECIMAL(5, 2),
+        defaultValue: 0
+    },
     monto_ars: {
         type: DataTypes.DECIMAL(15, 2)
+    },
+    observaciones: {
+        type: DataTypes.STRING(500)
     }
 }, {
     tableName: 'gastos_varios',
