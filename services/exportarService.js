@@ -51,7 +51,8 @@ class ExportarService {
             { campo: 'Proveedor', valor: costeo.proveedor },
             { campo: 'Factura', valor: costeo.factura_nro },
             { campo: 'Fecha Factura', valor: formatoFecha(costeo.fecha_factura) },
-            { campo: 'Fecha Despacho', valor: estadoDespacho },
+           { campo: 'Fecha Despacho', valor: estadoDespacho },
+            { campo: 'Nro Despacho', valor: costeo.nro_despacho || '' },
             { campo: 'Moneda Principal', valor: costeo.moneda_principal },
             { campo: '', valor: '' },
             { campo: 'Tipo de Cambio USD', valor: parseFloat(costeo.tc_usd) || 0 },
@@ -175,12 +176,16 @@ class ExportarService {
         // 5. Hoja GASTOS
         const hojaGastos = workbook.addWorksheet('GASTOS');
         
-        hojaGastos.columns = [
+       hojaGastos.columns = [
             { header: 'Descripcion', key: 'descripcion', width: 40 },
+            { header: 'Proveedor', key: 'proveedor', width: 25 },
+            { header: 'Nro Comprobante', key: 'nro_comprobante', width: 18 },
             { header: 'Moneda', key: 'moneda', width: 10 },
             { header: 'Monto Original', key: 'monto', width: 15 },
             { header: '% Recargo', key: 'recargo', width: 12 },
-            { header: 'Monto ARS', key: 'monto_ars', width: 18 }
+            { header: 'Grupo', key: 'grupo', width: 12 },
+            { header: 'Monto ARS', key: 'monto_ars', width: 18 },
+            { header: 'Observaciones', key: 'observaciones', width: 30 }
         ];
 
         // Lista de gastos con recargo
@@ -218,20 +223,24 @@ class ExportarService {
                 }
             }
 
-            hojaGastos.addRow({
+           hojaGastos.addRow({
                 descripcion: gasto.descripcion,
+                proveedor: gasto.proveedor_gasto || '',
+                nro_comprobante: gasto.nro_comprobante || '',
                 moneda: gasto.moneda,
                 monto: parseFloat(gasto.monto) || 0,
                 recargo: recargoPct > 0 ? recargoPct : 0,
-                monto_ars: parseFloat(gasto.monto_ars) || 0
+                grupo: gasto.grupo || '',
+                monto_ars: parseFloat(gasto.monto_ars) || 0,
+                observaciones: gasto.observaciones || ''
             });
         }
 
-        // Aplicar formato numerico (2 decimales)
+       // Aplicar formato numerico (2 decimales)
         for (let i = 2; i <= hojaGastos.rowCount; i++) {
-            hojaGastos.getRow(i).getCell(3).numFmt = '#,##0.00';
-            hojaGastos.getRow(i).getCell(4).numFmt = '#,##0.00';
             hojaGastos.getRow(i).getCell(5).numFmt = '#,##0.00';
+            hojaGastos.getRow(i).getCell(6).numFmt = '#,##0.00';
+            hojaGastos.getRow(i).getCell(8).numFmt = '#,##0.00';
         }
 
         // Estilo encabezado
