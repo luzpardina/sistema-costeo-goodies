@@ -1722,7 +1722,9 @@ function agregarGasto() {
                     valor_unitario_origen: parseFloat(a.valor_origen) || 0,
                     valor_unitario_intermediaria: valorInterm,
                     derechos_porcentaje: (parseFloat(a.derechos) || 0) / 100,
-                    impuesto_interno_porcentaje: (parseFloat(a.imp_interno) || 0) / 100
+                    impuesto_interno_porcentaje: (parseFloat(a.imp_interno) || 0) / 100,
+                    aplica_anmat: a.aplica_anmat !== false,
+                    grupo: a.grupo || ''
                 };
             });
             const gastos = gastosManual.filter(g => g.descripcion).map(g => ({
@@ -1732,6 +1734,7 @@ function agregarGasto() {
                 moneda: g.moneda || 'USD',
                 monto: parseFloat(g.monto) || 0,
                 recargo: parseFloat(g.recargo) || 0,
+                grupo: g.grupo || '',
                 observaciones: g.observaciones || ''
             }));
             const datos = {
