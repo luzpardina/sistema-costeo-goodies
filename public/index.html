@@ -499,7 +499,9 @@
                                 <th>Valor Origen</th>
                                 <th>Valor Fábrica.</th>
                                 <th>% Derecho</th>
-                                <th>% Imp.Int.</th>
+                               <th>% Imp.Int.</th>
+                                <th>ANMAT</th>
+                                <th>Grupo</th>
                                 <th style="width:40px;"></th>
                             </tr>
                         </thead>
@@ -531,7 +533,8 @@
                                 <th>Nro Comprob.</th>
                                 <th>Moneda</th>
                                 <th>Monto</th>
-                                <th>% Recargo</th>
+                               <th>% Recargo</th>
+                                <th>Grupo</th>
                                 <th>Observaciones</th>
                                 <th style="width:40px;"></th>
                             </tr>
@@ -1344,7 +1347,9 @@ async function editarCosteo(id) {
                         valor_origen: a.valor_proveedor_origen || a.valor_unitario_origen || '',
                         valor_intermediaria: a.valor_unitario_origen || '',
                         derechos: (a.derechos_porcentaje * 100) || '',
-                        imp_interno: (a.impuesto_interno_porcentaje * 100) || ''
+                        imp_interno: (a.impuesto_interno_porcentaje * 100) || '',
+                        aplica_anmat: a.aplica_anmat !== false,
+                        grupo: a.grupo || ''
                     }));
                     if (articulosManual.length === 0) agregarArticulo();
                     renderizarArticulos();
@@ -1355,6 +1360,7 @@ async function editarCosteo(id) {
                         moneda: g.moneda || 'USD',
                         monto: g.monto || '',
                         recargo: g.recargo || '',
+                        grupo: g.grupo || '',
                         observaciones: g.observaciones || ''
                     }));
                     if (gastosManual.length === 0) agregarGasto();
@@ -1515,10 +1521,9 @@ function abrirCargaManual() {
             document.querySelector('.tab[onclick*="' + tabId + '"]').classList.add('active');
             document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1)).classList.add('active');
         }
-
-        function agregarArticulo() {
+function agregarArticulo() {
             const idx = articulosManual.length;
-            articulosManual.push({ codigo_goodies: '', codigo_proveedor: '', nombre: '', cajas: '', und_caja: '', valor_origen: '', valor_intermediaria: '', derechos: '', imp_interno: '' });
+            articulosManual.push({ codigo_goodies: '', codigo_proveedor: '', nombre: '', cajas: '', und_caja: '', valor_origen: '', valor_intermediaria: '', derechos: '', imp_interno: '', aplica_anmat: true, grupo: '' });
             renderizarArticulos();
         }
 
@@ -1531,6 +1536,7 @@ function abrirCargaManual() {
             const tbody = document.getElementById('articulosBody');
             const tieneInterm = document.getElementById('cm_tieneIntermediaria').checked;
             tbody.innerHTML = articulosManual.map((art, idx) => {
+                const aplicaAnmat = art.aplica_anmat !== false;
                 return '<tr>' +
                     '<td>' + (idx + 1) + '</td>' +
                     '<td><input type="text" value="' + (art.codigo_goodies || '') + '" onchange="articulosManual[' + idx + '].codigo_goodies=this.value"></td>' +
@@ -1542,11 +1548,12 @@ function abrirCargaManual() {
                     '<td><input type="number" step="0.0001" value="' + (art.valor_intermediaria || '') + '" onchange="articulosManual[' + idx + '].valor_intermediaria=this.value" style="width:80px;" ' + (tieneInterm ? '' : 'readonly') + '></td>' +
                     '<td><input type="number" step="0.01" value="' + (art.derechos || '') + '" onchange="articulosManual[' + idx + '].derechos=this.value" style="width:60px;"></td>' +
                     '<td><input type="number" step="0.01" value="' + (art.imp_interno || '') + '" onchange="articulosManual[' + idx + '].imp_interno=this.value" style="width:60px;"></td>' +
+                    '<td><input type="checkbox" ' + (aplicaAnmat ? 'checked' : '') + ' onchange="articulosManual[' + idx + '].aplica_anmat=this.checked"></td>' +
+                    '<td><input type="text" value="' + (art.grupo || '') + '" onchange="articulosManual[' + idx + '].grupo=this.value" style="width:60px;" placeholder=""></td>' +
                     '<td><button class="btn btn-danger btn-sm" onclick="eliminarArticulo(' + idx + ')">X</button></td>' +
                     '</tr>';
             }).join('');
         }
-
 function actualizarValorOrigen(idx, valor) {
             articulosManual[idx].valor_origen = valor;
             const tieneInterm = document.getElementById('cm_tieneIntermediaria').checked;
@@ -1569,7 +1576,7 @@ function actualizarValorOrigen(idx, valor) {
             alert('Valores Intermediaria calculados con margen ' + margen + '%');
         }
 function agregarGasto() {
-            gastosManual.push({ descripcion: '', proveedor: '', nro_comprobante: '', moneda: 'USD', monto: '', recargo: '', observaciones: '' });
+            gastosManual.push({ descripcion: '', proveedor: '', nro_comprobante: '', moneda: 'USD', monto: '', recargo: '', grupo: '', observaciones: '' });
             renderizarGastos();
         }
 
@@ -1589,6 +1596,7 @@ function agregarGasto() {
                     '<td><select onchange="gastosManual[' + idx + '].moneda=this.value"><option value="USD" ' + (g.moneda === 'USD' ? 'selected' : '') + '>USD</option><option value="EUR" ' + (g.moneda === 'EUR' ? 'selected' : '') + '>EUR</option><option value="GBP" ' + (g.moneda === 'GBP' ? 'selected' : '') + '>GBP</option><option value="ARS" ' + (g.moneda === 'ARS' ? 'selected' : '') + '>ARS</option></select></td>' +
                     '<td><input type="number" step="0.01" value="' + (g.monto || '') + '" onchange="gastosManual[' + idx + '].monto=this.value" style="width:100px;"></td>' +
                     '<td><input type="number" step="0.01" value="' + (g.recargo || '') + '" onchange="gastosManual[' + idx + '].recargo=this.value" style="width:60px;"></td>' +
+                    '<td><input type="text" value="' + (g.grupo || '') + '" onchange="gastosManual[' + idx + '].grupo=this.value" style="width:60px;" placeholder=""></td>' +
                     '<td><input type="text" value="' + (g.observaciones || '') + '" onchange="gastosManual[' + idx + '].observaciones=this.value" style="width:120px;"></td>' +
                     '<td><button class="btn btn-danger btn-sm" onclick="eliminarGasto(' + idx + ')">X</button></td>' +
                     '</tr>';

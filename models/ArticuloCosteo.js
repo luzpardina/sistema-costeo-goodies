@@ -46,6 +46,15 @@ const ArticuloCosteo = sequelize.define('ArticuloCosteo', {
     impuesto_interno_porcentaje: {
         type: DataTypes.DECIMAL(5, 4)
     },
+    // NUEVOS CAMPOS
+    aplica_anmat: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    },
+    grupo: {
+        type: DataTypes.STRING(50),
+        defaultValue: ''
+    },
     // FOB
     fob_unitario_usd: {
         type: DataTypes.DECIMAL(15, 4)
@@ -59,7 +68,7 @@ const ArticuloCosteo = sequelize.define('ArticuloCosteo', {
     fob_total_ars: {
         type: DataTypes.DECIMAL(15, 2)
     },
-    // Participación FOB
+    // Participacion FOB
     participacion_fob: {
         type: DataTypes.DECIMAL(10, 6)
     },
@@ -74,7 +83,7 @@ const ArticuloCosteo = sequelize.define('ArticuloCosteo', {
     base_aduana_ars: {
         type: DataTypes.DECIMAL(15, 2)
     },
-    // Derechos y Estadística
+    // Derechos y Estadistica
     derechos_total_ars: {
         type: DataTypes.DECIMAL(15, 2)
     },
@@ -113,7 +122,7 @@ const ArticuloCosteo = sequelize.define('ArticuloCosteo', {
     costo_total_ars: {
         type: DataTypes.DECIMAL(15, 2)
     },
-    // Factor Importación
+    // Factor Importacion
     factor_importacion: {
         type: DataTypes.DECIMAL(10, 4)
     }

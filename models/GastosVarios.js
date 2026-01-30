@@ -34,6 +34,11 @@ const GastosVarios = sequelize.define('GastosVarios', {
     },
     observaciones: {
         type: DataTypes.STRING(500)
+    },
+    // NUEVO CAMPO
+    grupo: {
+        type: DataTypes.STRING(50),
+        defaultValue: ''
     }
 }, {
     tableName: 'gastos_varios',

@@ -313,7 +313,9 @@ router.put('/:id/actualizar', auth, async (req, res) => {
                 importe_total_origen: importeTotal,
                 valor_proveedor_origen: parseFloat(art.valor_unitario_origen) || 0,
                 derechos_porcentaje: parseFloat(art.derechos_porcentaje) || 0,
-                impuesto_interno_porcentaje: parseFloat(art.impuesto_interno_porcentaje) || 0
+                impuesto_interno_porcentaje: parseFloat(art.impuesto_interno_porcentaje) || 0,
+                aplica_anmat: art.aplica_anmat !== false,
+                grupo: art.grupo || ''
             });
         }
         
@@ -332,12 +334,12 @@ router.put('/:id/actualizar', auth, async (req, res) => {
                         moneda: g.moneda || 'USD',
                         monto: parseFloat(g.monto) || 0,
                         recargo: parseFloat(g.recargo) || 0,
+                        grupo: g.grupo || '',
                         observaciones: g.observaciones || ''
                     });
                 }
             }
         }
-        
         res.json({
             mensaje: 'Costeo actualizado exitosamente',
             costeo: {
