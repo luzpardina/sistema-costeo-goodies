@@ -129,6 +129,19 @@ fob_moneda: {
     estado: {
         type: DataTypes.STRING(50),
         defaultValue: 'borrador'
+    },
+    es_consolidado: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    volumen_m3: {
+        type: DataTypes.DECIMAL(10, 2)
+    },
+    peso_kg: {
+        type: DataTypes.DECIMAL(10, 2)
+    },
+    metodo_prorrateo: {
+        type: DataTypes.STRING(20)
     }
 }, {
     tableName: 'costeos',

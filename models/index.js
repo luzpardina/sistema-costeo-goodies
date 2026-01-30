@@ -6,6 +6,7 @@ const GastosAduana = require('./GastosAduana');
 const GastosVarios = require('./GastosVarios');
 const Revaluacion = require('./Revaluacion');
 const RevaluacionArticulo = require('./RevaluacionArticulo');
+const ConsolidadoProveedor = require('./ConsolidadoProveedor');
 
 // Relaciones Usuario - Empresa
 Empresa.hasMany(Usuario, {
@@ -16,7 +17,6 @@ Usuario.belongsTo(Empresa, {
     foreignKey: 'empresa_id',
     as: 'empresa'
 });
-
 // Relaciones Usuario - Costeo
 Usuario.hasMany(Costeo, {
     foreignKey: 'usuario_id',
@@ -26,7 +26,6 @@ Costeo.belongsTo(Usuario, {
     foreignKey: 'usuario_id',
     as: 'usuario'
 });
-
 // Relaciones Empresa - Costeo
 Empresa.hasMany(Costeo, {
     foreignKey: 'empresa_id',
@@ -36,7 +35,6 @@ Costeo.belongsTo(Empresa, {
     foreignKey: 'empresa_id',
     as: 'empresa'
 });
-
 // Relaciones Costeo - ArticuloCosteo
 Costeo.hasMany(ArticuloCosteo, {
     foreignKey: 'costeo_id',
@@ -47,7 +45,6 @@ ArticuloCosteo.belongsTo(Costeo, {
     foreignKey: 'costeo_id',
     as: 'costeo'
 });
-
 // Relaciones Costeo - GastosAduana (1 a 1)
 Costeo.hasOne(GastosAduana, {
     foreignKey: 'costeo_id',
@@ -58,7 +55,6 @@ GastosAduana.belongsTo(Costeo, {
     foreignKey: 'costeo_id',
     as: 'costeo'
 });
-
 // Relaciones Costeo - GastosVarios
 Costeo.hasMany(GastosVarios, {
     foreignKey: 'costeo_id',
@@ -69,7 +65,6 @@ GastosVarios.belongsTo(Costeo, {
     foreignKey: 'costeo_id',
     as: 'costeo'
 });
-
 // Relaciones Usuario - Revaluacion
 Usuario.hasMany(Revaluacion, {
     foreignKey: 'usuario_id',
@@ -79,7 +74,6 @@ Revaluacion.belongsTo(Usuario, {
     foreignKey: 'usuario_id',
     as: 'usuario'
 });
-
 // Relaciones Revaluacion - RevaluacionArticulo
 Revaluacion.hasMany(RevaluacionArticulo, {
     foreignKey: 'revaluacion_id',
@@ -90,6 +84,16 @@ RevaluacionArticulo.belongsTo(Revaluacion, {
     foreignKey: 'revaluacion_id',
     as: 'revaluacion'
 });
+// Relaciones Costeo - ConsolidadoProveedor
+Costeo.hasMany(ConsolidadoProveedor, {
+    foreignKey: 'costeo_id',
+    as: 'proveedores_consolidado',
+    onDelete: 'CASCADE'
+});
+ConsolidadoProveedor.belongsTo(Costeo, {
+    foreignKey: 'costeo_id',
+    as: 'costeo'
+});
 
 module.exports = {
     Usuario,
@@ -99,5 +103,6 @@ module.exports = {
     GastosAduana,
     GastosVarios,
     Revaluacion,
-    RevaluacionArticulo
+    RevaluacionArticulo,
+    ConsolidadoProveedor
 };

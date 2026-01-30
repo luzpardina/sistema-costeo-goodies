@@ -35,10 +35,13 @@ const GastosVarios = sequelize.define('GastosVarios', {
     observaciones: {
         type: DataTypes.STRING(500)
     },
-    // NUEVO CAMPO
     grupo: {
         type: DataTypes.STRING(50),
         defaultValue: ''
+    },
+    prorratear_consolidado: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     }
 }, {
     tableName: 'gastos_varios',
