@@ -1,6 +1,7 @@
 // services/calculosService.js
 // Servicio de cálculos automáticos para costeo de importación
 // Usa el TC correcto según la moneda principal del costeo
+// Soporta ANMAT selectivo y gastos por grupo
 
 const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios } = require('../models');
 
@@ -40,34 +41,54 @@ class CalculosService {
             const gastosVarios = costeo.gastos_varios || [];
 
             // 2. Calcular FOB TOTAL en PESOS (suma de todos los artículos)
-            // Usando el TC de la moneda principal
             let fobTotalPesos = 0;
             let fobTotalDivisa = 0;
+            
+            // También calcular FOB por grupo y FOB de artículos que aplican ANMAT
+            const fobPorGrupo = {}; // { 'SENASA': 1000, '': 5000 }
+            let fobArticulosConAnmat = 0;
+            
             for (const art of articulos) {
                 const importeOrigen = parseFloat(art.importe_total_origen) || 0;
+                const fobArtPesos = importeOrigen * tcPrincipal;
+                const grupo = art.grupo || '';
+                const aplicaAnmat = art.aplica_anmat !== false;
+                
                 fobTotalDivisa += importeOrigen;
-                fobTotalPesos += importeOrigen * tcPrincipal;
+                fobTotalPesos += fobArtPesos;
+                
+                // Acumular FOB por grupo
+                if (!fobPorGrupo[grupo]) {
+                    fobPorGrupo[grupo] = 0;
+                }
+                fobPorGrupo[grupo] += fobArtPesos;
+                
+                // Acumular FOB de artículos que aplican ANMAT
+                if (aplicaAnmat) {
+                    fobArticulosConAnmat += fobArtPesos;
+                }
             }
 
             // 3. Obtener Gastos Base Aduana (Flete + Seguro)
-            // Estos vienen en la moneda que indica el Excel, convertir a pesos
             const fleteUSD = parseFloat(costeo.flete_usd) || 0;
             const seguroUSD = parseFloat(costeo.seguro_usd) || 0;
-            // El flete y seguro están guardados como "USD" pero en realidad vienen en la moneda del Excel
-            // Usamos el TC principal porque generalmente coinciden con la moneda de factura
             const gastosBaseAduanaTotal = (fleteUSD + seguroUSD) * tcPrincipal;
 
-            // 4. Calcular total de Gastos Varios (convertir a pesos si no están convertidos)
+            // 4. Calcular total de Gastos Varios y agruparlos
+            // Gastos sin grupo (vacío) = aplican a todos
+            // Gastos con grupo = aplican solo a artículos del mismo grupo
+            const gastosPorGrupo = {}; // { 'SENASA': 800, '': 1700 }
             let totalGastosVariosPesos = 0;
+            
             for (const gasto of gastosVarios) {
                 let montoARS = parseFloat(gasto.monto_ars) || 0;
-                
+
                 // Si monto_ars es 0 pero hay monto, calcularlo ahora
                 if (montoARS === 0 && gasto.monto) {
                     const montoOriginal = parseFloat(gasto.monto) || 0;
                     const monedaGasto = (gasto.moneda || 'USD').toUpperCase();
                     const recargo = parseFloat(gasto.recargo) || 0;
-                    
+
                     let tcGasto = 1;
                     if (monedaGasto === 'USD') {
                         tcGasto = tc_usd;
@@ -76,19 +97,26 @@ class CalculosService {
                     } else if (monedaGasto === 'GBP') {
                         tcGasto = tc_gbp || tc_usd;
                     }
-                    // Si es ARS, tcGasto queda en 1
-                    
+
                     montoARS = montoOriginal * tcGasto;
                     if (recargo > 0) {
                         montoARS = montoARS * (1 + recargo / 100);
                     }
-                    
+
                     // Actualizar el gasto con monto_ars calculado
                     await gasto.update({ monto_ars: montoARS });
                 }
-                
+
                 totalGastosVariosPesos += montoARS;
+                
+                // Agrupar gastos por grupo
+                const grupoGasto = gasto.grupo || '';
+                if (!gastosPorGrupo[grupoGasto]) {
+                    gastosPorGrupo[grupoGasto] = 0;
+                }
+                gastosPorGrupo[grupoGasto] += montoARS;
             }
+
             // 5. Calcular cada artículo
             let totalDerechosARS = 0;
             let totalEstadisticaARS = 0;
@@ -105,19 +133,26 @@ class CalculosService {
                 const unidades = parseInt(articulo.unidades_totales) || 1;
                 const derechosPct = parseFloat(articulo.derechos_porcentaje) || 0;
                 const impInternosPct = parseFloat(articulo.impuesto_interno_porcentaje) || 0;
+                const grupoArticulo = articulo.grupo || '';
+                const aplicaAnmat = articulo.aplica_anmat !== false;
 
                 // FOB en pesos (usando TC principal)
                 const fobTotalArtPesos = importeOrigen * tcPrincipal;
                 const fobUnitarioPesos = fobTotalArtPesos / unidades;
                 const fobUnitarioDivisa = importeOrigen / unidades;
 
-                // Participación FOB (% que representa este artículo del total)
+                // Participación FOB general (% del total)
                 const participacionFOB = fobTotalPesos > 0 ? fobTotalArtPesos / fobTotalPesos : 0;
 
-                // ANMAT = FOB Pesos × 0.5%
-                const anmatARS = fobTotalArtPesos * 0.005;
+                // ANMAT = FOB Pesos × 0.5% (SOLO si aplica_anmat es true)
+                let anmatARS = 0;
+                if (aplicaAnmat && fobArticulosConAnmat > 0) {
+                    // Participación sobre el FOB de artículos que aplican ANMAT
+                    const participacionAnmat = fobTotalArtPesos / fobArticulosConAnmat;
+                    anmatARS = fobTotalArtPesos * 0.005;
+                }
 
-                // Gastos Base Aduana prorrateados (Flete + Seguro)
+                // Gastos Base Aduana prorrateados (Flete + Seguro) - siempre por participación general
                 const gastosBaseAduanaArt = gastosBaseAduanaTotal * participacionFOB;
 
                 // Base Aduana = FOB Pesos + Gastos Base Aduana
@@ -129,8 +164,24 @@ class CalculosService {
                 // Estadística = Base Aduana × 3% (solo si Derechos > 0)
                 const estadisticaARS = derechosPct > 0 ? baseAduana * 0.03 : 0;
 
-                // Gastos Varios prorrateados
-                const gastosVariosArt = totalGastosVariosPesos * participacionFOB;
+                // Gastos Varios prorrateados - LÓGICA POR GRUPOS
+                let gastosVariosArt = 0;
+                
+                // Gastos sin grupo (vacío) - se prorratean entre TODOS los artículos
+                const gastosGenerales = gastosPorGrupo[''] || 0;
+                gastosVariosArt += gastosGenerales * participacionFOB;
+                
+                // Gastos con grupo específico - se prorratean solo entre artículos del mismo grupo
+                for (const [grupoGasto, montoGasto] of Object.entries(gastosPorGrupo)) {
+                    if (grupoGasto !== '' && grupoGasto === grupoArticulo) {
+                        // Este artículo pertenece al grupo del gasto
+                        const fobDelGrupo = fobPorGrupo[grupoArticulo] || 0;
+                        if (fobDelGrupo > 0) {
+                            const participacionEnGrupo = fobTotalArtPesos / fobDelGrupo;
+                            gastosVariosArt += montoGasto * participacionEnGrupo;
+                        }
+                    }
+                }
 
                 // COSTO TOTAL NETO = FOB + ANMAT + Derechos + Estadística + Gastos Varios
                 const costoTotalNetoARS = fobTotalArtPesos + anmatARS + derechosARS + estadisticaARS + gastosVariosArt;
@@ -151,7 +202,7 @@ class CalculosService {
                 const costoTotalFinalARS = costoUnitarioFinalARS * unidades;
 
                 // FACTOR IMPORTACIÓN = ((Costo Neto - FOB Unit Pesos) / FOB Unit Pesos) × 100
-                const factorImportacion = fobUnitarioPesos > 0 ? 
+                const factorImportacion = fobUnitarioPesos > 0 ?
                     ((costoUnitarioNetoARS - fobUnitarioPesos) / fobUnitarioPesos) * 100 : 0;
 
                 // Acumular totales
@@ -191,8 +242,12 @@ class CalculosService {
                     codigo: articulo.codigo_goodies,
                     nombre: articulo.nombre,
                     unidades: unidades,
+                    grupo: grupoArticulo,
+                    aplica_anmat: aplicaAnmat,
                     fob_unitario_divisa: fobUnitarioDivisa,
                     fob_unitario_pesos: fobUnitarioPesos,
+                    anmat: anmatARS,
+                    gastos_varios: gastosVariosArt,
                     costo_unitario_neto: costoUnitarioNetoARS,
                     iva_unitario: ivaUnitarioARS,
                     imp_interno_unitario: impuestoInternoUnitARS,
