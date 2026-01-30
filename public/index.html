@@ -435,6 +435,7 @@
                     <div class="form-group"><label>Fecha Factura</label><input type="date" id="cm_fechaFactura"></div>
                     <div class="form-group"><label>Fecha Vencimiento</label><input type="date" id="cm_fechaVenc"></div>
                     <div class="form-group"><label>Fecha Despacho</label><input type="date" id="cm_fechaDespacho"></div>
+                    <div class="form-group"><label>Nro Despacho</label><input type="text" id="cm_nroDespacho" placeholder="Ej: 25-001-IC04..."></div>
                 </div>
                 <h4>Tipos de Cambio</h4>
                 <div class="form-row">
@@ -1259,27 +1260,28 @@ async function duplicarCosteo(id) {
                 const res = await fetch(API_URL + '/api/costeos/' + id, { headers: { 'Authorization': 'Bearer ' + token } });
                 const costeo = await res.json();
                 if (res.ok) {
-                    document.getElementById('cm_nombre').value = (costeo.nombre_costeo || '') + ' - COPIA';
+                    document.getElementById('cm_nombre').value = (costeo.nombre_costeo || '') + ' - DEFINITIVO';
                     document.getElementById('cm_proveedor').value = costeo.proveedor || '';
                     document.getElementById('cm_tieneIntermediaria').checked = !!costeo.empresa_intermediaria;
                     document.getElementById('cm_intermediaria').value = costeo.empresa_intermediaria || '';
-                    document.getElementById('cm_facturaInterm').value = '';
-                    document.getElementById('cm_fechaFacturaInterm').value = '';
-                    document.getElementById('cm_facturaNro').value = '';
+                    document.getElementById('cm_facturaInterm').value = costeo.factura_intermediaria || '';
+                    document.getElementById('cm_fechaFacturaInterm').value = costeo.fecha_factura_intermediaria ? costeo.fecha_factura_intermediaria.split('T')[0] : '';
+                    document.getElementById('cm_facturaNro').value = costeo.factura_nro || '';
                     document.getElementById('cm_moneda').value = costeo.moneda_principal || 'USD';
-                    document.getElementById('cm_monto').value = '';
-                    document.getElementById('cm_fechaFactura').value = '';
-                    document.getElementById('cm_fechaVenc').value = '';
-                    document.getElementById('cm_fechaDespacho').value = '';
+                    document.getElementById('cm_monto').value = costeo.monto_factura || '';
+                    document.getElementById('cm_fechaFactura').value = costeo.fecha_factura ? costeo.fecha_factura.split('T')[0] : '';
+                    document.getElementById('cm_fechaVenc').value = costeo.fecha_vencimiento_factura ? costeo.fecha_vencimiento_factura.split('T')[0] : '';
+                    document.getElementById('cm_fechaDespacho').value = costeo.fecha_despacho ? costeo.fecha_despacho.split('T')[0] : '';
+                    document.getElementById('cm_nroDespacho').value = costeo.nro_despacho || '';
                     document.getElementById('cm_tcUsd').value = costeo.tc_usd || '';
                     document.getElementById('cm_tcEur').value = costeo.tc_eur || '';
                     document.getElementById('cm_tcGbp').value = costeo.tc_gbp || '';
                     document.getElementById('cm_fobMoneda').value = costeo.fob_moneda || 'USD';
-                    document.getElementById('cm_fobMonto').value = '';
+                    document.getElementById('cm_fobMonto').value = costeo.fob_monto || '';
                     document.getElementById('cm_fleteMoneda').value = costeo.flete_moneda || 'USD';
-                    document.getElementById('cm_fleteMonto').value = '';
+                    document.getElementById('cm_fleteMonto').value = costeo.flete_monto || '';
                     document.getElementById('cm_seguroMoneda').value = costeo.seguro_moneda || 'USD';
-                    document.getElementById('cm_seguroMonto').value = '';
+                    document.getElementById('cm_seguroMonto').value = costeo.seguro_monto || '';
                     toggleIntermediaria();
                     articulosManual = (costeo.articulos || []).map(a => ({
                         codigo_goodies: a.codigo_goodies || '',
@@ -1287,8 +1289,8 @@ async function duplicarCosteo(id) {
                         nombre: a.nombre || '',
                         cajas: a.cantidad_cajas || '',
                         und_caja: a.unidades_por_caja || '',
-                        valor_origen: '',
-                        valor_intermediaria: '',
+                        valor_origen: a.valor_proveedor_origen || a.valor_unitario_origen || '',
+                        valor_intermediaria: a.valor_unitario_origen || '',
                         derechos: (a.derechos_porcentaje * 100) || '',
                         imp_interno: (a.impuesto_interno_porcentaje * 100) || '',
                         aplica_anmat: a.aplica_anmat !== false,
@@ -1299,12 +1301,12 @@ async function duplicarCosteo(id) {
                     gastosManual = (costeo.gastos_varios || []).map(g => ({
                         descripcion: g.descripcion || '',
                         proveedor: g.proveedor_gasto || '',
-                        nro_comprobante: '',
+                        nro_comprobante: g.nro_comprobante || '',
                         moneda: g.moneda || 'USD',
-                        monto: '',
+                        monto: g.monto || '',
                         recargo: g.recargo || '',
                         grupo: g.grupo || '',
-                        observaciones: ''
+                        observaciones: g.observaciones || ''
                     }));
                     if (gastosManual.length === 0) agregarGasto();
                     renderizarGastos();
@@ -1331,6 +1333,7 @@ async function editarCosteo(id) {
                     document.getElementById('cm_fechaFactura').value = costeo.fecha_factura ? costeo.fecha_factura.split('T')[0] : '';
                     document.getElementById('cm_fechaVenc').value = costeo.fecha_vencimiento_factura ? costeo.fecha_vencimiento_factura.split('T')[0] : '';
                     document.getElementById('cm_fechaDespacho').value = costeo.fecha_despacho ? costeo.fecha_despacho.split('T')[0] : '';
+                    document.getElementById('cm_nroDespacho').value = costeo.nro_despacho || '';
                     document.getElementById('cm_tcUsd').value = costeo.tc_usd || '';
                     document.getElementById('cm_tcEur').value = costeo.tc_eur || '';
                     document.getElementById('cm_tcGbp').value = costeo.tc_gbp || '';
@@ -1491,6 +1494,7 @@ function abrirCargaManual() {
             document.getElementById('cm_fechaFactura').value = '';
             document.getElementById('cm_fechaVenc').value = '';
             document.getElementById('cm_fechaDespacho').value = '';
+            document.getElementById('cm_nroDespacho').value = '';
             document.getElementById('cm_tcUsd').value = '';
             document.getElementById('cm_tcEur').value = '';
             document.getElementById('cm_tcGbp').value = '';
@@ -1750,6 +1754,7 @@ function agregarGasto() {
                 fecha_factura: document.getElementById('cm_fechaFactura').value || null,
                 fecha_vencimiento_factura: document.getElementById('cm_fechaVenc').value || null,
                 fecha_despacho: document.getElementById('cm_fechaDespacho').value || null,
+                nro_despacho: document.getElementById('cm_nroDespacho').value || null,
                 tc_usd: parseFloat(document.getElementById('cm_tcUsd').value) || null,
                 tc_eur: parseFloat(document.getElementById('cm_tcEur').value) || null,
                 tc_gbp: parseFloat(document.getElementById('cm_tcGbp').value) || null,

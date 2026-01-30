@@ -280,6 +280,7 @@ router.put('/:id/actualizar', auth, async (req, res) => {
             fecha_factura: datos.fecha_factura || null,
             fecha_vencimiento_factura: datos.fecha_vencimiento_factura || null,
             fecha_despacho: datos.fecha_despacho || null,
+            nro_despacho: datos.nro_despacho || null,
             tc_usd: datos.tc_usd || null,
             tc_eur: datos.tc_eur || null,
             tc_gbp: datos.tc_gbp || null,

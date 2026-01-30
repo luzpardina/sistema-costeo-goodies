@@ -24,8 +24,11 @@ const Costeo = sequelize.define('Costeo', {
     fecha_vencimiento_factura: {
         type: DataTypes.DATE
     },
-    fecha_despacho: {
+   fecha_despacho: {
         type: DataTypes.DATE
+    },
+    nro_despacho: {
+        type: DataTypes.STRING(50)
     },
     
     moneda_principal: {
