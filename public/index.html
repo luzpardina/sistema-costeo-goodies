@@ -1002,9 +1002,9 @@ async function verDetalleArticulo(codigo) {
                 html += '<p><strong>TC GBP:</strong> ' + (ultimo.tc_gbp || '-') + formatVar(varTcGbp) + '</p>';
                 html += '<hr style="border-color:#444;">';
                 html += '<p><strong>FOB Origen:</strong> ' + (ultimo.fob_origen ? parseFloat(ultimo.fob_origen).toFixed(varFobOrigen && parseFloat(varFobOrigen) !== 0 ? 4 : 2) : '-') + ' ' + (ultimo.moneda || '') + formatVar(varFobOrigen) + '</p>';
-                html += '<p><strong>FOB Interm:</strong> ' + (ultimo.fob_interm ? parseFloat(ultimo.fob_interm).toFixed(varFobInterm && parseFloat(varFobInterm) !== 0 ? 4 : 2) : '-') + ' ' + (ultimo.moneda || '') + formatVar(varFobInterm) + '</p>';
-                html += '<p><strong>FOB Interm:</strong> ' + (ultimo.fob_interm ? parseFloat(ultimo.fob_interm).toFixed(4) : '-') + ' ' + (ultimo.moneda || '') + formatVar(varFobInterm) + '</p>';
-                html += '<hr style="border-color:#444;">';
+                if (ultimo.fob_interm && parseFloat(ultimo.fob_interm) > 0) {
+                    html += '<p><strong>FOB Fábrica:</strong> ' + parseFloat(ultimo.fob_interm).toFixed(4) + ' ' + (ultimo.moneda || '') + formatVar(varFobInterm) + '</p>';
+                }
                 html += '<p><strong>Costo Neto:</strong> $' + (ultimo.costo_neto ? parseFloat(ultimo.costo_neto).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-') + formatVar(varCostoNeto) + '</p>';
                 html += '<p><strong>Costo c/Imp:</strong> $' + (ultimo.costo_con_impuestos ? parseFloat(ultimo.costo_con_impuestos).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-') + formatVar(varCostoImp) + '</p>';
                 html += '</div>';
@@ -1021,7 +1021,9 @@ async function verDetalleArticulo(codigo) {
                     html += '<p><strong>TC GBP:</strong> ' + (anterior.tc_gbp || '-') + '</p>';
                     html += '<hr style="border-color:#444;">';
                     html += '<p><strong>FOB Origen:</strong> ' + (anterior.fob_origen ? parseFloat(anterior.fob_origen).toFixed(varFobOrigen && parseFloat(varFobOrigen) !== 0 ? 4 : 2) : '-') + ' ' + (anterior.moneda || '') + '</p>';
-                    html += '<p><strong>FOB Interm:</strong> ' + (anterior.fob_interm ? parseFloat(anterior.fob_interm).toFixed(varFobInterm && parseFloat(varFobInterm) !== 0 ? 4 : 2) : '-') + ' ' + (anterior.moneda || '') + '</p>';
+                    if (anterior.fob_interm && parseFloat(anterior.fob_interm) > 0) {
+                        html += '<p><strong>FOB Fábrica:</strong> ' + parseFloat(anterior.fob_interm).toFixed(4) + ' ' + (anterior.moneda || '') + '</p>';
+                    }
                     html += '<hr style="border-color:#444;">';
                     html += '<p><strong>Costo Neto:</strong> $' + (anterior.costo_neto ? parseFloat(anterior.costo_neto).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-') + '</p>';
                     html += '<p><strong>Costo c/Imp:</strong> $' + (anterior.costo_con_impuestos ? parseFloat(anterior.costo_con_impuestos).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-') + '</p>';
