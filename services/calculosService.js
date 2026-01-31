@@ -1,20 +1,21 @@
 // services/calculosService.js
 // Servicio de cálculos automáticos para costeo de importación
 // Usa el TC correcto según la moneda principal del costeo
-// Soporta ANMAT selectivo y gastos por grupo
+// Soporta ANMAT selectivo, gastos por grupo y COSTEOS CONSOLIDADOS
 
-const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios } = require('../models');
+const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios, ConsolidadoProveedor } = require('../models');
 
 class CalculosService {
 
-    static async calcularCosteo(costeoId) {
+    static async calcularCosteo(costeoId, metodoConsolidado = null) {
         try {
             // 1. Obtener el costeo con todos sus datos relacionados
             const costeo = await Costeo.findByPk(costeoId, {
                 include: [
                     { model: ArticuloCosteo, as: 'articulos' },
                     { model: GastosAduana, as: 'gastos_aduana' },
-                    { model: GastosVarios, as: 'gastos_varios' }
+                    { model: GastosVarios, as: 'gastos_varios' },
+                    { model: ConsolidadoProveedor, as: 'proveedores_consolidado' }
                 ]
             });
 
@@ -39,31 +40,131 @@ class CalculosService {
             const articulos = costeo.articulos || [];
             const gastosAduana = costeo.gastos_aduana;
             const gastosVarios = costeo.gastos_varios || [];
+            const proveedoresConsolidado = costeo.proveedores_consolidado || [];
 
-            // 2. Calcular FOB TOTAL en PESOS (suma de todos los artículos)
+            // ========================================
+            // LÓGICA DE COSTEOS CONSOLIDADOS
+            // ========================================
+            const esConsolidado = costeo.es_consolidado === true;
+            let participacionProveedor = 1; // Por defecto 100%
+            let infoConsolidado = null;
+
+            if (esConsolidado && proveedoresConsolidado.length > 0) {
+                // Calcular datos del proveedor actual
+                const fobProveedorActual = articulos.reduce((sum, art) => {
+                    return sum + (parseFloat(art.importe_total_origen) || 0);
+                }, 0);
+                const volumenActual = parseFloat(costeo.volumen_m3) || 0;
+                const pesoActual = parseFloat(costeo.peso_kg) || 0;
+
+                // Calcular totales de otros proveedores (convertidos a misma moneda)
+                let fobOtrosProveedores = 0;
+                let volumenOtros = 0;
+                let pesoOtros = 0;
+
+                for (const prov of proveedoresConsolidado) {
+                    let fobProv = parseFloat(prov.fob_total) || 0;
+                    const monedaProv = (prov.moneda || 'USD').toUpperCase();
+                    
+                    // Convertir FOB del proveedor a la moneda principal si es diferente
+                    if (monedaProv !== monedaPrincipal) {
+                        let fobEnUSD = fobProv;
+                        if (monedaProv === 'EUR') {
+                            fobEnUSD = fobProv * (tc_eur / tc_usd);
+                        } else if (monedaProv === 'GBP') {
+                            fobEnUSD = fobProv * (tc_gbp / tc_usd);
+                        }
+                        
+                        if (monedaPrincipal === 'EUR') {
+                            fobProv = fobEnUSD * (tc_usd / tc_eur);
+                        } else if (monedaPrincipal === 'GBP') {
+                            fobProv = fobEnUSD * (tc_usd / tc_gbp);
+                        } else {
+                            fobProv = fobEnUSD;
+                        }
+                    }
+                    
+                    fobOtrosProveedores += fobProv;
+                    volumenOtros += parseFloat(prov.volumen_m3) || 0;
+                    pesoOtros += parseFloat(prov.peso_kg) || 0;
+                }
+
+                // Totales del consolidado
+                const fobTotalConsolidado = fobProveedorActual + fobOtrosProveedores;
+                const volumenTotalConsolidado = volumenActual + volumenOtros;
+                const pesoTotalConsolidado = pesoActual + pesoOtros;
+
+                // Calcular participación por cada método
+                const participacionPorFOB = fobTotalConsolidado > 0 ? 
+                    fobProveedorActual / fobTotalConsolidado : 1;
+                const participacionPorVolumen = volumenTotalConsolidado > 0 ? 
+                    volumenActual / volumenTotalConsolidado : 1;
+                const participacionPorPeso = pesoTotalConsolidado > 0 ? 
+                    pesoActual / pesoTotalConsolidado : 1;
+
+                // Determinar qué método usar
+                if (metodoConsolidado === 'volumen') {
+                    participacionProveedor = participacionPorVolumen;
+                } else if (metodoConsolidado === 'peso') {
+                    participacionProveedor = participacionPorPeso;
+                } else {
+                    participacionProveedor = participacionPorFOB;
+                }
+
+                // Guardar info para el resultado
+                infoConsolidado = {
+                    es_consolidado: true,
+                    metodo_usado: metodoConsolidado || 'fob',
+                    proveedor_actual: {
+                        fob: fobProveedorActual,
+                        volumen_m3: volumenActual,
+                        peso_kg: pesoActual
+                    },
+                    otros_proveedores: {
+                        cantidad: proveedoresConsolidado.length,
+                        fob_total: fobOtrosProveedores,
+                        volumen_total: volumenOtros,
+                        peso_total: pesoOtros
+                    },
+                    totales_consolidado: {
+                        fob: fobTotalConsolidado,
+                        volumen_m3: volumenTotalConsolidado,
+                        peso_kg: pesoTotalConsolidado
+                    },
+                    participaciones: {
+                        por_fob: (participacionPorFOB * 100).toFixed(2) + '%',
+                        por_volumen: (participacionPorVolumen * 100).toFixed(2) + '%',
+                        por_peso: (participacionPorPeso * 100).toFixed(2) + '%'
+                    },
+                    participacion_aplicada: (participacionProveedor * 100).toFixed(2) + '%'
+                };
+
+                // Actualizar método en el costeo
+                if (metodoConsolidado) {
+                    await costeo.update({ metodo_prorrateo: metodoConsolidado });
+                }
+            }
+
+            // 2. Calcular FOB TOTAL en PESOS
             let fobTotalPesos = 0;
             let fobTotalDivisa = 0;
-            
-            // También calcular FOB por grupo y FOB de artículos que aplican ANMAT
-            const fobPorGrupo = {}; // { 'SENASA': 1000, '': 5000 }
+            const fobPorGrupo = {};
             let fobArticulosConAnmat = 0;
-            
+
             for (const art of articulos) {
                 const importeOrigen = parseFloat(art.importe_total_origen) || 0;
                 const fobArtPesos = importeOrigen * tcPrincipal;
                 const grupo = art.grupo || '';
                 const aplicaAnmat = art.aplica_anmat !== false;
-                
+
                 fobTotalDivisa += importeOrigen;
                 fobTotalPesos += fobArtPesos;
-                
-                // Acumular FOB por grupo
+
                 if (!fobPorGrupo[grupo]) {
                     fobPorGrupo[grupo] = 0;
                 }
                 fobPorGrupo[grupo] += fobArtPesos;
-                
-                // Acumular FOB de artículos que aplican ANMAT
+
                 if (aplicaAnmat) {
                     fobArticulosConAnmat += fobArtPesos;
                 }
@@ -72,18 +173,20 @@ class CalculosService {
             // 3. Obtener Gastos Base Aduana (Flete + Seguro)
             const fleteUSD = parseFloat(costeo.flete_usd) || 0;
             const seguroUSD = parseFloat(costeo.seguro_usd) || 0;
-            const gastosBaseAduanaTotal = (fleteUSD + seguroUSD) * tcPrincipal;
+            let gastosBaseAduanaTotal = (fleteUSD + seguroUSD) * tcPrincipal;
+
+            // Si es consolidado, aplicar participación a gastos base aduana
+            if (esConsolidado) {
+                gastosBaseAduanaTotal = gastosBaseAduanaTotal * participacionProveedor;
+            }
 
             // 4. Calcular total de Gastos Varios y agruparlos
-            // Gastos sin grupo (vacío) = aplican a todos
-            // Gastos con grupo = aplican solo a artículos del mismo grupo
-            const gastosPorGrupo = {}; // { 'SENASA': 800, '': 1700 }
+            const gastosPorGrupo = {};
             let totalGastosVariosPesos = 0;
-            
+
             for (const gasto of gastosVarios) {
                 let montoARS = parseFloat(gasto.monto_ars) || 0;
 
-                // Si monto_ars es 0 pero hay monto, calcularlo ahora
                 if (montoARS === 0 && gasto.monto) {
                     const montoOriginal = parseFloat(gasto.monto) || 0;
                     const monedaGasto = (gasto.moneda || 'USD').toUpperCase();
@@ -103,13 +206,16 @@ class CalculosService {
                         montoARS = montoARS * (1 + recargo / 100);
                     }
 
-                    // Actualizar el gasto con monto_ars calculado
                     await gasto.update({ monto_ars: montoARS });
                 }
 
+                // APLICAR PRORRATEO CONSOLIDADO SI CORRESPONDE
+                if (esConsolidado && gasto.prorratear_consolidado === true) {
+                    montoARS = montoARS * participacionProveedor;
+                }
+
                 totalGastosVariosPesos += montoARS;
-                
-                // Agrupar gastos por grupo
+
                 const grupoGasto = gasto.grupo || '';
                 if (!gastosPorGrupo[grupoGasto]) {
                     gastosPorGrupo[grupoGasto] = 0;
@@ -136,45 +242,29 @@ class CalculosService {
                 const grupoArticulo = articulo.grupo || '';
                 const aplicaAnmat = articulo.aplica_anmat !== false;
 
-                // FOB en pesos (usando TC principal)
                 const fobTotalArtPesos = importeOrigen * tcPrincipal;
                 const fobUnitarioPesos = fobTotalArtPesos / unidades;
                 const fobUnitarioDivisa = importeOrigen / unidades;
 
-                // Participación FOB general (% del total)
                 const participacionFOB = fobTotalPesos > 0 ? fobTotalArtPesos / fobTotalPesos : 0;
 
-                // ANMAT = FOB Pesos × 0.5% (SOLO si aplica_anmat es true)
                 let anmatARS = 0;
                 if (aplicaAnmat && fobArticulosConAnmat > 0) {
-                    // Participación sobre el FOB de artículos que aplican ANMAT
-                    const participacionAnmat = fobTotalArtPesos / fobArticulosConAnmat;
                     anmatARS = fobTotalArtPesos * 0.005;
                 }
 
-                // Gastos Base Aduana prorrateados (Flete + Seguro) - siempre por participación general
                 const gastosBaseAduanaArt = gastosBaseAduanaTotal * participacionFOB;
-
-                // Base Aduana = FOB Pesos + Gastos Base Aduana
                 const baseAduana = fobTotalArtPesos + gastosBaseAduanaArt;
 
-                // Derechos = Base Aduana × % Derechos (solo si % > 0)
                 const derechosARS = derechosPct > 0 ? baseAduana * derechosPct : 0;
-
-                // Estadística = Base Aduana × 3% (solo si Derechos > 0)
                 const estadisticaARS = derechosPct > 0 ? baseAduana * 0.03 : 0;
 
-                // Gastos Varios prorrateados - LÓGICA POR GRUPOS
                 let gastosVariosArt = 0;
-                
-                // Gastos sin grupo (vacío) - se prorratean entre TODOS los artículos
                 const gastosGenerales = gastosPorGrupo[''] || 0;
                 gastosVariosArt += gastosGenerales * participacionFOB;
-                
-                // Gastos con grupo específico - se prorratean solo entre artículos del mismo grupo
+
                 for (const [grupoGasto, montoGasto] of Object.entries(gastosPorGrupo)) {
                     if (grupoGasto !== '' && grupoGasto === grupoArticulo) {
-                        // Este artículo pertenece al grupo del gasto
                         const fobDelGrupo = fobPorGrupo[grupoArticulo] || 0;
                         if (fobDelGrupo > 0) {
                             const participacionEnGrupo = fobTotalArtPesos / fobDelGrupo;
@@ -183,29 +273,21 @@ class CalculosService {
                     }
                 }
 
-                // COSTO TOTAL NETO = FOB + ANMAT + Derechos + Estadística + Gastos Varios
                 const costoTotalNetoARS = fobTotalArtPesos + anmatARS + derechosARS + estadisticaARS + gastosVariosArt;
-
-                // COSTO UNITARIO NETO = Costo Total Neto / Unidades
                 const costoUnitarioNetoARS = costoTotalNetoARS / unidades;
 
-                // Impuesto Interno = Costo Unitario Neto × % Imp. Interno
                 const impuestoInternoUnitARS = costoUnitarioNetoARS * impInternosPct;
                 const impuestoInternoTotalARS = impuestoInternoUnitARS * unidades;
 
-                // IVA = Costo Unitario Neto × 21%
                 const ivaUnitarioARS = costoUnitarioNetoARS * 0.21;
                 const ivaTotalARS = ivaUnitarioARS * unidades;
 
-                // COSTO FINAL = Costo Unitario Neto + Imp. Interno + IVA
                 const costoUnitarioFinalARS = costoUnitarioNetoARS + impuestoInternoUnitARS + ivaUnitarioARS;
                 const costoTotalFinalARS = costoUnitarioFinalARS * unidades;
 
-                // FACTOR IMPORTACIÓN = ((Costo Neto - FOB Unit Pesos) / FOB Unit Pesos) × 100
                 const factorImportacion = fobUnitarioPesos > 0 ?
                     ((costoUnitarioNetoARS - fobUnitarioPesos) / fobUnitarioPesos) * 100 : 0;
 
-                // Acumular totales
                 totalAnmatARS += anmatARS;
                 totalDerechosARS += derechosARS;
                 totalEstadisticaARS += estadisticaARS;
@@ -214,7 +296,6 @@ class CalculosService {
                 totalCostoNetoARS += costoTotalNetoARS;
                 unidadesTotales += unidades;
 
-                // Actualizar artículo en base de datos
                 await articulo.update({
                     participacion_fob: participacionFOB,
                     fob_unitario_usd: fobUnitarioDivisa,
@@ -278,7 +359,7 @@ class CalculosService {
             });
 
             // 8. Retornar resumen
-            return {
+            const resultado = {
                 exito: true,
                 costeo_id: costeoId,
                 moneda_principal: monedaPrincipal,
@@ -300,8 +381,163 @@ class CalculosService {
                 articulos: articulosActualizados
             };
 
+            if (infoConsolidado) {
+                resultado.consolidado = infoConsolidado;
+            }
+
+            return resultado;
+
         } catch (error) {
             console.error('Error en calculos:', error);
+            throw error;
+        }
+    }
+
+    // Método para obtener preview de métodos de prorrateo sin calcular
+    static async previewConsolidado(costeoId) {
+        try {
+            const costeo = await Costeo.findByPk(costeoId, {
+                include: [
+                    { model: ArticuloCosteo, as: 'articulos' },
+                    { model: GastosVarios, as: 'gastos_varios' },
+                    { model: ConsolidadoProveedor, as: 'proveedores_consolidado' }
+                ]
+            });
+
+            if (!costeo) {
+                throw new Error('Costeo no encontrado');
+            }
+
+            if (!costeo.es_consolidado) {
+                return { es_consolidado: false, mensaje: 'Este costeo no es consolidado' };
+            }
+
+            const tc_usd = parseFloat(costeo.tc_usd) || 1;
+            const tc_eur = parseFloat(costeo.tc_eur) || tc_usd;
+            const tc_gbp = parseFloat(costeo.tc_gbp) || tc_usd;
+            const monedaPrincipal = (costeo.moneda_principal || 'USD').toUpperCase();
+
+            const articulos = costeo.articulos || [];
+            const proveedoresConsolidado = costeo.proveedores_consolidado || [];
+            const gastosVarios = costeo.gastos_varios || [];
+
+            const fobProveedorActual = articulos.reduce((sum, art) => {
+                return sum + (parseFloat(art.importe_total_origen) || 0);
+            }, 0);
+            const volumenActual = parseFloat(costeo.volumen_m3) || 0;
+            const pesoActual = parseFloat(costeo.peso_kg) || 0;
+
+            let fobOtrosProveedores = 0;
+            let volumenOtros = 0;
+            let pesoOtros = 0;
+            const detalleProveedores = [];
+
+            for (const prov of proveedoresConsolidado) {
+                let fobProv = parseFloat(prov.fob_total) || 0;
+                const monedaProv = (prov.moneda || 'USD').toUpperCase();
+                
+                if (monedaProv !== monedaPrincipal) {
+                    let fobEnUSD = fobProv;
+                    if (monedaProv === 'EUR') {
+                        fobEnUSD = fobProv * (tc_eur / tc_usd);
+                    } else if (monedaProv === 'GBP') {
+                        fobEnUSD = fobProv * (tc_gbp / tc_usd);
+                    }
+                    
+                    if (monedaPrincipal === 'EUR') {
+                        fobProv = fobEnUSD * (tc_usd / tc_eur);
+                    } else if (monedaPrincipal === 'GBP') {
+                        fobProv = fobEnUSD * (tc_usd / tc_gbp);
+                    } else {
+                        fobProv = fobEnUSD;
+                    }
+                }
+                
+                fobOtrosProveedores += fobProv;
+                volumenOtros += parseFloat(prov.volumen_m3) || 0;
+                pesoOtros += parseFloat(prov.peso_kg) || 0;
+
+                detalleProveedores.push({
+                    nombre: prov.nombre_proveedor,
+                    fob_original: parseFloat(prov.fob_total) || 0,
+                    moneda: prov.moneda,
+                    fob_convertido: fobProv,
+                    volumen_m3: parseFloat(prov.volumen_m3) || 0,
+                    peso_kg: parseFloat(prov.peso_kg) || 0
+                });
+            }
+
+            const fobTotal = fobProveedorActual + fobOtrosProveedores;
+            const volumenTotal = volumenActual + volumenOtros;
+            const pesoTotal = pesoActual + pesoOtros;
+
+            const participacionFOB = fobTotal > 0 ? fobProveedorActual / fobTotal : 1;
+            const participacionVolumen = volumenTotal > 0 ? volumenActual / volumenTotal : 1;
+            const participacionPeso = pesoTotal > 0 ? pesoActual / pesoTotal : 1;
+
+            let totalGastosConsolidados = 0;
+            let totalGastosNoConsolidados = 0;
+
+            for (const gasto of gastosVarios) {
+                let montoARS = parseFloat(gasto.monto_ars) || 0;
+                if (montoARS === 0 && gasto.monto) {
+                    const montoOriginal = parseFloat(gasto.monto) || 0;
+                    const monedaGasto = (gasto.moneda || 'USD').toUpperCase();
+                    let tcGasto = tc_usd;
+                    if (monedaGasto === 'EUR') tcGasto = tc_eur;
+                    else if (monedaGasto === 'GBP') tcGasto = tc_gbp;
+                    montoARS = montoOriginal * tcGasto;
+                }
+
+                if (gasto.prorratear_consolidado === true) {
+                    totalGastosConsolidados += montoARS;
+                } else {
+                    totalGastosNoConsolidados += montoARS;
+                }
+            }
+
+            const gastosPorFOB = totalGastosConsolidados * participacionFOB + totalGastosNoConsolidados;
+            const gastosPorVolumen = totalGastosConsolidados * participacionVolumen + totalGastosNoConsolidados;
+            const gastosPorPeso = totalGastosConsolidados * participacionPeso + totalGastosNoConsolidados;
+
+            return {
+                es_consolidado: true,
+                proveedor_actual: {
+                    nombre: costeo.proveedor,
+                    fob: fobProveedorActual,
+                    volumen_m3: volumenActual,
+                    peso_kg: pesoActual
+                },
+                otros_proveedores: detalleProveedores,
+                totales: {
+                    fob: fobTotal,
+                    volumen_m3: volumenTotal,
+                    peso_kg: pesoTotal
+                },
+                comparativo_metodos: {
+                    por_fob: {
+                        participacion: (participacionFOB * 100).toFixed(2) + '%',
+                        gastos_estimados: gastosPorFOB.toFixed(2)
+                    },
+                    por_volumen: {
+                        participacion: (participacionVolumen * 100).toFixed(2) + '%',
+                        gastos_estimados: gastosPorVolumen.toFixed(2),
+                        disponible: volumenTotal > 0
+                    },
+                    por_peso: {
+                        participacion: (participacionPeso * 100).toFixed(2) + '%',
+                        gastos_estimados: gastosPorPeso.toFixed(2),
+                        disponible: pesoTotal > 0
+                    }
+                },
+                gastos: {
+                    total_a_prorratear: totalGastosConsolidados.toFixed(2),
+                    total_no_prorratear: totalGastosNoConsolidados.toFixed(2)
+                }
+            };
+
+        } catch (error) {
+            console.error('Error en preview consolidado:', error);
             throw error;
         }
     }
