@@ -1413,15 +1413,140 @@ async function editarCosteo(id) {
                 }
             } catch (err) { alert('Error al cargar costeo'); console.error(err); }
         }
+let costeoIdParaCalcular = null;
+
 async function calcularCosteo(id) {
-            if (!confirm('Calcular este costeo?')) return;
-            try {
-                const res = await fetch(API_URL + '/api/costeos/' + id + '/calcular', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
-                const data = await res.json();
-                if (res.ok) { alert('Costeo calculado!\n\nCosto Total: $' + parseFloat(data.resumen?.costo_total_final_ars || 0).toLocaleString('es-AR')); cargarCosteos(); }
-                else { alert('Error: ' + (data.error || 'No se pudo calcular')); }
-            } catch (err) { alert('Error de conexion'); }
+    try {
+        // Primero verificar si es consolidado
+        const res = await fetch(API_URL + '/api/costeos/' + id, { 
+            headers: { 'Authorization': 'Bearer ' + token } 
+        });
+        const costeo = await res.json();
+        
+        if (costeo.es_consolidado) {
+            // Mostrar modal con comparativo
+            costeoIdParaCalcular = id;
+            mostrarModalConsolidado(id);
+        } else {
+            // Calcular directo
+            if (!confirm('¿Calcular este costeo?')) return;
+            await ejecutarCalculo(id, null);
         }
+    } catch (err) { 
+        alert('Error de conexión'); 
+        console.error(err);
+    }
+}
+
+async function mostrarModalConsolidado(id) {
+    document.getElementById('modalConsolidado').style.display = 'block';
+    document.getElementById('consolidadoLoading').style.display = 'block';
+    document.getElementById('consolidadoContenido').style.display = 'none';
+    
+    try {
+        const res = await fetch(API_URL + '/api/costeos/' + id + '/preview-consolidado', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        
+        if (!data.es_consolidado) {
+            alert('Este costeo no es consolidado');
+            cerrarModalConsolidado();
+            return;
+        }
+        
+        // Mostrar resumen de proveedores
+        let htmlProveedores = '<table style="width:100%; border-collapse:collapse;">';
+        htmlProveedores += '<tr style="border-bottom:1px solid #555;"><td style="padding:8px;"><strong>' + data.proveedor_actual.nombre + ' (actual)</strong></td>';
+        htmlProveedores += '<td style="padding:8px; text-align:right;">FOB: $' + data.proveedor_actual.fob.toLocaleString('es-AR', {minimumFractionDigits:2}) + '</td>';
+        htmlProveedores += '<td style="padding:8px; text-align:right;">Vol: ' + (data.proveedor_actual.volumen_m3 || 0) + ' m³</td>';
+        htmlProveedores += '<td style="padding:8px; text-align:right;">Peso: ' + (data.proveedor_actual.peso_kg || 0) + ' kg</td></tr>';
+        
+        for (const prov of data.otros_proveedores) {
+            htmlProveedores += '<tr style="border-bottom:1px solid #444;"><td style="padding:8px;">' + prov.nombre + '</td>';
+            htmlProveedores += '<td style="padding:8px; text-align:right;">FOB: $' + prov.fob_convertido.toLocaleString('es-AR', {minimumFractionDigits:2}) + '</td>';
+            htmlProveedores += '<td style="padding:8px; text-align:right;">Vol: ' + (prov.volumen_m3 || 0) + ' m³</td>';
+            htmlProveedores += '<td style="padding:8px; text-align:right;">Peso: ' + (prov.peso_kg || 0) + ' kg</td></tr>';
+        }
+        
+        htmlProveedores += '<tr style="background:#333; font-weight:bold;"><td style="padding:8px;">TOTAL CONSOLIDADO</td>';
+        htmlProveedores += '<td style="padding:8px; text-align:right;">$' + data.totales.fob.toLocaleString('es-AR', {minimumFractionDigits:2}) + '</td>';
+        htmlProveedores += '<td style="padding:8px; text-align:right;">' + data.totales.volumen_m3 + ' m³</td>';
+        htmlProveedores += '<td style="padding:8px; text-align:right;">' + data.totales.peso_kg + ' kg</td></tr>';
+        htmlProveedores += '</table>';
+        
+        document.getElementById('resumenProveedores').innerHTML = htmlProveedores;
+        
+        // Mostrar participaciones
+        document.getElementById('partFOB').textContent = data.comparativo_metodos.por_fob.participacion;
+        document.getElementById('gastosFOB').textContent = '$' + parseFloat(data.comparativo_metodos.por_fob.gastos_estimados).toLocaleString('es-AR', {minimumFractionDigits:2});
+        
+        document.getElementById('partVolumen').textContent = data.comparativo_metodos.por_volumen.participacion;
+        document.getElementById('gastosVolumen').textContent = '$' + parseFloat(data.comparativo_metodos.por_volumen.gastos_estimados).toLocaleString('es-AR', {minimumFractionDigits:2});
+        
+        document.getElementById('partPeso').textContent = data.comparativo_metodos.por_peso.participacion;
+        document.getElementById('gastosPeso').textContent = '$' + parseFloat(data.comparativo_metodos.por_peso.gastos_estimados).toLocaleString('es-AR', {minimumFractionDigits:2});
+        
+        // Deshabilitar botones si no hay datos
+        document.getElementById('btnVolumen').disabled = !data.comparativo_metodos.por_volumen.disponible;
+        document.getElementById('btnVolumen').style.opacity = data.comparativo_metodos.por_volumen.disponible ? '1' : '0.5';
+        
+        document.getElementById('btnPeso').disabled = !data.comparativo_metodos.por_peso.disponible;
+        document.getElementById('btnPeso').style.opacity = data.comparativo_metodos.por_peso.disponible ? '1' : '0.5';
+        
+        // Mostrar gastos a prorratear
+        document.getElementById('gastosAProrratear').textContent = '$' + parseFloat(data.gastos.total_a_prorratear).toLocaleString('es-AR', {minimumFractionDigits:2});
+        
+        document.getElementById('consolidadoLoading').style.display = 'none';
+        document.getElementById('consolidadoContenido').style.display = 'block';
+        
+    } catch (err) {
+        console.error('Error:', err);
+        alert('Error al cargar preview');
+        cerrarModalConsolidado();
+    }
+}
+
+function cerrarModalConsolidado() {
+    document.getElementById('modalConsolidado').style.display = 'none';
+    costeoIdParaCalcular = null;
+}
+
+async function calcularConMetodo(metodo) {
+    if (!costeoIdParaCalcular) return;
+    cerrarModalConsolidado();
+    await ejecutarCalculo(costeoIdParaCalcular, metodo);
+}
+
+async function ejecutarCalculo(id, metodo) {
+    try {
+        const body = metodo ? JSON.stringify({ metodo: metodo }) : '{}';
+        const res = await fetch(API_URL + '/api/costeos/' + id + '/calcular', { 
+            method: 'POST', 
+            headers: { 
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: body
+        });
+        const data = await res.json();
+        
+        if (res.ok) { 
+            let mensaje = '✅ Costeo calculado!\n\nCosto Total: $' + parseFloat(data.resumen?.costo_total_final_ars || 0).toLocaleString('es-AR');
+            if (data.consolidado) {
+                mensaje += '\n\n📦 Consolidado - Método: ' + data.consolidado.metodo_usado.toUpperCase();
+                mensaje += '\nParticipación aplicada: ' + data.consolidado.participacion_aplicada;
+            }
+            alert(mensaje); 
+            cargarCosteos(); 
+        } else { 
+            alert('Error: ' + (data.error || 'No se pudo calcular')); 
+        }
+    } catch (err) { 
+        alert('Error de conexión'); 
+        console.error(err);
+    }
+}
 
         async function exportarCosteo(id) {
             try {
@@ -1887,5 +2012,73 @@ function renderizarGastos() {
             }
         }
     </script>
+<!-- Modal Comparativo Consolidado -->
+<div id="modalConsolidado" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; overflow:auto;">
+    <div style="background:#1e1e1e; margin:50px auto; padding:30px; max-width:800px; border-radius:10px; border:1px solid #444;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0; color:#4fc3f7;">📦 Costeo Consolidado - Comparativo de Métodos</h2>
+            <button onclick="cerrarModalConsolidado()" style="background:none; border:none; color:#fff; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+        
+        <div id="consolidadoLoading" style="text-align:center; padding:40px;">
+            <p>Cargando comparativo...</p>
+        </div>
+        
+        <div id="consolidadoContenido" style="display:none;">
+            <!-- Resumen de proveedores -->
+            <div style="background:#2d2d2d; padding:15px; border-radius:8px; margin-bottom:20px;">
+                <h3 style="margin-top:0; color:#81c784;">Proveedores en el Consolidado</h3>
+                <div id="resumenProveedores"></div>
+            </div>
+            
+            <!-- Tabla comparativa -->
+            <div style="background:#2d2d2d; padding:15px; border-radius:8px; margin-bottom:20px;">
+                <h3 style="margin-top:0; color:#81c784;">Comparativo de Métodos de Prorrateo</h3>
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:#333;">
+                            <th style="padding:12px; text-align:left; border-bottom:2px solid #555;">Método</th>
+                            <th style="padding:12px; text-align:center; border-bottom:2px solid #555;">Tu Participación</th>
+                            <th style="padding:12px; text-align:right; border-bottom:2px solid #555;">Gastos Estimados</th>
+                            <th style="padding:12px; text-align:center; border-bottom:2px solid #555;">Seleccionar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom:1px solid #444;">
+                            <td style="padding:12px;"><strong>Por FOB (Valor)</strong><br><small style="color:#888;">Según valor de factura</small></td>
+                            <td id="partFOB" style="padding:12px; text-align:center; font-size:18px; font-weight:bold;"></td>
+                            <td id="gastosFOB" style="padding:12px; text-align:right;"></td>
+                            <td style="padding:12px; text-align:center;">
+                                <button onclick="calcularConMetodo('fob')" class="btn-metodo" style="background:#4caf50; color:#fff; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;">Usar FOB</button>
+                            </td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #444;">
+                            <td style="padding:12px;"><strong>Por Volumen (m³)</strong><br><small style="color:#888;">Según espacio ocupado</small></td>
+                            <td id="partVolumen" style="padding:12px; text-align:center; font-size:18px; font-weight:bold;"></td>
+                            <td id="gastosVolumen" style="padding:12px; text-align:right;"></td>
+                            <td style="padding:12px; text-align:center;">
+                                <button id="btnVolumen" onclick="calcularConMetodo('volumen')" class="btn-metodo" style="background:#2196f3; color:#fff; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;">Usar Volumen</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:12px;"><strong>Por Peso (Kg)</strong><br><small style="color:#888;">Según peso de mercadería</small></td>
+                            <td id="partPeso" style="padding:12px; text-align:center; font-size:18px; font-weight:bold;"></td>
+                            <td id="gastosPeso" style="padding:12px; text-align:right;"></td>
+                            <td style="padding:12px; text-align:center;">
+                                <button id="btnPeso" onclick="calcularConMetodo('peso')" class="btn-metodo" style="background:#ff9800; color:#fff; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;">Usar Peso</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Info gastos -->
+            <div style="background:#1a3a1a; padding:15px; border-radius:8px; border:1px solid #2d5a2d;">
+                <p style="margin:0;"><strong>💡 Gastos a prorratear:</strong> <span id="gastosAProrratear">$0</span></p>
+                <p style="margin:5px 0 0 0; color:#888;"><small>Solo los gastos marcados con "Consol." se dividen entre proveedores. El resto se asigna 100% a este costeo.</small></p>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
