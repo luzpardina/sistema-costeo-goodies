@@ -407,6 +407,9 @@
                     <div class="form-group">
                         <label><input type="checkbox" id="cm_tieneIntermediaria" onchange="toggleIntermediaria()"> Tiene Datos de Fábrica Original</label>
                     </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="cm_esConsolidado" onchange="toggleConsolidado()"> Es Costeo Consolidado</label>
+                    </div>
                    <div class="form-group" id="cm_intermediariaGroup" style="display:none;">
                         <label>Nombre Empresa Fábrica</label>
                         <input type="text" id="cm_intermediaria" placeholder="Ej: BACKUS, PRAVDA">
@@ -423,6 +426,23 @@
                         <label>Fecha Venc. Fábrica</label>
                         <input type="date" id="cm_fechaVencInterm">
                     </div>
+                </div>
+                <!-- Sección Consolidado -->
+                <div id="cm_consolidadoSection" style="display:none; margin-bottom:15px; padding:15px; background:#1a3a1a; border-radius:8px; border:1px solid #2d5a2d;">
+                    <h4 style="color:#4CAF50; margin-top:0;">Datos del Proveedor Actual (para consolidado)</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Volumen (m³)</label>
+                            <input type="number" step="0.01" id="cm_volumenM3" placeholder="Ej: 25.5">
+                        </div>
+                        <div class="form-group">
+                            <label>Peso (Kg)</label>
+                            <input type="number" step="0.01" id="cm_pesoKg" placeholder="Ej: 1500">
+                        </div>
+                    </div>
+                    <h4 style="color:#ff9800; margin-top:15px;">Otros Proveedores del Consolidado</h4>
+                    <div id="consolidadoProveedoresBody"></div>
+                    <button type="button" class="btn btn-success" onclick="agregarProveedorConsolidado()" style="margin-top:10px;">+ Agregar Proveedor</button>
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Factura Nro</label><input type="text" id="cm_facturaNro"></div>
@@ -528,7 +548,7 @@
                     <table class="gastos-tabla">
                         <thead>
                             <tr>
-                                <th style="width:40px;">#</th>
+                               <th style="width:40px;">#</th>
                                 <th>Descripcion</th>
                                 <th>Proveedor</th>
                                 <th>Nro Comprob.</th>
@@ -536,6 +556,7 @@
                                 <th>Monto</th>
                                <th>% Recargo</th>
                                 <th>Grupo</th>
+                                <th id="thConsolidado" style="display:none;">Consol.</th>
                                 <th>Observaciones</th>
                                 <th style="width:40px;"></th>
                             </tr>
@@ -1345,7 +1366,19 @@ async function editarCosteo(id) {
                     document.getElementById('cm_fleteMonto').value = costeo.flete_monto || '';
                     document.getElementById('cm_seguroMoneda').value = costeo.seguro_moneda || 'USD';
                     document.getElementById('cm_seguroMonto').value = costeo.seguro_monto || '';
+                    // Consolidado
+                    document.getElementById('cm_esConsolidado').checked = !!costeo.es_consolidado;
+                    document.getElementById('cm_volumenM3').value = costeo.volumen_m3 || '';
+                    document.getElementById('cm_pesoKg').value = costeo.peso_kg || '';
+                    proveedoresConsolidado = (costeo.proveedores_consolidado || []).map(p => ({
+                        nombre: p.nombre_proveedor || '',
+                        fob_total: p.fob_total || '',
+                        moneda: p.moneda || 'USD',
+                        volumen_m3: p.volumen_m3 || '',
+                        peso_kg: p.peso_kg || ''
+                    }));
                     toggleIntermediaria();
+                    toggleConsolidado();
                     articulosManual = (costeo.articulos || []).map(a => ({
                         codigo_goodies: a.codigo_goodies || '',
                         codigo_proveedor: a.codigo_proveedor || '',
@@ -1369,6 +1402,7 @@ async function editarCosteo(id) {
                         monto: g.monto || '',
                         recargo: g.recargo || '',
                         grupo: g.grupo || '',
+                        prorratear_consolidado: g.prorratear_consolidado || false,
                         observaciones: g.observaciones || ''
                     }));
                     if (gastosManual.length === 0) agregarGasto();
@@ -1479,6 +1513,7 @@ function abrirCargaManual() {
             window.costeoEditandoId = null;
             articulosManual = [];
             gastosManual = [];
+            proveedoresConsolidado = [];
             document.getElementById('cm_nombre').value = '';
             document.getElementById('cm_proveedor').value = '';
             document.getElementById('cm_tieneIntermediaria').checked = false;
@@ -1490,6 +1525,12 @@ function abrirCargaManual() {
             document.getElementById('cm_facturaInterm').value = '';
             document.getElementById('cm_fechaVencInterm').value = '';
             document.getElementById('cm_fechaFacturaInterm').value = '';
+            document.getElementById('cm_esConsolidado').checked = false;
+            document.getElementById('cm_consolidadoSection').style.display = 'none';
+            document.getElementById('cm_volumenM3').value = '';
+            document.getElementById('cm_pesoKg').value = '';
+            const thConsolidado = document.getElementById('thConsolidado');
+            if (thConsolidado) thConsolidado.style.display = 'none';
             document.getElementById('cm_facturaNro').value = '';
             document.getElementById('cm_moneda').value = 'USD';
             document.getElementById('cm_monto').value = '';
@@ -1513,7 +1554,6 @@ function abrirCargaManual() {
             cambiarTab('datosGenerales');
             document.getElementById('cargaManualModal').classList.add('show');
         }
-
         function toggleIntermediaria() {
             const tiene = document.getElementById('cm_tieneIntermediaria').checked;
             document.getElementById('cm_intermediariaGroup').style.display = tiene ? 'block' : 'none';
@@ -1522,6 +1562,50 @@ function abrirCargaManual() {
             document.getElementById('cm_fechaVencIntermGroup').style.display = tiene ? 'block' : 'none';
             document.getElementById('intermediariaMargenGroup').style.display = tiene ? 'flex' : 'none';
             renderizarArticulos();
+        }
+        
+        // Variables para consolidado
+        let proveedoresConsolidado = [];
+        
+        function toggleConsolidado() {
+            const esConsolidado = document.getElementById('cm_esConsolidado').checked;
+            document.getElementById('cm_consolidadoSection').style.display = esConsolidado ? 'block' : 'none';
+            const thConsolidado = document.getElementById('thConsolidado');
+            if (thConsolidado) thConsolidado.style.display = esConsolidado ? 'table-cell' : 'none';
+            if (esConsolidado && proveedoresConsolidado.length === 0) {
+                agregarProveedorConsolidado();
+            }
+            renderizarProveedoresConsolidado();
+            renderizarGastos();
+        }
+        
+        function agregarProveedorConsolidado() {
+            proveedoresConsolidado.push({ nombre: '', fob_total: '', moneda: 'USD', volumen_m3: '', peso_kg: '' });
+            renderizarProveedoresConsolidado();
+        }
+        
+        function eliminarProveedorConsolidado(idx) {
+            proveedoresConsolidado.splice(idx, 1);
+            renderizarProveedoresConsolidado();
+        }
+        
+        function renderizarProveedoresConsolidado() {
+            const container = document.getElementById('consolidadoProveedoresBody');
+            if (!container) return;
+            container.innerHTML = proveedoresConsolidado.map((p, idx) => {
+                return '<div style="display:flex; gap:10px; margin-bottom:10px; align-items:center; background:#252538; padding:10px; border-radius:5px;">' +
+                    '<input type="text" value="' + (p.nombre || '') + '" onchange="proveedoresConsolidado[' + idx + '].nombre=this.value" placeholder="Nombre Proveedor" style="flex:2;">' +
+                    '<input type="number" step="0.01" value="' + (p.fob_total || '') + '" onchange="proveedoresConsolidado[' + idx + '].fob_total=this.value" placeholder="FOB Total" style="flex:1;">' +
+                    '<select onchange="proveedoresConsolidado[' + idx + '].moneda=this.value" style="flex:0.5;">' +
+                        '<option value="USD" ' + (p.moneda === 'USD' ? 'selected' : '') + '>USD</option>' +
+                        '<option value="EUR" ' + (p.moneda === 'EUR' ? 'selected' : '') + '>EUR</option>' +
+                        '<option value="GBP" ' + (p.moneda === 'GBP' ? 'selected' : '') + '>GBP</option>' +
+                    '</select>' +
+                    '<input type="number" step="0.01" value="' + (p.volumen_m3 || '') + '" onchange="proveedoresConsolidado[' + idx + '].volumen_m3=this.value" placeholder="m³" style="flex:0.7;">' +
+                    '<input type="number" step="0.01" value="' + (p.peso_kg || '') + '" onchange="proveedoresConsolidado[' + idx + '].peso_kg=this.value" placeholder="Kg" style="flex:0.7;">' +
+                    '<button class="btn btn-danger btn-sm" onclick="eliminarProveedorConsolidado(' + idx + ')">X</button>' +
+                '</div>';
+            }).join('');
         }
 
         function cambiarTab(tabId) {
@@ -1585,7 +1669,7 @@ function actualizarValorOrigen(idx, valor) {
             alert('Valores Intermediaria calculados con margen ' + margen + '%');
         }
 function agregarGasto() {
-            gastosManual.push({ descripcion: '', proveedor: '', nro_comprobante: '', moneda: 'USD', monto: '', recargo: '', grupo: '', observaciones: '' });
+            gastosManual.push({ descripcion: '', proveedor: '', nro_comprobante: '', moneda: 'USD', monto: '', recargo: '', grupo: '', prorratear_consolidado: false, observaciones: '' });
             renderizarGastos();
         }
 
@@ -1593,10 +1677,11 @@ function agregarGasto() {
             gastosManual.splice(idx, 1);
             renderizarGastos();
         }
-
-        function renderizarGastos() {
+function renderizarGastos() {
             const tbody = document.getElementById('gastosBody');
+            const esConsolidado = document.getElementById('cm_esConsolidado')?.checked || false;
             tbody.innerHTML = gastosManual.map((g, idx) => {
+                const prorratearChecked = g.prorratear_consolidado ? 'checked' : '';
                 return '<tr>' +
                     '<td>' + (idx + 1) + '</td>' +
                     '<td><input type="text" value="' + (g.descripcion || '') + '" onchange="gastosManual[' + idx + '].descripcion=this.value"></td>' +
@@ -1606,12 +1691,12 @@ function agregarGasto() {
                     '<td><input type="number" step="0.01" value="' + (g.monto || '') + '" onchange="gastosManual[' + idx + '].monto=this.value" style="width:100px;"></td>' +
                     '<td><input type="number" step="0.01" value="' + (g.recargo || '') + '" onchange="gastosManual[' + idx + '].recargo=this.value" style="width:60px;"></td>' +
                     '<td><input type="text" value="' + (g.grupo || '') + '" onchange="gastosManual[' + idx + '].grupo=this.value" style="width:60px;" placeholder=""></td>' +
+                    (esConsolidado ? '<td><input type="checkbox" ' + prorratearChecked + ' onchange="gastosManual[' + idx + '].prorratear_consolidado=this.checked" title="Prorratear entre proveedores del consolidado"></td>' : '') +
                     '<td><input type="text" value="' + (g.observaciones || '') + '" onchange="gastosManual[' + idx + '].observaciones=this.value" style="width:120px;"></td>' +
                     '<td><button class="btn btn-danger btn-sm" onclick="eliminarGasto(' + idx + ')">X</button></td>' +
                     '</tr>';
             }).join('');
         }
-
         function descargarTemplateArticulos() {
             const contenido = 'Cod_Goodies\tCod_Proveedor\tNombre\tCajas\tUnd_Caja\tValor_Origen\tValor_Interm\tPct_Derecho\tPct_Imp_Interno\n' +
                 'COD001\tPROV001\tProducto Ejemplo\t10\t24\t5.50\t6.00\t18\t0\n';
@@ -1741,8 +1826,10 @@ function agregarGasto() {
                 monto: parseFloat(g.monto) || 0,
                 recargo: parseFloat(g.recargo) || 0,
                 grupo: g.grupo || '',
+                prorratear_consolidado: g.prorratear_consolidado || false,
                 observaciones: g.observaciones || ''
             }));
+            const esConsolidado = document.getElementById('cm_esConsolidado').checked;
             const datos = {
                 nombre_costeo: nombre,
                 proveedor: proveedor,
@@ -1766,6 +1853,10 @@ function agregarGasto() {
                 flete_monto: parseFloat(document.getElementById('cm_fleteMonto').value) || 0,
                 seguro_moneda: document.getElementById('cm_seguroMoneda').value,
                 seguro_monto: parseFloat(document.getElementById('cm_seguroMonto').value) || 0,
+                es_consolidado: esConsolidado,
+                volumen_m3: esConsolidado ? parseFloat(document.getElementById('cm_volumenM3').value) || null : null,
+                peso_kg: esConsolidado ? parseFloat(document.getElementById('cm_pesoKg').value) || null : null,
+                proveedores_consolidado: esConsolidado ? proveedoresConsolidado : [],
                 articulos: articulos,
                 gastos: gastos
             };

@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const costeoController = require('../controllers/costeoController');
 const auth = require('../middleware/auth');
-const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios } = require('../models');
+const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios, ConsolidadoProveedor } = require('../models');
 const CalculosService = require('../services/calculosService');
 const ExportarService = require('../services/exportarService');
 
@@ -205,7 +205,8 @@ router.get('/:id', auth, async (req, res) => {
             include: [
                 { model: ArticuloCosteo, as: 'articulos' },
                 { model: GastosAduana, as: 'gastos_aduana' },
-                { model: GastosVarios, as: 'gastos_varios' }
+                { model: GastosVarios, as: 'gastos_varios' },
+                { model: ConsolidadoProveedor, as: 'proveedores_consolidado' }
             ]
         });
         if (!costeo) {
@@ -289,8 +290,30 @@ router.put('/:id/actualizar', auth, async (req, res) => {
             flete_moneda: datos.flete_moneda || 'USD',
             flete_monto: datos.flete_monto || 0,
             seguro_moneda: datos.seguro_moneda || 'USD',
-            seguro_monto: datos.seguro_monto || 0
+            seguro_monto: datos.seguro_monto || 0,
+            es_consolidado: datos.es_consolidado || false,
+            volumen_m3: datos.volumen_m3 || null,
+            peso_kg: datos.peso_kg || null
         });
+        
+        // Eliminar proveedores consolidado anteriores
+        await ConsolidadoProveedor.destroy({ where: { costeo_id: id } });
+        
+        // Crear nuevos proveedores consolidado
+        if (datos.es_consolidado && datos.proveedores_consolidado && datos.proveedores_consolidado.length > 0) {
+            for (const p of datos.proveedores_consolidado) {
+                if (p.nombre) {
+                    await ConsolidadoProveedor.create({
+                        costeo_id: id,
+                        nombre_proveedor: p.nombre,
+                        fob_total: parseFloat(p.fob_total) || 0,
+                        moneda: p.moneda || 'USD',
+                        volumen_m3: parseFloat(p.volumen_m3) || null,
+                        peso_kg: parseFloat(p.peso_kg) || null
+                    });
+                }
+            }
+        }
         
         // Eliminar artículos anteriores
         await ArticuloCosteo.destroy({ where: { costeo_id: id } });
@@ -336,6 +359,7 @@ router.put('/:id/actualizar', auth, async (req, res) => {
                         monto: parseFloat(g.monto) || 0,
                         recargo: parseFloat(g.recargo) || 0,
                         grupo: g.grupo || '',
+                        prorratear_consolidado: g.prorratear_consolidado || false,
                         observaciones: g.observaciones || ''
                     });
                 }

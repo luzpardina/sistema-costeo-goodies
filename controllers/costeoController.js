@@ -1,5 +1,6 @@
 const XLSX = require('xlsx');
-const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios } = require('../models');const { calcularCosteo } = require('./calculosService');
+const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios, ConsolidadoProveedor } = require('../models');
+const { calcularCosteo } = require('./calculosService');
 
 // Función auxiliar para leer valor de celda
 const getCellValue = (sheet, row, col) => {
@@ -514,12 +515,15 @@ const cargaManual = async (req, res) => {
             nombre_costeo: datos.nombre_costeo,
             proveedor: datos.proveedor,
             empresa_intermediaria: datos.empresa_intermediaria || null,
+            factura_intermediaria: datos.factura_intermediaria || null,
+            fecha_factura_intermediaria: datos.fecha_factura_intermediaria || null,
             factura_nro: datos.factura_nro || null,
             moneda_principal: datos.moneda_principal || 'USD',
             monto_factura: datos.monto_factura || 0,
             fecha_factura: datos.fecha_factura || null,
             fecha_vencimiento_factura: datos.fecha_vencimiento_factura || null,
             fecha_despacho: datos.fecha_despacho || null,
+            nro_despacho: datos.nro_despacho || null,
             tc_usd: datos.tc_usd || null,
             tc_eur: datos.tc_eur || null,
             tc_gbp: datos.tc_gbp || null,
@@ -529,10 +533,29 @@ const cargaManual = async (req, res) => {
             flete_monto: datos.flete_monto || 0,
             seguro_moneda: datos.seguro_moneda || 'USD',
             seguro_monto: datos.seguro_monto || 0,
+            es_consolidado: datos.es_consolidado || false,
+            volumen_m3: datos.volumen_m3 || null,
+            peso_kg: datos.peso_kg || null,
             usuario_id: req.usuario.id,
             empresa_id: req.usuario.empresa_id || null,
             estado: 'borrador'
         });
+
+        // Crear proveedores consolidado si es consolidado
+        if (datos.es_consolidado && datos.proveedores_consolidado && datos.proveedores_consolidado.length > 0) {
+            for (const p of datos.proveedores_consolidado) {
+                if (p.nombre) {
+                    await ConsolidadoProveedor.create({
+                        costeo_id: costeo.id,
+                        nombre_proveedor: p.nombre,
+                        fob_total: parseFloat(p.fob_total) || 0,
+                        moneda: p.moneda || 'USD',
+                        volumen_m3: parseFloat(p.volumen_m3) || null,
+                        peso_kg: parseFloat(p.peso_kg) || null
+                    });
+                }
+            }
+        }
 
         // Crear artículos
         for (const art of datos.articulos) {
@@ -553,7 +576,9 @@ const cargaManual = async (req, res) => {
                 importe_total_origen: importeTotal,
                 valor_proveedor_origen: parseFloat(art.valor_unitario_origen) || 0,
                 derechos_porcentaje: parseFloat(art.derechos_porcentaje) || 0,
-                impuesto_interno_porcentaje: parseFloat(art.impuesto_interno_porcentaje) || 0
+                impuesto_interno_porcentaje: parseFloat(art.impuesto_interno_porcentaje) || 0,
+                aplica_anmat: art.aplica_anmat !== false,
+                grupo: art.grupo || ''
             });
         }
 
@@ -590,7 +615,10 @@ const cargaManual = async (req, res) => {
                         moneda: monedaGasto,
                         monto: montoOriginal,
                         recargo: recargo,
-                        monto_ars: montoARS
+                        grupo: g.grupo || '',
+                        prorratear_consolidado: g.prorratear_consolidado || false,
+                        monto_ars: montoARS,
+                        observaciones: g.observaciones || ''
                     });
                 }
             }
