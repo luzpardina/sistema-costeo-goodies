@@ -39,9 +39,13 @@ const GastosVarios = sequelize.define('GastosVarios', {
         type: DataTypes.STRING(50),
         defaultValue: ''
     },
-    prorratear_consolidado: {
+   prorratear_consolidado: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
+    },
+    metodo_prorrateo: {
+        type: DataTypes.STRING(20),
+        defaultValue: 'no_prorratear'
     }
 }, {
     tableName: 'gastos_varios',
@@ -49,5 +53,4 @@ const GastosVarios = sequelize.define('GastosVarios', {
     createdAt: 'created_at',
     updatedAt: 'updated_at'
 });
-
 module.exports = GastosVarios;

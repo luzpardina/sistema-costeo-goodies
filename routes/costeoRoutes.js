@@ -88,13 +88,11 @@ router.get('/:id', auth, async (req, res) => {
     }
 });
 
-// Calcular costeo (con soporte para método consolidado)
+// Calcular costeo
 router.post('/:id/calcular', auth, async (req, res) => {
     try {
         const { id } = req.params;
-        const { metodo } = req.body; // 'fob', 'volumen', 'peso'
-        
-        const resultado = await CalculosService.calcularCosteo(id, metodo || null);
+        const resultado = await CalculosService.calcularCosteo(id);
         res.json(resultado);
     } catch (error) {
         console.error('Error al calcular:', error);
@@ -102,7 +100,7 @@ router.post('/:id/calcular', auth, async (req, res) => {
     }
 });
 
-// Preview de métodos de prorrateo para consolidados
+// Preview de participaciones para consolidados
 router.get('/:id/preview-consolidado', auth, async (req, res) => {
     try {
         const { id } = req.params;
@@ -234,6 +232,7 @@ router.put('/:id/actualizar', auth, async (req, res) => {
                         monto_ars: montoARS,
                         grupo: g.grupo || '',
                         prorratear_consolidado: g.prorratear_consolidado || false,
+                        metodo_prorrateo: g.metodo_prorrateo || 'no_prorratear',
                         observaciones: g.observaciones || ''
                     });
                 }
@@ -365,6 +364,7 @@ router.post('/:id/duplicar', auth, async (req, res) => {
                     monto_ars: gasto.monto_ars,
                     grupo: gasto.grupo,
                     prorratear_consolidado: gasto.prorratear_consolidado,
+                    metodo_prorrateo: gasto.metodo_prorrateo,
                     observaciones: gasto.observaciones
                 });
             }

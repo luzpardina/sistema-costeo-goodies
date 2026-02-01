@@ -556,7 +556,7 @@
                                 <th>Monto</th>
                                <th>% Recargo</th>
                                 <th>Grupo</th>
-                                <th id="thConsolidado" style="display:none;">Consol.</th>
+                                <th id="thConsolidado" style="display:none;">Prorrateo</th>
                                 <th>Observaciones</th>
                                 <th style="width:40px;"></th>
                             </tr>
@@ -1403,8 +1403,10 @@ async function editarCosteo(id) {
                         recargo: g.recargo || '',
                         grupo: g.grupo || '',
                         prorratear_consolidado: g.prorratear_consolidado || false,
+                        metodo_prorrateo: g.metodo_prorrateo || 'no_prorratear',
                         observaciones: g.observaciones || ''
                     }));
+
                     if (gastosManual.length === 0) agregarGasto();
                     renderizarGastos();
                     window.costeoEditandoId = id;
@@ -1806,7 +1808,7 @@ function renderizarGastos() {
             const tbody = document.getElementById('gastosBody');
             const esConsolidado = document.getElementById('cm_esConsolidado')?.checked || false;
             tbody.innerHTML = gastosManual.map((g, idx) => {
-                const prorratearChecked = g.prorratear_consolidado ? 'checked' : '';
+                const metodo = g.metodo_prorrateo || 'no_prorratear';
                 return '<tr>' +
                     '<td>' + (idx + 1) + '</td>' +
                     '<td><input type="text" value="' + (g.descripcion || '') + '" onchange="gastosManual[' + idx + '].descripcion=this.value"></td>' +
@@ -1816,7 +1818,7 @@ function renderizarGastos() {
                     '<td><input type="number" step="0.01" value="' + (g.monto || '') + '" onchange="gastosManual[' + idx + '].monto=this.value" style="width:100px;"></td>' +
                     '<td><input type="number" step="0.01" value="' + (g.recargo || '') + '" onchange="gastosManual[' + idx + '].recargo=this.value" style="width:60px;"></td>' +
                     '<td><input type="text" value="' + (g.grupo || '') + '" onchange="gastosManual[' + idx + '].grupo=this.value" style="width:60px;" placeholder=""></td>' +
-                    (esConsolidado ? '<td><input type="checkbox" ' + prorratearChecked + ' onchange="gastosManual[' + idx + '].prorratear_consolidado=this.checked" title="Prorratear entre proveedores del consolidado"></td>' : '') +
+                    (esConsolidado ? '<td><select onchange="gastosManual[' + idx + '].metodo_prorrateo=this.value" style="width:110px;"><option value="no_prorratear" ' + (metodo === 'no_prorratear' ? 'selected' : '') + '>No prorrat.</option><option value="por_fob" ' + (metodo === 'por_fob' ? 'selected' : '') + '>Por FOB</option><option value="por_volumen" ' + (metodo === 'por_volumen' ? 'selected' : '') + '>Por Volumen</option><option value="por_peso" ' + (metodo === 'por_peso' ? 'selected' : '') + '>Por Peso</option></select></td>' : '') +
                     '<td><input type="text" value="' + (g.observaciones || '') + '" onchange="gastosManual[' + idx + '].observaciones=this.value" style="width:120px;"></td>' +
                     '<td><button class="btn btn-danger btn-sm" onclick="eliminarGasto(' + idx + ')">X</button></td>' +
                     '</tr>';

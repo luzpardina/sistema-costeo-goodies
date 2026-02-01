@@ -1,15 +1,14 @@
 // services/calculosService.js
 // Servicio de cálculos automáticos para costeo de importación
-// Usa el TC correcto según la moneda principal del costeo
 // Soporta ANMAT selectivo, gastos por grupo y COSTEOS CONSOLIDADOS
+// Cada gasto puede tener su propio método de prorrateo
 
 const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios, ConsolidadoProveedor } = require('../models');
 
 class CalculosService {
 
-    static async calcularCosteo(costeoId, metodoConsolidado = null) {
+    static async calcularCosteo(costeoId) {
         try {
-            // 1. Obtener el costeo con todos sus datos relacionados
             const costeo = await Costeo.findByPk(costeoId, {
                 include: [
                     { model: ArticuloCosteo, as: 'articulos' },
@@ -23,12 +22,10 @@ class CalculosService {
                 throw new Error('Costeo no encontrado');
             }
 
-            // TCs disponibles
             const tc_usd = parseFloat(costeo.tc_usd) || 1;
             const tc_eur = parseFloat(costeo.tc_eur) || tc_usd;
             const tc_gbp = parseFloat(costeo.tc_gbp) || tc_usd;
 
-            // Determinar TC principal según moneda de factura
             const monedaPrincipal = (costeo.moneda_principal || 'USD').toUpperCase();
             let tcPrincipal = tc_usd;
             if (monedaPrincipal === 'EUR') {
@@ -38,26 +35,24 @@ class CalculosService {
             }
 
             const articulos = costeo.articulos || [];
-            const gastosAduana = costeo.gastos_aduana;
             const gastosVarios = costeo.gastos_varios || [];
             const proveedoresConsolidado = costeo.proveedores_consolidado || [];
 
             // ========================================
-            // LÓGICA DE COSTEOS CONSOLIDADOS
+            // CALCULAR PARTICIPACIONES PARA CONSOLIDADO
             // ========================================
             const esConsolidado = costeo.es_consolidado === true;
-            let participacionProveedor = 1; // Por defecto 100%
-            let infoConsolidado = null;
+            let participacionPorFOB = 1;
+            let participacionPorVolumen = 1;
+            let participacionPorPeso = 1;
 
             if (esConsolidado && proveedoresConsolidado.length > 0) {
-                // Calcular datos del proveedor actual
                 const fobProveedorActual = articulos.reduce((sum, art) => {
                     return sum + (parseFloat(art.importe_total_origen) || 0);
                 }, 0);
                 const volumenActual = parseFloat(costeo.volumen_m3) || 0;
                 const pesoActual = parseFloat(costeo.peso_kg) || 0;
 
-                // Calcular totales de otros proveedores (convertidos a misma moneda)
                 let fobOtrosProveedores = 0;
                 let volumenOtros = 0;
                 let pesoOtros = 0;
@@ -66,7 +61,6 @@ class CalculosService {
                     let fobProv = parseFloat(prov.fob_total) || 0;
                     const monedaProv = (prov.moneda || 'USD').toUpperCase();
                     
-                    // Convertir FOB del proveedor a la moneda principal si es diferente
                     if (monedaProv !== monedaPrincipal) {
                         let fobEnUSD = fobProv;
                         if (monedaProv === 'EUR') {
@@ -89,60 +83,13 @@ class CalculosService {
                     pesoOtros += parseFloat(prov.peso_kg) || 0;
                 }
 
-                // Totales del consolidado
                 const fobTotalConsolidado = fobProveedorActual + fobOtrosProveedores;
                 const volumenTotalConsolidado = volumenActual + volumenOtros;
                 const pesoTotalConsolidado = pesoActual + pesoOtros;
 
-                // Calcular participación por cada método
-                const participacionPorFOB = fobTotalConsolidado > 0 ? 
-                    fobProveedorActual / fobTotalConsolidado : 1;
-                const participacionPorVolumen = volumenTotalConsolidado > 0 ? 
-                    volumenActual / volumenTotalConsolidado : 1;
-                const participacionPorPeso = pesoTotalConsolidado > 0 ? 
-                    pesoActual / pesoTotalConsolidado : 1;
-
-                // Determinar qué método usar
-                if (metodoConsolidado === 'volumen') {
-                    participacionProveedor = participacionPorVolumen;
-                } else if (metodoConsolidado === 'peso') {
-                    participacionProveedor = participacionPorPeso;
-                } else {
-                    participacionProveedor = participacionPorFOB;
-                }
-
-                // Guardar info para el resultado
-                infoConsolidado = {
-                    es_consolidado: true,
-                    metodo_usado: metodoConsolidado || 'fob',
-                    proveedor_actual: {
-                        fob: fobProveedorActual,
-                        volumen_m3: volumenActual,
-                        peso_kg: pesoActual
-                    },
-                    otros_proveedores: {
-                        cantidad: proveedoresConsolidado.length,
-                        fob_total: fobOtrosProveedores,
-                        volumen_total: volumenOtros,
-                        peso_total: pesoOtros
-                    },
-                    totales_consolidado: {
-                        fob: fobTotalConsolidado,
-                        volumen_m3: volumenTotalConsolidado,
-                        peso_kg: pesoTotalConsolidado
-                    },
-                    participaciones: {
-                        por_fob: (participacionPorFOB * 100).toFixed(2) + '%',
-                        por_volumen: (participacionPorVolumen * 100).toFixed(2) + '%',
-                        por_peso: (participacionPorPeso * 100).toFixed(2) + '%'
-                    },
-                    participacion_aplicada: (participacionProveedor * 100).toFixed(2) + '%'
-                };
-
-                // Actualizar método en el costeo
-                if (metodoConsolidado) {
-                    await costeo.update({ metodo_prorrateo: metodoConsolidado });
-                }
+                participacionPorFOB = fobTotalConsolidado > 0 ? fobProveedorActual / fobTotalConsolidado : 1;
+                participacionPorVolumen = volumenTotalConsolidado > 0 ? volumenActual / volumenTotalConsolidado : 1;
+                participacionPorPeso = pesoTotalConsolidado > 0 ? pesoActual / pesoTotalConsolidado : 1;
             }
 
             // 2. Calcular FOB TOTAL en PESOS
@@ -175,12 +122,12 @@ class CalculosService {
             const seguroUSD = parseFloat(costeo.seguro_usd) || 0;
             let gastosBaseAduanaTotal = (fleteUSD + seguroUSD) * tcPrincipal;
 
-            // Si es consolidado, aplicar participación a gastos base aduana
+            // Si es consolidado, el flete/seguro también se prorratea (por volumen típicamente)
             if (esConsolidado) {
-                gastosBaseAduanaTotal = gastosBaseAduanaTotal * participacionProveedor;
+                gastosBaseAduanaTotal = gastosBaseAduanaTotal * participacionPorVolumen;
             }
 
-            // 4. Calcular total de Gastos Varios y agruparlos
+            // 4. Calcular total de Gastos Varios aplicando método de prorrateo individual
             const gastosPorGrupo = {};
             let totalGastosVariosPesos = 0;
 
@@ -209,9 +156,18 @@ class CalculosService {
                     await gasto.update({ monto_ars: montoARS });
                 }
 
-                // APLICAR PRORRATEO CONSOLIDADO SI CORRESPONDE
-                if (esConsolidado && gasto.prorratear_consolidado === true) {
-                    montoARS = montoARS * participacionProveedor;
+                // APLICAR PRORRATEO SEGÚN MÉTODO ELEGIDO PARA CADA GASTO
+                if (esConsolidado) {
+                    const metodo = gasto.metodo_prorrateo || 'no_prorratear';
+                    
+                    if (metodo === 'por_fob') {
+                        montoARS = montoARS * participacionPorFOB;
+                    } else if (metodo === 'por_volumen') {
+                        montoARS = montoARS * participacionPorVolumen;
+                    } else if (metodo === 'por_peso') {
+                        montoARS = montoARS * participacionPorPeso;
+                    }
+                    // Si es 'no_prorratear', se queda con el 100%
                 }
 
                 totalGastosVariosPesos += montoARS;
@@ -337,11 +293,9 @@ class CalculosService {
                 });
             }
 
-            // 6. Calcular totales del costeo
             const totalTributosARS = totalDerechosARS + totalEstadisticaARS + totalIVA_ARS + totalImpuestoInternoARS;
             const costoTotalFinalARS = totalCostoNetoARS + totalIVA_ARS + totalImpuestoInternoARS;
 
-            // 7. Actualizar costeo en base de datos
             await costeo.update({
                 fob_total_usd: fobTotalDivisa,
                 fob_total_ars: fobTotalPesos,
@@ -358,12 +312,17 @@ class CalculosService {
                 estado: 'calculado'
             });
 
-            // 8. Retornar resumen
             const resultado = {
                 exito: true,
                 costeo_id: costeoId,
                 moneda_principal: monedaPrincipal,
                 tc_utilizado: tcPrincipal,
+                es_consolidado: esConsolidado,
+                participaciones: esConsolidado ? {
+                    por_fob: (participacionPorFOB * 100).toFixed(2) + '%',
+                    por_volumen: (participacionPorVolumen * 100).toFixed(2) + '%',
+                    por_peso: (participacionPorPeso * 100).toFixed(2) + '%'
+                } : null,
                 resumen: {
                     fob_total_divisa: fobTotalDivisa.toFixed(2),
                     fob_total_pesos: fobTotalPesos.toFixed(2),
@@ -381,10 +340,6 @@ class CalculosService {
                 articulos: articulosActualizados
             };
 
-            if (infoConsolidado) {
-                resultado.consolidado = infoConsolidado;
-            }
-
             return resultado;
 
         } catch (error) {
@@ -393,7 +348,7 @@ class CalculosService {
         }
     }
 
-    // Método para obtener preview de métodos de prorrateo sin calcular
+    // Método para obtener preview de participaciones
     static async previewConsolidado(costeoId) {
         try {
             const costeo = await Costeo.findByPk(costeoId, {
@@ -475,8 +430,11 @@ class CalculosService {
             const participacionVolumen = volumenTotal > 0 ? volumenActual / volumenTotal : 1;
             const participacionPeso = pesoTotal > 0 ? pesoActual / pesoTotal : 1;
 
-            let totalGastosConsolidados = 0;
-            let totalGastosNoConsolidados = 0;
+            // Calcular gastos por método
+            let gastosPorFOB = 0;
+            let gastosPorVolumen = 0;
+            let gastosPorPeso = 0;
+            let gastosNoProrratear = 0;
 
             for (const gasto of gastosVarios) {
                 let montoARS = parseFloat(gasto.monto_ars) || 0;
@@ -489,16 +447,23 @@ class CalculosService {
                     montoARS = montoOriginal * tcGasto;
                 }
 
-                if (gasto.prorratear_consolidado === true) {
-                    totalGastosConsolidados += montoARS;
+                const metodo = gasto.metodo_prorrateo || 'no_prorratear';
+                if (metodo === 'por_fob') {
+                    gastosPorFOB += montoARS;
+                } else if (metodo === 'por_volumen') {
+                    gastosPorVolumen += montoARS;
+                } else if (metodo === 'por_peso') {
+                    gastosPorPeso += montoARS;
                 } else {
-                    totalGastosNoConsolidados += montoARS;
+                    gastosNoProrratear += montoARS;
                 }
             }
 
-            const gastosPorFOB = totalGastosConsolidados * participacionFOB + totalGastosNoConsolidados;
-            const gastosPorVolumen = totalGastosConsolidados * participacionVolumen + totalGastosNoConsolidados;
-            const gastosPorPeso = totalGastosConsolidados * participacionPeso + totalGastosNoConsolidados;
+            const totalGastosEstimado = 
+                (gastosPorFOB * participacionFOB) + 
+                (gastosPorVolumen * participacionVolumen) + 
+                (gastosPorPeso * participacionPeso) + 
+                gastosNoProrratear;
 
             return {
                 es_consolidado: true,
@@ -514,26 +479,18 @@ class CalculosService {
                     volumen_m3: volumenTotal,
                     peso_kg: pesoTotal
                 },
-                comparativo_metodos: {
-                    por_fob: {
-                        participacion: (participacionFOB * 100).toFixed(2) + '%',
-                        gastos_estimados: gastosPorFOB.toFixed(2)
-                    },
-                    por_volumen: {
-                        participacion: (participacionVolumen * 100).toFixed(2) + '%',
-                        gastos_estimados: gastosPorVolumen.toFixed(2),
-                        disponible: volumenTotal > 0
-                    },
-                    por_peso: {
-                        participacion: (participacionPeso * 100).toFixed(2) + '%',
-                        gastos_estimados: gastosPorPeso.toFixed(2),
-                        disponible: pesoTotal > 0
-                    }
+                participaciones: {
+                    por_fob: (participacionFOB * 100).toFixed(2) + '%',
+                    por_volumen: (participacionVolumen * 100).toFixed(2) + '%',
+                    por_peso: (participacionPeso * 100).toFixed(2) + '%'
                 },
-                gastos: {
-                    total_a_prorratear: totalGastosConsolidados.toFixed(2),
-                    total_no_prorratear: totalGastosNoConsolidados.toFixed(2)
-                }
+                gastos_por_metodo: {
+                    por_fob: { total: gastosPorFOB.toFixed(2), prorrateado: (gastosPorFOB * participacionFOB).toFixed(2) },
+                    por_volumen: { total: gastosPorVolumen.toFixed(2), prorrateado: (gastosPorVolumen * participacionVolumen).toFixed(2) },
+                    por_peso: { total: gastosPorPeso.toFixed(2), prorrateado: (gastosPorPeso * participacionPeso).toFixed(2) },
+                    no_prorratear: { total: gastosNoProrratear.toFixed(2), prorrateado: gastosNoProrratear.toFixed(2) }
+                },
+                total_gastos_estimado: totalGastosEstimado.toFixed(2)
             };
 
         } catch (error) {

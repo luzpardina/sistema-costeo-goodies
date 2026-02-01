@@ -36,6 +36,11 @@ const iniciarServidor = async () => {
     try {
         await sequelize.authenticate();
         console.log('Conexion a PostgreSQL exitosa');
+// Agregar columna metodo_prorrateo si no existe
+    try {
+        await sequelize.query("ALTER TABLE gastos_varios ADD COLUMN IF NOT EXISTS metodo_prorrateo VARCHAR(20) DEFAULT 'no_prorratear';");
+        console.log('✅ Columna metodo_prorrateo verificada');
+    } catch (e) { console.log('Columna metodo_prorrateo ya existe'); }
         await sequelize.sync({ alter: true });
         console.log('Modelos sincronizados');
         app.listen(PORT, () => {
