@@ -1855,18 +1855,29 @@ function renderizarGastos() {
             return { fob: fobTotal > 0 ? (fobActual / fobTotal * 100) : 0, volumen: volumenTotal > 0 ? (volumenActual / volumenTotal * 100) : 0, peso: pesoTotal > 0 ? (pesoActual / pesoTotal * 100) : 0, fobActual, fobTotal, volumenActual, volumenTotal, pesoActual, pesoTotal };
         }
 
-        function mostrarComparativoParticipaciones() {
+     function mostrarComparativoParticipaciones() {
             const p = calcularParticipaciones();
-            let html = '<div style="padding:10px;"><h4 style="color:#4CAF50;">Participaciones del Proveedor Actual</h4>';
-            html += '<table style="width:100%;margin-top:15px;"><tr style="background:#333;"><th style="padding:10px;">Método</th><th style="padding:10px;text-align:right;">Tu Parte</th><th style="padding:10px;text-align:right;">Total</th><th style="padding:10px;text-align:right;">%</th></tr>';
-            html += '<tr><td style="padding:10px;">Por FOB</td><td style="padding:10px;text-align:right;">$' + p.fobActual.toFixed(2) + '</td><td style="padding:10px;text-align:right;">$' + p.fobTotal.toFixed(2) + '</td><td style="padding:10px;text-align:right;color:#4CAF50;font-weight:bold;">' + p.fob.toFixed(2) + '%</td></tr>';
-            html += '<tr><td style="padding:10px;">Por Volumen</td><td style="padding:10px;text-align:right;">' + p.volumenActual.toFixed(2) + ' m³</td><td style="padding:10px;text-align:right;">' + p.volumenTotal.toFixed(2) + ' m³</td><td style="padding:10px;text-align:right;color:#2196F3;font-weight:bold;">' + p.volumen.toFixed(2) + '%</td></tr>';
-            html += '<tr><td style="padding:10px;">Por Peso</td><td style="padding:10px;text-align:right;">' + p.pesoActual.toFixed(2) + ' kg</td><td style="padding:10px;text-align:right;">' + p.pesoTotal.toFixed(2) + ' kg</td><td style="padding:10px;text-align:right;color:#ff9800;font-weight:bold;">' + p.peso.toFixed(2) + '%</td></tr>';
+            const provActual = document.getElementById('cm_proveedor').value || 'Proveedor Actual';
+            let html = '<div style="padding:10px;"><table style="width:100%;border-collapse:collapse;"><tr style="background:#333;"><th style="padding:12px;text-align:left;">Proveedor</th><th style="padding:12px;text-align:right;">% Por FOB</th><th style="padding:12px;text-align:right;">% Por Volumen</th><th style="padding:12px;text-align:right;">% Por Peso</th></tr>';
+            html += '<tr style="background:#1a3a1a;"><td style="padding:12px;font-weight:bold;">' + provActual + ' (actual)</td><td style="padding:12px;text-align:right;color:#4CAF50;font-weight:bold;">' + p.fob.toFixed(2) + '%</td><td style="padding:12px;text-align:right;color:#2196F3;font-weight:bold;">' + p.volumen.toFixed(2) + '%</td><td style="padding:12px;text-align:right;color:#ff9800;font-weight:bold;">' + p.peso.toFixed(2) + '%</td></tr>';
+            proveedoresConsolidado.forEach(prov => {
+                let fobProv = parseFloat(prov.fob_total) || 0;
+                const tcUsd = parseFloat(document.getElementById('cm_tcUsd').value) || 1;
+                const tcEur = parseFloat(document.getElementById('cm_tcEur').value) || tcUsd;
+                const tcGbp = parseFloat(document.getElementById('cm_tcGbp').value) || tcUsd;
+                if (prov.moneda === 'EUR') fobProv = fobProv * (tcEur / tcUsd);
+                else if (prov.moneda === 'GBP') fobProv = fobProv * (tcGbp / tcUsd);
+                const pctFob = p.fobTotal > 0 ? (fobProv / p.fobTotal * 100) : 0;
+                const volProv = parseFloat(prov.volumen_m3) || 0;
+                const pctVol = p.volumenTotal > 0 ? (volProv / p.volumenTotal * 100) : 0;
+                const pesoProv = parseFloat(prov.peso_kg) || 0;
+                const pctPeso = p.pesoTotal > 0 ? (pesoProv / p.pesoTotal * 100) : 0;
+                html += '<tr style="border-bottom:1px solid #444;"><td style="padding:12px;">' + (prov.nombre || 'Sin nombre') + '</td><td style="padding:12px;text-align:right;">' + pctFob.toFixed(2) + '%</td><td style="padding:12px;text-align:right;">' + pctVol.toFixed(2) + '%</td><td style="padding:12px;text-align:right;">' + pctPeso.toFixed(2) + '%</td></tr>';
+            });
             html += '</table></div>';
-            document.getElementById('modalBody').innerHTML = html;
-            document.getElementById('modalTitle').textContent = 'Comparativo de Participaciones';
-            document.getElementById('detalleModal').classList.add('show');
-        }       
+            document.getElementById('comparativoModalBody').innerHTML = html;
+            document.getElementById('comparativoModal').style.display = 'flex';
+        }
 function descargarTemplateArticulos() {
             const contenido = 'Cod_Goodies\tCod_Proveedor\tNombre\tCajas\tUnd_Caja\tValor_Origen\tValor_Interm\tPct_Derecho\tPct_Imp_Interno\n' +
                 'COD001\tPROV001\tProducto Ejemplo\t10\t24\t5.50\t6.00\t18\t0\n';
@@ -2123,6 +2134,16 @@ function descargarTemplateArticulos() {
                 <p style="margin:5px 0 0 0; color:#888;"><small>Solo los gastos marcados con "Consol." se dividen entre proveedores. El resto se asigna 100% a este costeo.</small></p>
             </div>
         </div>
+    </div>
+</div>
+<!-- Modal Comparativo Participaciones -->
+<div id="comparativoModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:3000; justify-content:center; align-items:center;">
+    <div style="background:#1e1e2f; padding:25px; border-radius:10px; max-width:600px; width:90%; border:1px solid #4CAF50;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 style="margin:0; color:#4CAF50;">📊 Comparativo de Participaciones</h3>
+            <button onclick="document.getElementById('comparativoModal').style.display='none'" style="background:none; border:none; color:#fff; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+        <div id="comparativoModalBody"></div>
     </div>
 </div>
 </body>
