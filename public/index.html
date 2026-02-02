@@ -543,6 +543,7 @@
                         📤 Importar desde Excel
                         <input type="file" accept=".xlsx,.xls,.txt,.csv" onchange="importarGastosExcel(this)" style="display:none;">
                     </label>
+                    <button class="btn btn-warning" id="btnVerComparativo" onclick="mostrarComparativoParticipaciones()" style="display:none;">📊 Ver Comparativo</button>
                 </div>
                 <div class="table-container" style="max-height: 400px; overflow-y: auto;">
                     <table class="gastos-tabla">
@@ -557,6 +558,7 @@
                                <th>% Recargo</th>
                                 <th>Grupo</th>
                                 <th id="thConsolidado" style="display:none;">Prorrateo</th>
+<th id="thMontoProrrateado" style="display:none;">Imp. Prorrat.</th>
                                 <th>Observaciones</th>
                                 <th style="width:40px;"></th>
                             </tr>
@@ -1695,10 +1697,14 @@ function abrirCargaManual() {
         let proveedoresConsolidado = [];
         
         function toggleConsolidado() {
-            const esConsolidado = document.getElementById('cm_esConsolidado').checked;
+            var esConsolidado = document.getElementById('cm_esConsolidado').checked;
             document.getElementById('cm_consolidadoSection').style.display = esConsolidado ? 'block' : 'none';
-            const thConsolidado = document.getElementById('thConsolidado');
+            var thConsolidado = document.getElementById('thConsolidado');
+            var thMontoProrrateado = document.getElementById('thMontoProrrateado');
+            var btnVerComparativo = document.getElementById('btnVerComparativo');
             if (thConsolidado) thConsolidado.style.display = esConsolidado ? 'table-cell' : 'none';
+            if (thMontoProrrateado) thMontoProrrateado.style.display = esConsolidado ? 'table-cell' : 'none';
+            if (btnVerComparativo) btnVerComparativo.style.display = esConsolidado ? 'inline-block' : 'none';
             if (esConsolidado && proveedoresConsolidado.length === 0) {
                 agregarProveedorConsolidado();
             }
@@ -1805,24 +1811,102 @@ function agregarGasto() {
             renderizarGastos();
         }
 function renderizarGastos() {
-            const tbody = document.getElementById('gastosBody');
-            const esConsolidado = document.getElementById('cm_esConsolidado')?.checked || false;
-            tbody.innerHTML = gastosManual.map((g, idx) => {
-                const metodo = g.metodo_prorrateo || 'no_prorratear';
+            var tbody = document.getElementById('gastosBody');
+            var esConsolidado = document.getElementById('cm_esConsolidado') ? document.getElementById('cm_esConsolidado').checked : false;
+            var participaciones = esConsolidado ? calcularParticipaciones() : null;
+            
+            tbody.innerHTML = gastosManual.map(function(g, idx) {
+                var metodo = g.metodo_prorrateo || 'por_fob';
+                var montoProrrateado = '';
+                
+                if (esConsolidado && participaciones) {
+                    var monto = parseFloat(g.monto) || 0;
+                    var recargo = parseFloat(g.recargo) || 0;
+                    var montoConRecargo = monto * (1 + recargo / 100);
+                    var participacion = 0;
+                    if (metodo === 'por_fob') participacion = participaciones.fob;
+                    else if (metodo === 'por_volumen') participacion = participaciones.volumen;
+                    else if (metodo === 'por_peso') participacion = participaciones.peso;
+                    montoProrrateado = (montoConRecargo * participacion / 100).toFixed(2);
+                }
+                
                 return '<tr>' +
                     '<td>' + (idx + 1) + '</td>' +
                     '<td><input type="text" value="' + (g.descripcion || '') + '" onchange="gastosManual[' + idx + '].descripcion=this.value"></td>' +
                     '<td><input type="text" value="' + (g.proveedor || '') + '" onchange="gastosManual[' + idx + '].proveedor=this.value" style="width:100px;"></td>' +
                     '<td><input type="text" value="' + (g.nro_comprobante || '') + '" onchange="gastosManual[' + idx + '].nro_comprobante=this.value" style="width:100px;"></td>' +
                     '<td><select onchange="gastosManual[' + idx + '].moneda=this.value"><option value="USD" ' + (g.moneda === 'USD' ? 'selected' : '') + '>USD</option><option value="EUR" ' + (g.moneda === 'EUR' ? 'selected' : '') + '>EUR</option><option value="GBP" ' + (g.moneda === 'GBP' ? 'selected' : '') + '>GBP</option><option value="ARS" ' + (g.moneda === 'ARS' ? 'selected' : '') + '>ARS</option></select></td>' +
-                    '<td><input type="number" step="0.01" value="' + (g.monto || '') + '" onchange="gastosManual[' + idx + '].monto=this.value" style="width:100px;"></td>' +
-                    '<td><input type="number" step="0.01" value="' + (g.recargo || '') + '" onchange="gastosManual[' + idx + '].recargo=this.value" style="width:60px;"></td>' +
+                    '<td><input type="number" step="0.01" value="' + (g.monto || '') + '" onchange="gastosManual[' + idx + '].monto=this.value; renderizarGastos();" style="width:100px;"></td>' +
+                    '<td><input type="number" step="0.01" value="' + (g.recargo || '') + '" onchange="gastosManual[' + idx + '].recargo=this.value; renderizarGastos();" style="width:60px;"></td>' +
                     '<td><input type="text" value="' + (g.grupo || '') + '" onchange="gastosManual[' + idx + '].grupo=this.value" style="width:60px;" placeholder=""></td>' +
-                    (esConsolidado ? '<td><select onchange="gastosManual[' + idx + '].metodo_prorrateo=this.value" style="width:110px;"><option value="no_prorratear" ' + (metodo === 'no_prorratear' ? 'selected' : '') + '>No prorrat.</option><option value="por_fob" ' + (metodo === 'por_fob' ? 'selected' : '') + '>Por FOB</option><option value="por_volumen" ' + (metodo === 'por_volumen' ? 'selected' : '') + '>Por Volumen</option><option value="por_peso" ' + (metodo === 'por_peso' ? 'selected' : '') + '>Por Peso</option></select></td>' : '') +
+                    (esConsolidado ? '<td><select onchange="gastosManual[' + idx + '].metodo_prorrateo=this.value; renderizarGastos();" style="width:100px;"><option value="por_fob" ' + (metodo === 'por_fob' ? 'selected' : '') + '>Por FOB</option><option value="por_volumen" ' + (metodo === 'por_volumen' ? 'selected' : '') + '>Por Volumen</option><option value="por_peso" ' + (metodo === 'por_peso' ? 'selected' : '') + '>Por Peso</option></select></td>' : '') +
+                    (esConsolidado ? '<td style="text-align:right; font-weight:bold; color:#4CAF50;">' + montoProrrateado + '</td>' : '') +
                     '<td><input type="text" value="' + (g.observaciones || '') + '" onchange="gastosManual[' + idx + '].observaciones=this.value" style="width:120px;"></td>' +
                     '<td><button class="btn btn-danger btn-sm" onclick="eliminarGasto(' + idx + ')">X</button></td>' +
                     '</tr>';
             }).join('');
+        }
+function descargarTemplateArticulos() {
+function calcularParticipaciones() {
+            var tcUsd = parseFloat(document.getElementById('cm_tcUsd').value) || 1;
+            var tcEur = parseFloat(document.getElementById('cm_tcEur').value) || tcUsd;
+            var tcGbp = parseFloat(document.getElementById('cm_tcGbp').value) || tcUsd;
+            
+            var fobActual = 0;
+            articulosManual.forEach(function(a) {
+                var cajas = parseFloat(a.cajas) || 0;
+                var undCaja = parseFloat(a.und_caja) || 0;
+                var valorOrigen = parseFloat(a.valor_intermediaria) || parseFloat(a.valor_origen) || 0;
+                fobActual += cajas * undCaja * valorOrigen;
+            });
+            
+            var volumenActual = parseFloat(document.getElementById('cm_volumenM3').value) || 0;
+            var pesoActual = parseFloat(document.getElementById('cm_pesoKg').value) || 0;
+            
+            var fobTotal = fobActual;
+            var volumenTotal = volumenActual;
+            var pesoTotal = pesoActual;
+            
+            proveedoresConsolidado.forEach(function(p) {
+                var fobProv = parseFloat(p.fob_total) || 0;
+                var moneda = p.moneda || 'USD';
+                if (moneda === 'EUR') fobProv = fobProv * (tcEur / tcUsd);
+                else if (moneda === 'GBP') fobProv = fobProv * (tcGbp / tcUsd);
+                fobTotal += fobProv;
+                volumenTotal += parseFloat(p.volumen_m3) || 0;
+                pesoTotal += parseFloat(p.peso_kg) || 0;
+            });
+            
+            return {
+                fob: fobTotal > 0 ? (fobActual / fobTotal * 100) : 0,
+                volumen: volumenTotal > 0 ? (volumenActual / volumenTotal * 100) : 0,
+                peso: pesoTotal > 0 ? (pesoActual / pesoTotal * 100) : 0,
+                fobActual: fobActual,
+                fobTotal: fobTotal,
+                volumenActual: volumenActual,
+                volumenTotal: volumenTotal,
+                pesoActual: pesoActual,
+                pesoTotal: pesoTotal
+            };
+        }
+        
+        function mostrarComparativoParticipaciones() {
+            var p = calcularParticipaciones();
+            
+            var html = '<div style="background:#2d2d2d; padding:20px; border-radius:8px; max-width:600px; margin:auto;">';
+            html += '<h3 style="color:#4CAF50; margin-top:0;">📊 Comparativo de Participaciones</h3>';
+            html += '<table style="width:100%; border-collapse:collapse; margin-top:15px;">';
+            html += '<tr style="background:#333;"><th style="padding:10px; text-align:left;">Método</th><th style="padding:10px; text-align:right;">Tu Parte</th><th style="padding:10px; text-align:right;">Total Consol.</th><th style="padding:10px; text-align:right;">% Partic.</th></tr>';
+            html += '<tr style="border-bottom:1px solid #444;"><td style="padding:10px;">Por FOB (USD)</td><td style="padding:10px; text-align:right;">$' + p.fobActual.toLocaleString('es-AR', {minimumFractionDigits:2}) + '</td><td style="padding:10px; text-align:right;">$' + p.fobTotal.toLocaleString('es-AR', {minimumFractionDigits:2}) + '</td><td style="padding:10px; text-align:right; font-weight:bold; color:#4CAF50;">' + p.fob.toFixed(2) + '%</td></tr>';
+            html += '<tr style="border-bottom:1px solid #444;"><td style="padding:10px;">Por Volumen (m³)</td><td style="padding:10px; text-align:right;">' + p.volumenActual.toFixed(2) + '</td><td style="padding:10px; text-align:right;">' + p.volumenTotal.toFixed(2) + '</td><td style="padding:10px; text-align:right; font-weight:bold; color:#2196F3;">' + p.volumen.toFixed(2) + '%</td></tr>';
+            html += '<tr><td style="padding:10px;">Por Peso (Kg)</td><td style="padding:10px; text-align:right;">' + p.pesoActual.toFixed(2) + '</td><td style="padding:10px; text-align:right;">' + p.pesoTotal.toFixed(2) + '</td><td style="padding:10px; text-align:right; font-weight:bold; color:#ff9800;">' + p.peso.toFixed(2) + '%</td></tr>';
+            html += '</table>';
+            html += '<p style="color:#888; margin-top:15px; font-size:12px;">Los gastos se prorratearán según el método seleccionado en cada fila.</p>';
+            html += '</div>';
+            
+            document.getElementById('modalBody').innerHTML = html;
+            document.getElementById('modalTitle').textContent = 'Participaciones del Consolidado';
+            document.getElementById('detalleModal').classList.add('show');
         }
         function descargarTemplateArticulos() {
             const contenido = 'Cod_Goodies\tCod_Proveedor\tNombre\tCajas\tUnd_Caja\tValor_Origen\tValor_Interm\tPct_Derecho\tPct_Imp_Interno\n' +
