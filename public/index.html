@@ -2020,6 +2020,7 @@ function descargarTemplateArticulos() {
                 recargo: parseFloat(g.recargo) || 0,
                 grupo: g.grupo || '',
                 prorratear_consolidado: g.prorratear_consolidado || false,
+metodo_prorrateo: g.metodo_prorrateo || 'por_fob',
                 observaciones: g.observaciones || ''
             }));
             const esConsolidado = document.getElementById('cm_esConsolidado').checked;
