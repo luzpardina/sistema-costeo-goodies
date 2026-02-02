@@ -2,54 +2,59 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public'));
-
 const sequelize = require('./config/database');
-const { Usuario, Empresa, Costeo, ArticuloCosteo, GastosAduana, GastosVarios, Revaluacion, RevaluacionArticulo } = require('./models');
 const authRoutes = require('./routes/authRoutes');
 const costeoRoutes = require('./routes/costeoRoutes');
-const revaluacionRoutes = require('./routes/revaluacionRoutes');
+
+const app = express();
+
+app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.static('public'));
+
 app.use('/api/auth', authRoutes);
 app.use('/api/costeos', costeoRoutes);
-app.use('/api/revaluaciones', revaluacionRoutes);
 
 app.get('/', (req, res) => {
-    res.json({ mensaje: 'Sistema de Costeo - API funcionando', version: '2.0.0' });
+    res.sendFile(__dirname + '/public/index.html');
 });
 
-app.get('/health', async (req, res) => {
-    try {
-        await sequelize.authenticate();
-        res.json({ estado: 'OK', database: 'Conectado' });
-    } catch (error) {
-        res.status(500).json({ estado: 'ERROR', database: 'Desconectado' });
-    }
+app.get('/health', (req, res) => {
+    res.json({ status: 'OK', timestamp: new Date() });
 });
 
-const iniciarServidor = async () => {
+const PORT = process.env.PORT || 3000;
+
+async function iniciarServidor() {
     try {
         await sequelize.authenticate();
-        console.log('Conexion a PostgreSQL exitosa');
-// Agregar columna metodo_prorrateo si no existe
-    try {
-        await sequelize.query("ALTER TABLE gastos_varios ADD COLUMN IF NOT EXISTS metodo_prorrateo VARCHAR(20) DEFAULT 'no_prorratear';");
-        console.log('✅ Columna metodo_prorrateo verificada');
-    } catch (e) { console.log('Columna metodo_prorrateo ya existe'); }
+        console.log('✅ Conexión a PostgreSQL exitosa');
+
+        try {
+            await sequelize.query("ALTER TABLE gastos_varios ADD COLUMN IF NOT EXISTS metodo_prorrateo VARCHAR(20) DEFAULT 'por_fob';");
+            console.log('✅ Columna metodo_prorrateo verificada');
+        } catch (e) { console.log('Columna metodo_prorrateo ya existe'); }
+
+        try {
+            await sequelize.query("ALTER TABLE gastos_varios ADD COLUMN IF NOT EXISTS monto_prorrateado DECIMAL(15,2);");
+            console.log('✅ Columna monto_prorrateado verificada');
+        } catch (e) { console.log('Columna monto_prorrateado ya existe'); }
+
+        try {
+            await sequelize.query("UPDATE gastos_varios SET metodo_prorrateo = 'por_fob' WHERE metodo_prorrateo = 'no_prorratear' OR metodo_prorrateo IS NULL;");
+        } catch (e) { }
+
         await sequelize.sync({ alter: true });
-        console.log('Modelos sincronizados');
-        app.listen(PORT, () => {
-            console.log('Servidor corriendo en puerto ' + PORT);
+        console.log('✅ Modelos sincronizados con la base de datos');
+
+        app.listen(PORT, '0.0.0.0', () => {
+            console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
         });
     } catch (error) {
-        console.error('Error al iniciar:', error);
+        console.error('❌ Error al iniciar servidor:', error);
         process.exit(1);
     }
-};
+}
 
 iniciarServidor();

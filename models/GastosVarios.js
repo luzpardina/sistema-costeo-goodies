@@ -7,9 +7,12 @@ const GastosVarios = sequelize.define('GastosVarios', {
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true
     },
-    descripcion: {
-        type: DataTypes.STRING(255),
+    costeo_id: {
+        type: DataTypes.UUID,
         allowNull: false
+    },
+    descripcion: {
+        type: DataTypes.STRING(255)
     },
     proveedor_gasto: {
         type: DataTypes.STRING(255)
@@ -19,11 +22,10 @@ const GastosVarios = sequelize.define('GastosVarios', {
     },
     moneda: {
         type: DataTypes.STRING(10),
-        allowNull: false
+        defaultValue: 'USD'
     },
     monto: {
-        type: DataTypes.DECIMAL(15, 2),
-        allowNull: false
+        type: DataTypes.DECIMAL(15, 2)
     },
     recargo: {
         type: DataTypes.DECIMAL(5, 2),
@@ -32,20 +34,23 @@ const GastosVarios = sequelize.define('GastosVarios', {
     monto_ars: {
         type: DataTypes.DECIMAL(15, 2)
     },
-    observaciones: {
-        type: DataTypes.STRING(500)
+    monto_prorrateado: {
+        type: DataTypes.DECIMAL(15, 2)
     },
     grupo: {
         type: DataTypes.STRING(50),
         defaultValue: ''
     },
-   prorratear_consolidado: {
+    prorratear_consolidado: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
     },
     metodo_prorrateo: {
         type: DataTypes.STRING(20),
-        defaultValue: 'no_prorratear'
+        defaultValue: 'por_fob'
+    },
+    observaciones: {
+        type: DataTypes.TEXT
     }
 }, {
     tableName: 'gastos_varios',
@@ -53,4 +58,5 @@ const GastosVarios = sequelize.define('GastosVarios', {
     createdAt: 'created_at',
     updatedAt: 'updated_at'
 });
+
 module.exports = GastosVarios;
