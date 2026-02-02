@@ -1801,7 +1801,7 @@ function actualizarValorOrigen(idx, valor) {
             alert('Valores Intermediaria calculados con margen ' + margen + '%');
         }
 function agregarGasto() {
-            gastosManual.push({ descripcion: '', proveedor: '', nro_comprobante: '', moneda: 'USD', monto: '', recargo: '', grupo: '', prorratear_consolidado: false, observaciones: '' });
+            gastosManual.push({ descripcion: '', proveedor: '', nro_comprobante: '', moneda: 'USD', monto: '', recargo: '', grupo: '', metodo_prorrateo: 'por_fob', prorratear_consolidado: false, observaciones: '' });
             renderizarGastos();
         }
 
