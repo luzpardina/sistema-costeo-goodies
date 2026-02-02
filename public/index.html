@@ -479,13 +479,13 @@
                     <div class="form-group"><label>Flete Aduana - Moneda</label>
                         <select id="cm_fleteMoneda"><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option></select>
                     </div>
-                    <div class="form-group"><label>Flete Aduana - Monto</label><input type="number" id="cm_fleteMonto" step="0.01"></div>
+                    <div class="form-group"><label>Flete Aduana - Monto</label><input type="number" id="cm_fleteMonto" step="0.01" onchange="calcularPartesBaseAduana()"></div><div class="form-group" id="fleteParteGroup" style="display:none;"><label>Tu parte (FOB)</label><input type="text" id="cm_fleteParte" readonly style="background:#333;color:#4CAF50;font-weight:bold;"></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Seguro Aduana - Moneda</label>
                         <select id="cm_seguroMoneda"><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option></select>
                     </div>
-                    <div class="form-group"><label>Seguro Aduana - Monto</label><input type="number" id="cm_seguroMonto" step="0.01"></div>
+                    <div class="form-group"><label>Seguro Aduana - Monto</label><input type="number" id="cm_seguroMonto" step="0.01" onchange="calcularPartesBaseAduana()"></div><div class="form-group" id="seguroParteGroup" style="display:none;"><label>Tu parte (FOB)</label><input type="text" id="cm_seguroParte" readonly style="background:#333;color:#4CAF50;font-weight:bold;"></div>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-top: 20px;">
                     <button class="btn btn-secondary" onclick="cambiarTab('datosGenerales')">← Anterior</button>
@@ -1704,6 +1704,9 @@ const thMontoProrrateado = document.getElementById('thMontoProrrateado');
             if (thConsolidado) thConsolidado.style.display = esConsolidado ? 'table-cell' : 'none';
 if (thMontoProrrateado) thMontoProrrateado.style.display = esConsolidado ? 'table-cell' : 'none';
 const btnVerComparativo = document.getElementById('btnVerComparativo'); if (btnVerComparativo) btnVerComparativo.style.display = esConsolidado ? 'inline-block' : 'none';
+const fleteParteGroup = document.getElementById('fleteParteGroup'); if (fleteParteGroup) fleteParteGroup.style.display = esConsolidado ? 'block' : 'none';
+            const seguroParteGroup = document.getElementById('seguroParteGroup'); if (seguroParteGroup) seguroParteGroup.style.display = esConsolidado ? 'block' : 'none';
+            if (esConsolidado) calcularPartesBaseAduana();
             if (esConsolidado && proveedoresConsolidado.length === 0) {
                 agregarProveedorConsolidado();
             }
@@ -1829,6 +1832,17 @@ function renderizarGastos() {
                     '<td><button class="btn btn-danger btn-sm" onclick="eliminarGasto(' + idx + ')">X</button></td>' +
                     '</tr>';
             }).join('');
+        }
+function calcularPartesBaseAduana() {
+            const esConsolidado = document.getElementById('cm_esConsolidado')?.checked || false;
+            if (!esConsolidado) return;
+            const p = calcularParticipaciones();
+            const fleteMonto = parseFloat(document.getElementById('cm_fleteMonto').value) || 0;
+            const seguroMonto = parseFloat(document.getElementById('cm_seguroMonto').value) || 0;
+            const fleteParte = (fleteMonto * p.fob / 100).toFixed(2);
+            const seguroParte = (seguroMonto * p.fob / 100).toFixed(2);
+            document.getElementById('cm_fleteParte').value = fleteParte;
+            document.getElementById('cm_seguroParte').value = seguroParte;
         }
 function calcularMontoProrrateado(g) {
             const p = calcularParticipaciones();
