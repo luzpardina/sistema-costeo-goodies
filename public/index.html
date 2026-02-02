@@ -2021,6 +2021,7 @@ function descargarTemplateArticulos() {
                 grupo: g.grupo || '',
                 prorratear_consolidado: g.prorratear_consolidado || false,
 metodo_prorrateo: g.metodo_prorrateo || 'por_fob',
+monto_prorrateado: parseFloat(calcularMontoProrrateado(g)) || 0,
                 observaciones: g.observaciones || ''
             }));
             const esConsolidado = document.getElementById('cm_esConsolidado').checked;
