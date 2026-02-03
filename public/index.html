@@ -1338,6 +1338,7 @@ async function duplicarCosteo(id) {
                     window.costeoEditandoId = null;
                     cambiarTab('datosGenerales');
                     document.getElementById('cargaManualModal').classList.add('show');
+setTimeout(function() { toggleConsolidado(); calcularPartesBaseAduana(); }, 100);
                 }
             } catch (err) { alert('Error al duplicar costeo'); console.error(err); }
         }
@@ -1414,6 +1415,7 @@ async function editarCosteo(id) {
                     window.costeoEditandoId = id;
                     cambiarTab('datosGenerales');
                     document.getElementById('cargaManualModal').classList.add('show');
+setTimeout(function() { toggleConsolidado(); calcularPartesBaseAduana(); }, 100);
                 }
             } catch (err) { alert('Error al cargar costeo'); console.error(err); }
         }
