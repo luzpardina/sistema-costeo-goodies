@@ -84,6 +84,18 @@ fob_moneda: {
         type: DataTypes.DECIMAL(15, 2),
         defaultValue: 0
     },
+fob_parte: {
+        type: DataTypes.DECIMAL(15, 2),
+        defaultValue: 0
+    },
+    flete_parte: {
+        type: DataTypes.DECIMAL(15, 2),
+        defaultValue: 0
+    },
+    seguro_parte: {
+        type: DataTypes.DECIMAL(15, 2),
+        defaultValue: 0
+    },
     empresa_intermediaria: {
         type: DataTypes.STRING(255)
     },

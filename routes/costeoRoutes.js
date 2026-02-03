@@ -148,6 +148,9 @@ router.put('/:id/actualizar', auth, async (req, res) => {
             flete_monto: datos.flete_monto || 0,
             seguro_moneda: datos.seguro_moneda || 'USD',
             seguro_monto: datos.seguro_monto || 0,
+fob_parte: datos.fob_parte || 0,
+            flete_parte: datos.flete_parte || 0,
+            seguro_parte: datos.seguro_parte || 0,
             es_consolidado: datos.es_consolidado || false,
             volumen_m3: datos.volumen_m3 || null,
             peso_kg: datos.peso_kg || null
