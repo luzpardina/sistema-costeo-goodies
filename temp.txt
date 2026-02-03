@@ -108,14 +108,13 @@ class CalculosService {
                 }
             }
 
-            let fleteParaBase = parseFloat(costeo.flete_monto) || 0;
-            let seguroParaBase = parseFloat(costeo.seguro_monto) || 0;
-            
+            const fleteUSD = parseFloat(costeo.flete_usd) || 0;
+            const seguroUSD = parseFloat(costeo.seguro_usd) || 0;
+            let gastosBaseAduanaTotal = (fleteUSD + seguroUSD) * tcPrincipal;
+
             if (esConsolidado) {
-                fleteParaBase = parseFloat(costeo.flete_parte) || 0;
-                seguroParaBase = parseFloat(costeo.seguro_parte) || 0;
+                gastosBaseAduanaTotal = gastosBaseAduanaTotal * participacionPorVolumen;
             }
-            let gastosBaseAduanaTotal = (fleteParaBase + seguroParaBase) * tcPrincipal;
 
             const gastosPorGrupo = {};
             let totalGastosVariosPesos = 0;
