@@ -1751,6 +1751,7 @@ const fleteParteGroup = document.getElementById('fleteParteGroup'); if (fletePar
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelector('.tab[onclick*="' + tabId + '"]').classList.add('active');
             document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1)).classList.add('active');
+if (tabId === 'baseAduana') calcularPartesBaseAduana();
         }
 function agregarArticulo() {
             const idx = articulosManual.length;
