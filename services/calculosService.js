@@ -315,11 +315,12 @@ class CalculosService {
         }
     }
 
-    static async previewConsolidado(costeoId) {
+  static async previewConsolidado(costeoId) {
         try {
             const costeo = await Costeo.findByPk(costeoId, {
                 include: [
                     { model: ArticuloCosteo, as: 'articulos' },
+                    { model: GastosVarios, as: 'gastos_varios' },
                     { model: ConsolidadoProveedor, as: 'proveedores_consolidado' }
                 ]
             });
@@ -333,7 +334,12 @@ class CalculosService {
             }
 
             const articulos = costeo.articulos || [];
+            const gastosVarios = costeo.gastos_varios || [];
             const proveedoresConsolidado = costeo.proveedores_consolidado || [];
+
+            const tc_usd = parseFloat(costeo.tc_usd) || 1;
+            const tc_eur = parseFloat(costeo.tc_eur) || tc_usd;
+            const tc_gbp = parseFloat(costeo.tc_gbp) || tc_usd;
 
             const fobActual = articulos.reduce((sum, art) => sum + (parseFloat(art.importe_total_origen) || 0), 0);
             const volActual = parseFloat(costeo.volumen_m3) || 0;
@@ -343,38 +349,76 @@ class CalculosService {
             let volTotal = volActual;
             let pesoTotal = pesoActual;
 
-            const proveedores = [{
-                nombre: costeo.proveedor + ' (ACTUAL)',
-                fob: fobActual,
-                volumen_m3: volActual,
-                peso_kg: pesoActual
-            }];
+            const otrosProveedores = [];
 
             for (const p of proveedoresConsolidado) {
-                const fob = parseFloat(p.fob_total) || 0;
+                let fob = parseFloat(p.fob_total) || 0;
+                const monedaProv = (p.moneda || 'USD').toUpperCase();
+                
+                let fobConvertido = fob;
+                if (monedaProv === 'EUR') {
+                    fobConvertido = fob * (tc_eur / tc_usd);
+                } else if (monedaProv === 'GBP') {
+                    fobConvertido = fob * (tc_gbp / tc_usd);
+                }
+
                 const vol = parseFloat(p.volumen_m3) || 0;
                 const peso = parseFloat(p.peso_kg) || 0;
-                fobTotal += fob;
+                
+                fobTotal += fobConvertido;
                 volTotal += vol;
                 pesoTotal += peso;
-                proveedores.push({
+                
+                otrosProveedores.push({
                     nombre: p.nombre_proveedor,
-                    fob: fob,
+                    fob_original: fob,
+                    moneda: monedaProv,
+                    fob_convertido: fobConvertido,
                     volumen_m3: vol,
                     peso_kg: peso
                 });
             }
 
-            for (const p of proveedores) {
-                p.pct_fob = fobTotal > 0 ? ((p.fob / fobTotal) * 100).toFixed(2) : '0.00';
-                p.pct_volumen = volTotal > 0 ? ((p.volumen_m3 / volTotal) * 100).toFixed(2) : '0.00';
-                p.pct_peso = pesoTotal > 0 ? ((p.peso_kg / pesoTotal) * 100).toFixed(2) : '0.00';
+            const pctFob = fobTotal > 0 ? (fobActual / fobTotal) * 100 : 100;
+            const pctVol = volTotal > 0 ? (volActual / volTotal) * 100 : 0;
+            const pctPeso = pesoTotal > 0 ? (pesoActual / pesoTotal) * 100 : 0;
+
+            let totalGastosAProrratear = 0;
+            for (const g of gastosVarios) {
+                totalGastosAProrratear += parseFloat(g.monto_ars) || 0;
             }
 
             return {
                 es_consolidado: true,
-                proveedores: proveedores,
-                totales: { fob: fobTotal, volumen_m3: volTotal, peso_kg: pesoTotal }
+                proveedor_actual: {
+                    nombre: costeo.proveedor,
+                    fob: fobActual,
+                    volumen_m3: volActual,
+                    peso_kg: pesoActual
+                },
+                otros_proveedores: otrosProveedores,
+                totales: {
+                    fob: fobTotal,
+                    volumen_m3: volTotal,
+                    peso_kg: pesoTotal
+                },
+                comparativo_metodos: {
+                    por_fob: {
+                        participacion: pctFob.toFixed(2),
+                        gastos_estimados: (totalGastosAProrratear * pctFob / 100).toFixed(2)
+                    },
+                    por_volumen: {
+                        participacion: pctVol.toFixed(2),
+                        gastos_estimados: (totalGastosAProrratear * pctVol / 100).toFixed(2)
+                    },
+                    por_peso: {
+                        participacion: pctPeso.toFixed(2),
+                        gastos_estimados: (totalGastosAProrratear * pctPeso / 100).toFixed(2)
+                    }
+                },
+                gastos: {
+                    total_a_prorratear: totalGastosAProrratear.toFixed(2)
+                }
             };
 
         } catch (error) {
