@@ -5,6 +5,7 @@ require('dotenv').config();
 const sequelize = require('./config/database');
 const authRoutes = require('./routes/authRoutes');
 const costeoRoutes = require('./routes/costeoRoutes');
+const revaluacionRoutes = require('./routes/revaluacionRoutes');
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.use(express.static('public'));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/costeos', costeoRoutes);
+app.use('/api/revaluaciones', revaluacionRoutes);
 
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/public/index.html');
