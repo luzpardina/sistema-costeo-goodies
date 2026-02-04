@@ -117,17 +117,9 @@ router.get('/ultimos-costos', auth, async (req, res) => {
         console.error('Error al obtener ultimos costos:', error);
         res.status(500).json({ error: 'Error al obtener ultimos costos' });
     }
-});            }
-        }
-
-        res.json(Object.values(ultimosCostos));
-    } catch (error) {
-        console.error('Error al obtener últimos costos:', error);
-        res.status(500).json({ error: 'Error al obtener últimos costos' });
-    }
 });
 
-// Detalle de artículo (último y anterior)
+// Detalle de articulo (ultimo y anterior)
 router.get('/detalle-articulo/:codigo', auth, async (req, res) => {
     try {
         const { codigo } = req.params;
@@ -144,7 +136,7 @@ router.get('/detalle-articulo/:codigo', auth, async (req, res) => {
         });
 
         if (costeos.length === 0) {
-            return res.status(404).json({ error: 'Artículo no encontrado' });
+            return res.status(404).json({ error: 'Articulo no encontrado' });
         }
 
         const ultimo = costeos[0];
@@ -179,9 +171,10 @@ router.get('/detalle-articulo/:codigo', auth, async (req, res) => {
         res.json(resultado);
     } catch (error) {
         console.error('Error al obtener detalle:', error);
-        res.status(500).json({ error: 'Error al obtener detalle del artículo' });
+        res.status(500).json({ error: 'Error al obtener detalle del articulo' });
     }
 });
+
 // Obtener un costeo por ID
 router.get('/:id', auth, async (req, res) => {
     try {
@@ -244,7 +237,6 @@ router.put('/:id/actualizar', auth, async (req, res) => {
             return res.status(404).json({ error: 'Costeo no encontrado' });
         }
 
-        // Actualizar datos principales
         await costeo.update({
             nombre_costeo: datos.nombre_costeo,
             proveedor: datos.proveedor,
@@ -266,7 +258,7 @@ router.put('/:id/actualizar', auth, async (req, res) => {
             flete_monto: datos.flete_monto || 0,
             seguro_moneda: datos.seguro_moneda || 'USD',
             seguro_monto: datos.seguro_monto || 0,
-fob_parte: datos.fob_parte || 0,
+            fob_parte: datos.fob_parte || 0,
             flete_parte: datos.flete_parte || 0,
             seguro_parte: datos.seguro_parte || 0,
             es_consolidado: datos.es_consolidado || false,
@@ -274,7 +266,6 @@ fob_parte: datos.fob_parte || 0,
             peso_kg: datos.peso_kg || null
         });
 
-        // Eliminar y recrear proveedores consolidado
         await ConsolidadoProveedor.destroy({ where: { costeo_id: id } });
         if (datos.es_consolidado && datos.proveedores_consolidado && datos.proveedores_consolidado.length > 0) {
             for (const p of datos.proveedores_consolidado) {
@@ -291,7 +282,6 @@ fob_parte: datos.fob_parte || 0,
             }
         }
 
-        // Eliminar artículos anteriores y crear nuevos
         await ArticuloCosteo.destroy({ where: { costeo_id: id } });
         if (datos.articulos && datos.articulos.length > 0) {
             for (const art of datos.articulos) {
@@ -319,7 +309,6 @@ fob_parte: datos.fob_parte || 0,
             }
         }
 
-        // Eliminar gastos anteriores y crear nuevos
         await GastosVarios.destroy({ where: { costeo_id: id } });
         if (datos.gastos && datos.gastos.length > 0) {
             for (const g of datos.gastos) {
@@ -404,7 +393,6 @@ router.post('/:id/duplicar', auth, async (req, res) => {
             return res.status(404).json({ error: 'Costeo no encontrado' });
         }
 
-        // Crear nuevo costeo
         const nuevoCosteo = await Costeo.create({
             nombre_costeo: nuevo_nombre || `${costeoOriginal.nombre_costeo} (copia)`,
             proveedor: costeoOriginal.proveedor,
@@ -434,7 +422,6 @@ router.post('/:id/duplicar', auth, async (req, res) => {
             estado: 'borrador'
         });
 
-        // Duplicar proveedores consolidado
         if (costeoOriginal.proveedores_consolidado && costeoOriginal.proveedores_consolidado.length > 0) {
             for (const prov of costeoOriginal.proveedores_consolidado) {
                 await ConsolidadoProveedor.create({
@@ -448,7 +435,6 @@ router.post('/:id/duplicar', auth, async (req, res) => {
             }
         }
 
-        // Duplicar artículos
         if (costeoOriginal.articulos && costeoOriginal.articulos.length > 0) {
             for (const art of costeoOriginal.articulos) {
                 await ArticuloCosteo.create({
@@ -471,7 +457,6 @@ router.post('/:id/duplicar', auth, async (req, res) => {
             }
         }
 
-        // Duplicar gastos
         if (costeoOriginal.gastos_varios && costeoOriginal.gastos_varios.length > 0) {
             for (const gasto of costeoOriginal.gastos_varios) {
                 await GastosVarios.create({
@@ -501,7 +486,5 @@ router.post('/:id/duplicar', auth, async (req, res) => {
         res.status(500).json({ error: 'Error al duplicar costeo', detalles: error.message });
     }
 });
-
-
 
 module.exports = router;
