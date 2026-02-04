@@ -64,7 +64,7 @@ router.get('/listar', auth, async (req, res) => {
     }
 });
 
-router.get('/reportes/ultimos-costos', auth, async (req, res) => {
+router.get('/ultimos-costos', auth, async (req, res) => {
     try {
         const costeos = await Costeo.findAll({
             where: { estado: 'calculado' },
@@ -105,7 +105,7 @@ router.get('/reportes/ultimos-costos', auth, async (req, res) => {
 });
 
 // Detalle de artículo (último y anterior)
-router.get('/reportes/detalle-articulo/:codigo', auth, async (req, res) => {
+router.get('/detalle-articulo/:codigo', auth, async (req, res) => {
     try {
         const { codigo } = req.params;
 
