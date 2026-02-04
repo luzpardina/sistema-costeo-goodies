@@ -64,6 +64,101 @@ router.get('/listar', auth, async (req, res) => {
     }
 });
 
+router.get('/reportes/ultimos-costos', auth, async (req, res) => {
+    try {
+        const costeos = await Costeo.findAll({
+            where: { estado: 'calculado' },
+            include: [{ model: ArticuloCosteo, as: 'articulos' }],
+            order: [['fecha_despacho', 'DESC']]
+        });
+
+        const ultimosCostos = {};
+
+        for (const costeo of costeos) {
+            for (const art of costeo.articulos) {
+                const codigo = art.codigo_goodies;
+                if (!ultimosCostos[codigo]) {
+                    ultimosCostos[codigo] = {
+                        codigo_goodies: codigo,
+                        nombre: art.nombre,
+                        proveedor: costeo.proveedor,
+                        moneda: costeo.moneda_principal,
+                        fob_unitario: art.fob_unitario_usd,
+                        fob_interm: art.valor_proveedor_origen,
+                        costo_unitario_neto: art.costo_unitario_neto_ars,
+                        costo_unitario_final: art.costo_unitario_ars,
+                        fecha_despacho: costeo.fecha_despacho,
+                        nombre_costeo: costeo.nombre_costeo,
+                        tc_usd: costeo.tc_usd,
+                        tc_eur: costeo.tc_eur,
+                        tc_gbp: costeo.tc_gbp
+                    };
+                }
+            }
+        }
+
+        res.json(Object.values(ultimosCostos));
+    } catch (error) {
+        console.error('Error al obtener últimos costos:', error);
+        res.status(500).json({ error: 'Error al obtener últimos costos' });
+    }
+});
+
+// Detalle de artículo (último y anterior)
+router.get('/reportes/detalle-articulo/:codigo', auth, async (req, res) => {
+    try {
+        const { codigo } = req.params;
+
+        const costeos = await Costeo.findAll({
+            where: { estado: 'calculado' },
+            include: [{
+                model: ArticuloCosteo,
+                as: 'articulos',
+                where: { codigo_goodies: codigo }
+            }],
+            order: [['fecha_despacho', 'DESC']],
+            limit: 2
+        });
+
+        if (costeos.length === 0) {
+            return res.status(404).json({ error: 'Artículo no encontrado' });
+        }
+
+        const ultimo = costeos[0];
+        const anterior = costeos.length > 1 ? costeos[1] : null;
+
+        const resultado = {
+            ultimo: {
+                costeo: ultimo.nombre_costeo,
+                proveedor: ultimo.proveedor,
+                fecha_despacho: ultimo.fecha_despacho,
+                tc_usd: ultimo.tc_usd,
+                tc_eur: ultimo.tc_eur,
+                tc_gbp: ultimo.tc_gbp,
+                moneda: ultimo.moneda_principal,
+                articulo: ultimo.articulos[0]
+            }
+        };
+
+        if (anterior) {
+            resultado.anterior = {
+                costeo: anterior.nombre_costeo,
+                proveedor: anterior.proveedor,
+                fecha_despacho: anterior.fecha_despacho,
+                tc_usd: anterior.tc_usd,
+                tc_eur: anterior.tc_eur,
+                tc_gbp: anterior.tc_gbp,
+                moneda: anterior.moneda_principal,
+                articulo: anterior.articulos[0]
+            };
+        }
+
+        res.json(resultado);
+    } catch (error) {
+        console.error('Error al obtener detalle:', error);
+        res.status(500).json({ error: 'Error al obtener detalle del artículo' });
+    }
+});
 // Obtener un costeo por ID
 router.get('/:id', auth, async (req, res) => {
     try {
@@ -384,101 +479,6 @@ router.post('/:id/duplicar', auth, async (req, res) => {
     }
 });
 
-// Últimos costos por artículo
-router.get('/reportes/ultimos-costos', auth, async (req, res) => {
-    try {
-        const costeos = await Costeo.findAll({
-            where: { estado: 'calculado' },
-            include: [{ model: ArticuloCosteo, as: 'articulos' }],
-            order: [['fecha_despacho', 'DESC']]
-        });
 
-        const ultimosCostos = {};
-
-        for (const costeo of costeos) {
-            for (const art of costeo.articulos) {
-                const codigo = art.codigo_goodies;
-                if (!ultimosCostos[codigo]) {
-                    ultimosCostos[codigo] = {
-                        codigo_goodies: codigo,
-                        nombre: art.nombre,
-                        proveedor: costeo.proveedor,
-                        moneda: costeo.moneda_principal,
-                        fob_unitario: art.fob_unitario_usd,
-                        fob_interm: art.valor_proveedor_origen,
-                        costo_unitario_neto: art.costo_unitario_neto_ars,
-                        costo_unitario_final: art.costo_unitario_ars,
-                        fecha_despacho: costeo.fecha_despacho,
-                        nombre_costeo: costeo.nombre_costeo,
-                        tc_usd: costeo.tc_usd,
-                        tc_eur: costeo.tc_eur,
-                        tc_gbp: costeo.tc_gbp
-                    };
-                }
-            }
-        }
-
-        res.json(Object.values(ultimosCostos));
-    } catch (error) {
-        console.error('Error al obtener últimos costos:', error);
-        res.status(500).json({ error: 'Error al obtener últimos costos' });
-    }
-});
-
-// Detalle de artículo (último y anterior)
-router.get('/reportes/detalle-articulo/:codigo', auth, async (req, res) => {
-    try {
-        const { codigo } = req.params;
-
-        const costeos = await Costeo.findAll({
-            where: { estado: 'calculado' },
-            include: [{
-                model: ArticuloCosteo,
-                as: 'articulos',
-                where: { codigo_goodies: codigo }
-            }],
-            order: [['fecha_despacho', 'DESC']],
-            limit: 2
-        });
-
-        if (costeos.length === 0) {
-            return res.status(404).json({ error: 'Artículo no encontrado' });
-        }
-
-        const ultimo = costeos[0];
-        const anterior = costeos.length > 1 ? costeos[1] : null;
-
-        const resultado = {
-            ultimo: {
-                costeo: ultimo.nombre_costeo,
-                proveedor: ultimo.proveedor,
-                fecha_despacho: ultimo.fecha_despacho,
-                tc_usd: ultimo.tc_usd,
-                tc_eur: ultimo.tc_eur,
-                tc_gbp: ultimo.tc_gbp,
-                moneda: ultimo.moneda_principal,
-                articulo: ultimo.articulos[0]
-            }
-        };
-
-        if (anterior) {
-            resultado.anterior = {
-                costeo: anterior.nombre_costeo,
-                proveedor: anterior.proveedor,
-                fecha_despacho: anterior.fecha_despacho,
-                tc_usd: anterior.tc_usd,
-                tc_eur: anterior.tc_eur,
-                tc_gbp: anterior.tc_gbp,
-                moneda: anterior.moneda_principal,
-                articulo: anterior.articulos[0]
-            };
-        }
-
-        res.json(resultado);
-    } catch (error) {
-        console.error('Error al obtener detalle:', error);
-        res.status(500).json({ error: 'Error al obtener detalle del artículo' });
-    }
-});
 
 module.exports = router;
