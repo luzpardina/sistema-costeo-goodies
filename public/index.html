@@ -1830,7 +1830,7 @@ function renderizarGastos() {
                     '<td><input type="number" step="0.01" value="' + (g.monto || '') + '" onchange="gastosManual[' + idx + '].monto=this.value" style="width:100px;"></td>' +
                     '<td><input type="number" step="0.01" value="' + (g.recargo || '') + '" onchange="gastosManual[' + idx + '].recargo=this.value" style="width:60px;"></td>' +
                     '<td><input type="text" value="' + (g.grupo || '') + '" onchange="gastosManual[' + idx + '].grupo=this.value" style="width:60px;" placeholder=""></td>' +
-                    (esConsolidado ? '<td><select onchange="gastosManual[' + idx + '].metodo_prorrateo=this.value; renderizarGastos();" style="width:100px;"><option value="por_fob" ' + (metodo === 'por_fob' ? 'selected' : '') + '>Por FOB</option><option value="por_volumen" ' + (metodo === 'por_volumen' ? 'selected' : '') + '>Por Volumen</option><option value="por_peso" ' + (metodo === 'por_peso' ? 'selected' : '') + '>Por Peso</option></select></td>' : '') +
+                    (esConsolidado ? '<td><select onchange="gastosManual[' + idx + '].metodo_prorrateo=this.value; renderizarGastos();" style="width:100px;"><option value="por_fob" ' + (metodo === 'por_fob' ? 'selected' : '') + '>Por FOB</option><option value="por_volumen" ' + (metodo === 'por_volumen' ? 'selected' : '') + '>Por Volumen</option><option value="por_peso" ' + (metodo === 'por_peso' ? 'selected' : '') + '>Por Peso</option><option value="no_prorratear" ' + (metodo === 'no_prorratear' ? 'selected' : '') + '>No Prorratear</option></select></td>' : '') +
                     (esConsolidado ? '<td style="text-align:right;color:#4CAF50;font-weight:bold;">' + calcularMontoProrrateado(g) + '</td>' : '') +
                     '<td><input type="text" value="' + (g.observaciones || '') + '" onchange="gastosManual[' + idx + '].observaciones=this.value" style="width:120px;"></td>' +
                     '<td><button class="btn btn-danger btn-sm" onclick="eliminarGasto(' + idx + ')">X</button></td>' +
@@ -1858,7 +1858,8 @@ function calcularMontoProrrateado(g) {
             const montoConRecargo = monto * (1 + recargo / 100);
             const metodo = g.metodo_prorrateo || 'por_fob';
             let pct = 0;
-            if (metodo === 'por_fob') pct = p.fob;
+            if (metodo === 'no_prorratear') pct = 100;
+            else if (metodo === 'por_fob') pct = p.fob;
             else if (metodo === 'por_volumen') pct = p.volumen;
             else if (metodo === 'por_peso') pct = p.peso;
             return (montoConRecargo * pct / 100).toFixed(2);
