@@ -73,6 +73,7 @@ router.get('/ultimos-costos', auth, async (req, res) => {
         });
 
         const ultimosCostos = {};
+        const anteriores = {};
 
         for (const costeo of costeos) {
             for (const art of costeo.articulos) {
@@ -82,19 +83,41 @@ router.get('/ultimos-costos', auth, async (req, res) => {
                         codigo_goodies: codigo,
                         nombre: art.nombre,
                         proveedor: costeo.proveedor,
-                        moneda: costeo.moneda_principal,
-                        fob_unitario: art.fob_unitario_usd,
-                        fob_interm: art.valor_proveedor_origen,
-                        costo_unitario_neto: art.costo_unitario_neto_ars,
-                        costo_unitario_final: art.costo_unitario_ars,
+                        moneda_fob: costeo.moneda_principal,
+                        valor_fob: art.fob_unitario_usd,
+                        costo_neto: art.costo_unitario_neto_ars,
+                        costo_con_impuestos: art.costo_unitario_ars,
                         fecha_despacho: costeo.fecha_despacho,
                         nombre_costeo: costeo.nombre_costeo,
                         tc_usd: costeo.tc_usd,
                         tc_eur: costeo.tc_eur,
                         tc_gbp: costeo.tc_gbp
                     };
+                } else if (!anteriores[codigo]) {
+                    anteriores[codigo] = art.costo_unitario_neto_ars;
                 }
             }
+        }
+
+        const resultado = Object.values(ultimosCostos).map(art => {
+            const costoAnterior = anteriores[art.codigo_goodies] || null;
+            let diferenciaPct = null;
+            if (costoAnterior && art.costo_neto) {
+                diferenciaPct = ((art.costo_neto - costoAnterior) / costoAnterior) * 100;
+            }
+            return {
+                ...art,
+                costo_anterior: costoAnterior,
+                diferencia_pct: diferenciaPct
+            };
+        });
+
+        res.json(resultado);
+    } catch (error) {
+        console.error('Error al obtener ultimos costos:', error);
+        res.status(500).json({ error: 'Error al obtener ultimos costos' });
+    }
+});            }
         }
 
         res.json(Object.values(ultimosCostos));
