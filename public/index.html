@@ -405,7 +405,7 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label><input type="checkbox" id="cm_tieneIntermediaria" onchange="toggleIntermediaria()"> Tiene Datos de Fábrica Original</label>
+                        <label><input type="checkbox" id="cm_tieneIntermediaria" onchange="toggleIntermediaria(); recalcularValoresOrigen();"> Tiene Datos de Fábrica Original</label>
                     </div>
                     <div class="form-group">
                         <label><input type="checkbox" id="cm_esConsolidado" onchange="toggleConsolidado()"> Es Costeo Consolidado</label>
@@ -517,8 +517,8 @@
                                 <th>Nombre</th>
                                 <th>Cajas</th>
                                 <th>Und/Caja</th>
-                                <th>Valor Origen</th>
-                                <th>Valor Fábrica.</th>
+                                <th>Valor Fábrica</th>
+<th>Valor Origen</th>
                                 <th>% Derecho</th>
                                <th>% Imp.Int.</th>
                                 <th>ANMAT</th>
@@ -1747,7 +1747,7 @@ function agregarArticulo() {
 
         function renderizarArticulos() {
             const tbody = document.getElementById('articulosBody');
-            const tieneInterm = document.getElementById('cm_tieneIntermediaria').checked;
+            const tieneDatosFabrica = document.getElementById('cm_tieneIntermediaria').checked;
             tbody.innerHTML = articulosManual.map((art, idx) => {
                 const aplicaAnmat = art.aplica_anmat !== false;
                 return '<tr>' +
@@ -1757,8 +1757,8 @@ function agregarArticulo() {
                     '<td><input type="text" value="' + (art.nombre || '') + '" onchange="articulosManual[' + idx + '].nombre=this.value"></td>' +
                     '<td><input type="number" step="0.01" value="' + (art.cajas || '') + '" onchange="articulosManual[' + idx + '].cajas=this.value" style="width:60px;"></td>' +
                     '<td><input type="number" step="0.01" value="' + (art.und_caja || '') + '" onchange="articulosManual[' + idx + '].und_caja=this.value" style="width:60px;"></td>' +
-                    '<td><input type="number" step="0.0001" value="' + (art.valor_origen || '') + '" onchange="actualizarValorOrigen(' + idx + ', this.value)" style="width:80px;"></td>' +
-                    '<td><input type="number" step="0.0001" value="' + (art.valor_intermediaria || '') + '" onchange="articulosManual[' + idx + '].valor_intermediaria=this.value" style="width:80px;" ' + (tieneInterm ? '' : 'readonly') + '></td>' +
+                    '<td><input type="number" step="0.0001" value="' + (art.valor_fabrica || '') + '" onchange="actualizarValorFabrica(' + idx + ', this.value)" style="width:80px;"></td>' +
+                    '<td><input type="number" step="0.0001" value="' + (art.valor_origen || '') + '" style="width:80px;background:#333;color:#4CAF50;" readonly></td>' +
                     '<td><input type="number" step="0.01" value="' + (art.derechos || '') + '" onchange="articulosManual[' + idx + '].derechos=this.value" style="width:60px;"></td>' +
                     '<td><input type="number" step="0.01" value="' + (art.imp_interno || '') + '" onchange="articulosManual[' + idx + '].imp_interno=this.value" style="width:60px;"></td>' +
                     '<td><input type="checkbox" ' + (aplicaAnmat ? 'checked' : '') + ' onchange="articulosManual[' + idx + '].aplica_anmat=this.checked"></td>' +
@@ -1767,14 +1767,20 @@ function agregarArticulo() {
                     '</tr>';
             }).join('');
         }
-function actualizarValorOrigen(idx, valor) {
-            articulosManual[idx].valor_origen = valor;
-            const tieneInterm = document.getElementById('cm_tieneIntermediaria').checked;
-            if (!tieneInterm) {
-                articulosManual[idx].valor_intermediaria = valor;
-                renderizarArticulos();
+function recalcularValoresOrigen() {
+    const tieneDatosFabrica = document.getElementById('cm_tieneIntermediaria')?.checked;
+    articulosManual.forEach(art => {
+        const valorFabrica = parseFloat(art.valor_fabrica) || 0;
+        if (valorFabrica > 0) {
+            if (tieneDatosFabrica) {
+                art.valor_origen = (valorFabrica / 0.97).toFixed(4);
+            } else {
+                art.valor_origen = art.valor_fabrica;
             }
         }
+    });
+    renderizarArticulos();
+}
 
         function calcularValoresIntermediaria() {
             const margen = parseFloat(document.getElementById('cm_margenIntermediaria').value) || 0;
