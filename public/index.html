@@ -1767,6 +1767,16 @@ function agregarArticulo() {
                     '</tr>';
             }).join('');
         }
+function actualizarValorFabrica(idx, valor) {
+    articulosManual[idx].valor_fabrica = valor;
+    const tieneDatosFabrica = document.getElementById('cm_tieneIntermediaria').checked;
+    if (tieneDatosFabrica) {
+        articulosManual[idx].valor_origen = (parseFloat(valor) / 0.97).toFixed(4);
+    } else {
+        articulosManual[idx].valor_origen = valor;
+    }
+    renderizarArticulos();
+}
 function recalcularValoresOrigen() {
     const tieneDatosFabrica = document.getElementById('cm_tieneIntermediaria')?.checked;
     articulosManual.forEach(art => {
