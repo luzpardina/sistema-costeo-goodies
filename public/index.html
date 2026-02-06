@@ -1422,28 +1422,9 @@ setTimeout(function() { toggleConsolidado(); calcularPartesBaseAduana(); }, 100)
 let costeoIdParaCalcular = null;
 
 async function calcularCosteo(id) {
-    try {
-        // Primero verificar si es consolidado
-        const res = await fetch(API_URL + '/api/costeos/' + id, { 
-            headers: { 'Authorization': 'Bearer ' + token } 
-        });
-        const costeo = await res.json();
-        
-        if (costeo.es_consolidado) {
-            // Mostrar modal con comparativo
-            costeoIdParaCalcular = id;
-            mostrarModalConsolidado(id);
-        } else {
-            // Calcular directo
-            if (!confirm('¿Calcular este costeo?')) return;
-            await ejecutarCalculo(id, null);
-        }
-    } catch (err) { 
-        alert('Error de conexión'); 
-        console.error(err);
-    }
+    if (!confirm('¿Calcular este costeo?')) return;
+    await ejecutarCalculo(id, null);
 }
-
 async function mostrarModalConsolidado(id) {
     document.getElementById('modalConsolidado').style.display = 'block';
     document.getElementById('consolidadoLoading').style.display = 'block';

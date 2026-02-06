@@ -90,7 +90,20 @@ class CalculosService {
             let fobArticulosConAnmat = 0;
 
             for (const art of articulos) {
-                const importeOrigen = parseFloat(art.importe_total_origen) || 0;
+                // Determinar el valor FOB correcto
+                let valorUnitarioParaCalculo;
+                const tieneIntermediario = parseFloat(art.valor_proveedor_origen) > 0;
+                
+                if (tieneIntermediario) {
+                    // CON intermediario: usar precio fábrica / 0.97 (agrega 3% margen)
+                    valorUnitarioParaCalculo = parseFloat(art.valor_proveedor_origen) / 0.97;
+                } else {
+                    // SIN intermediario: usar valor origen directo
+                    valorUnitarioParaCalculo = parseFloat(art.valor_unitario_origen) || 0;
+                }
+                
+                const unidadesArt = parseInt(art.unidades_totales) || 1;
+                const importeOrigen = valorUnitarioParaCalculo * unidadesArt;
                 const fobArtPesos = importeOrigen * tcPrincipal;
                 const grupo = art.grupo || '';
                 const aplicaAnmat = art.aplica_anmat !== false;
@@ -182,7 +195,20 @@ class CalculosService {
             const articulosActualizados = [];
 
             for (const articulo of articulos) {
-                const importeOrigen = parseFloat(articulo.importe_total_origen) || 0;
+                // Determinar el valor FOB correcto
+                let valorUnitarioParaCalculo;
+                const tieneIntermediario = parseFloat(articulo.valor_proveedor_origen) > 0;
+                
+                if (tieneIntermediario) {
+                    // CON intermediario: usar precio fábrica / 0.97 (agrega 3% margen)
+                    valorUnitarioParaCalculo = parseFloat(articulo.valor_proveedor_origen) / 0.97;
+                } else {
+                    // SIN intermediario: usar valor origen directo
+                    valorUnitarioParaCalculo = parseFloat(articulo.valor_unitario_origen) || 0;
+                }
+                
+                const unidadesArt = parseInt(articulo.unidades_totales) || 1;
+                const importeOrigen = valorUnitarioParaCalculo * unidadesArt;
                 const unidades = parseInt(articulo.unidades_totales) || 1;
                 const derechosPct = parseFloat(articulo.derechos_porcentaje) || 0;
                 const impInternosPct = parseFloat(articulo.impuesto_interno_porcentaje) || 0;
