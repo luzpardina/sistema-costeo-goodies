@@ -494,13 +494,7 @@
             </div>
 <div id="tabArticulos" class="tab-content">
                 <h4>Articulos</h4>
-                <div id="intermediariaMargenGroup" style="display:none; margin-bottom:15px; padding:15px; background:#252538; border-radius:8px;">
-                    <div class="form-row">
-                        <div class="form-group"><label>% Margen para calcular Valor Fábricaediaria</label><input type="number" id="cm_margenIntermediaria" step="0.01" placeholder="Ej: 20"></div>
-                        <div class="form-group" style="display:flex; align-items:flex-end;"><button class="btn btn-warning" onclick="calcularValoresIntermediaria()">Calcular Valores Intermediaria</button></div>
-                    </div>
-                </div>
-                <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                      <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
                     <button class="btn btn-secondary" onclick="descargarTemplateArticulos()">📥 Descargar Template</button>
                     <label class="btn btn-primary" style="margin:0; cursor:pointer;">
                         📤 Importar desde Excel
@@ -1757,8 +1751,8 @@ function agregarArticulo() {
                     '<td><input type="text" value="' + (art.nombre || '') + '" onchange="articulosManual[' + idx + '].nombre=this.value"></td>' +
                     '<td><input type="number" step="0.01" value="' + (art.cajas || '') + '" onchange="articulosManual[' + idx + '].cajas=this.value" style="width:60px;"></td>' +
                     '<td><input type="number" step="0.01" value="' + (art.und_caja || '') + '" onchange="articulosManual[' + idx + '].und_caja=this.value" style="width:60px;"></td>' +
-                    '<td><input type="number" step="0.0001" value="' + (art.valor_fabrica || '') + '" onchange="actualizarValorFabrica(' + idx + ', this.value)" style="width:80px;"></td>' +
-                    '<td><input type="number" step="0.0001" value="' + (art.valor_origen || '') + '" style="width:80px;background:#333;color:#4CAF50;" readonly></td>' +
+                    '<td><input type="number" step="0.01" value="' + (art.valor_fabrica || '') + '" onchange="actualizarValorFabrica(' + idx + ', this.value)" style="width:80px;"></td>' +
+                    '<td><input type="number" step="0.01" value="' + (art.valor_origen || '') + '" onchange="articulosManual[' + idx + '].valor_origen=this.value" style="width:80px;"></td>'  +
                     '<td><input type="number" step="0.01" value="' + (art.derechos || '') + '" onchange="articulosManual[' + idx + '].derechos=this.value" style="width:60px;"></td>' +
                     '<td><input type="number" step="0.01" value="' + (art.imp_interno || '') + '" onchange="articulosManual[' + idx + '].imp_interno=this.value" style="width:60px;"></td>' +
                     '<td><input type="checkbox" ' + (aplicaAnmat ? 'checked' : '') + ' onchange="articulosManual[' + idx + '].aplica_anmat=this.checked"></td>' +
@@ -1771,7 +1765,7 @@ function actualizarValorFabrica(idx, valor) {
     articulosManual[idx].valor_fabrica = valor;
     const tieneDatosFabrica = document.getElementById('cm_tieneIntermediaria').checked;
     if (tieneDatosFabrica) {
-        articulosManual[idx].valor_origen = (parseFloat(valor) / 0.97).toFixed(4);
+        articulosManual[idx].valor_origen = (parseFloat(valor) / 0.97).toFixed(2);
     } else {
         articulosManual[idx].valor_origen = valor;
     }
@@ -1783,7 +1777,7 @@ function recalcularValoresOrigen() {
         const valorFabrica = parseFloat(art.valor_fabrica) || 0;
         if (valorFabrica > 0) {
             if (tieneDatosFabrica) {
-                art.valor_origen = (valorFabrica / 0.97).toFixed(4);
+                art.valor_origen = (valorFabrica / 0.97).toFixed(2);
             } else {
                 art.valor_origen = art.valor_fabrica;
             }
@@ -1791,7 +1785,6 @@ function recalcularValoresOrigen() {
     });
     renderizarArticulos();
 }
-
         function calcularValoresIntermediaria() {
             const margen = parseFloat(document.getElementById('cm_margenIntermediaria').value) || 0;
             if (margen <= 0 || margen >= 100) { alert('Ingresa un margen valido (entre 0 y 100)'); return; }
