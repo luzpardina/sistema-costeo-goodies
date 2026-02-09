@@ -1,0 +1,279 @@
+================================================================================
+DOCUMENTACIÓN COMPLETA - SISTEMA DE COSTEO GOODIES S.A.
+Última actualización: 6 de Febrero 2026
+================================================================================
+
+--------------------------------------------------------------------------------
+SECCIÓN 1: INFORMACIÓN DEL SISTEMA
+--------------------------------------------------------------------------------
+
+Proyecto: Sistema web de costeo de importaciones
+Empresa: GOODIES S.A.
+Stack tecnológico: Node.js + Express + PostgreSQL + Sequelize
+Repositorio: https://github.com/luzpardina/sistema-costeo-goodies
+URL producción: https://sistema-costeo-goodies-production.up.railway.app
+Hosting: Railway (deploy automático desde GitHub branch main)
+Carpeta local: C:\Users\Admin\Desktop\sistema-costeo-backend
+
+--------------------------------------------------------------------------------
+SECCIÓN 2: CREDENCIALES Y ACCESOS
+--------------------------------------------------------------------------------
+
+POSTGRESQL (Local):
+- Host: localhost
+- Puerto: 5432
+- Base de datos: sistema_costeo
+- Usuario: postgres
+- Password: postgres123
+
+POSTGRESQL (Railway/Producción):
+- Las credenciales están en Railway Dashboard > Variables
+
+USUARIOS DEL SISTEMA:
+- Admin (Luz): lpardina@goodies.com.ar / admin123
+- COMEX (Ariana): comercioexterior@goodies.com.ar / COMEX123
+- Comercial (Carlos): por crear
+- Contable (Ana): por crear
+
+GITHUB:
+- Usuario: luzpardina
+- Repositorio: sistema-costeo-goodies
+
+RAILWAY:
+- Proyecto: sistema-costeo-goodies
+- URL Dashboard: https://railway.app/dashboard
+
+--------------------------------------------------------------------------------
+SECCIÓN 3: ESTRUCTURA DE ARCHIVOS DEL PROYECTO
+--------------------------------------------------------------------------------
+
+sistema-costeo-backend/
+├── config/
+│   └── database.js              <- Configuración PostgreSQL
+├── models/
+│   ├── index.js                 <- Relaciones entre modelos
+│   ├── Usuario.js
+│   ├── Empresa.js
+│   ├── Costeo.js
+│   ├── ArticuloCosteo.js
+│   ├── GastosAduana.js
+│   ├── GastosVarios.js
+│   ├── ConsolidadoProveedor.js
+│   ├── Revaluacion.js
+│   └── RevaluacionArticulo.js
+├── controllers/
+│   ├── authController.js
+│   └── costeoController.js
+├── services/
+│   ├── calculosService.js       <- Lógica de cálculos de costeo
+│   ├── exportarService.js
+│   └── revaluacionService.js
+├── middleware/
+│   └── auth.js                  <- Verificación JWT
+├── routes/
+│   ├── authRoutes.js
+│   ├── costeoRoutes.js
+│   └── revaluacionRoutes.js
+├── public/
+│   └── index.html               <- Frontend completo (SPA)
+├── .env                         <- Variables de entorno (NO subir a Git)
+├── server.js                    <- Punto de entrada del servidor
+├── package.json
+└── ESTADO_PROYECTO_FEBRERO_2026.txt  <- Este documento
+
+--------------------------------------------------------------------------------
+SECCIÓN 4: LÓGICA DE NEGOCIO - CÁLCULOS DE COSTEO
+--------------------------------------------------------------------------------
+
+VALORES FOB:
+- Campo "Valor Fábrica": precio que paga el proveedor a la fábrica
+- Campo "Valor Origen": valor sobre el cual se calculan todos los costos
+
+REGLA SIN DATOS DE FÁBRICA (proveedor fabrica y vende directo):
+  valor_origen = valor_fabrica (se copia igual)
+
+REGLA CON DATOS DE FÁBRICA (hay intermediario):
+  valor_origen = valor_fabrica / 0.97 (agrega 3% de margen)
+
+CÁLCULOS SOBRE VALOR_ORIGEN:
+1. FOB Total = Σ (valor_origen × unidades) por cada artículo
+2. Participación FOB = FOB_artículo / FOB_total
+3. ANMAT = FOB_artículo × 0.5% (solo si aplica_anmat = true)
+4. Base Aduana = FOB + (Flete + Seguro) × participación
+5. Derechos = Base Aduana × %derechos (según artículo)
+6. Estadística = Base Aduana × 3% (SOLO si derechos > 0)
+7. Gastos prorrateados = Total gastos × participación FOB
+8. Costo Neto = FOB + ANMAT + Derechos + Estadística + Gastos
+9. IVA = Costo Neto × 21%
+10. Impuesto Interno = Costo Neto × %imp_interno (según artículo)
+11. Costo Final = Costo Neto + IVA + Impuesto Interno
+12. Factor Importación = ((Costo Neto - FOB) / FOB) × 100
+
+COSTEOS CONSOLIDADOS:
+- Múltiples proveedores comparten gastos de importación
+- Cada gasto tiene método de prorrateo individual:
+  * por_fob: según valor de factura
+  * por_volumen: según m³ ocupados
+  * por_peso: según kg
+  * no_prorratear: 100% al proveedor actual (gasto exclusivo)
+
+--------------------------------------------------------------------------------
+SECCIÓN 5: HISTORIAL DE DESARROLLO
+--------------------------------------------------------------------------------
+
+SESIÓN 1 (11 Dic 2025): Base de datos PostgreSQL
+- Instalación PostgreSQL 16
+- Creación de 6 tablas iniciales
+- Usuario admin creado
+
+SESIÓN 2 (12 Dic 2025): Backend básico
+- Node.js instalado
+- Proyecto Express creado
+- Conexión a PostgreSQL exitosa
+
+SESIÓN 3 (12 Dic 2025): Autenticación
+- Sistema JWT implementado
+- Login/Register funcionando
+- Middleware de protección de rutas
+
+SESIÓN 4 (12 Dic 2025): Importación Excel
+- Modelos Sequelize completos
+- Lectura dinámica de Excel (1-50 artículos, 0-50 gastos)
+- Conversión de monedas
+
+SESIONES POSTERIORES (Dic 2025 - Feb 2026):
+- Frontend completo en HTML/JS
+- Sistema de cálculo automático
+- Exportación a Excel
+- Costeos consolidados
+- Revaluaciones
+- Múltiples correcciones y mejoras
+
+SESIÓN 6 de Febrero 2026 - ÚLTIMA:
+Problemas resueltos:
+1. Eliminada ventana de comparativo de métodos en consolidados
+2. Corregida lógica de valores fábrica/origen
+3. Valores con 2 decimales (antes 4)
+4. Campo Valor Origen ahora editable
+5. Eliminado campo "% Margen para calcular Valor Fábrica"
+
+--------------------------------------------------------------------------------
+SECCIÓN 6: FUNCIONALIDADES IMPLEMENTADAS
+--------------------------------------------------------------------------------
+
+✅ Login/Logout con JWT
+✅ Carga manual de costeos
+✅ Importación desde Excel
+✅ Cálculo automático de costos
+✅ Exportación a Excel (costeo calculado)
+✅ Exportación de legajo original
+✅ Duplicar costeos
+✅ Editar costeos
+✅ Eliminar costeos
+✅ Costeos consolidados (múltiples proveedores)
+✅ Métodos de prorrateo por gasto (FOB, volumen, peso, no prorratear)
+✅ Reporte "Último Costo por Artículo"
+✅ Sistema de revaluaciones con nuevos TC
+✅ Historial de revaluaciones
+✅ Filtros en listados
+✅ Checkbox ANMAT por artículo
+✅ Grupos de artículos y gastos
+
+--------------------------------------------------------------------------------
+SECCIÓN 7: PENDIENTES PARA PRÓXIMAS SESIONES
+--------------------------------------------------------------------------------
+
+PUNTO 4 - REPORTE DE IMPORTE DESPACHO:
+- Estado: PENDIENTE
+- Requiere: Luz debe proporcionar modelo y cálculos necesarios
+- Descripción: Crear nuevo reporte con cálculos completos de importe despacho
+
+PUNTO 5 - REVISAR REPORTES:
+- Estado: PENDIENTE
+- Reportes afectados: Revaluación y Último Costo por Artículo
+- Tareas: Agregar columnas, corregir errores de cálculo
+- Requiere: Luz debe especificar qué columnas y qué errores
+
+--------------------------------------------------------------------------------
+SECCIÓN 8: COMANDOS ÚTILES
+--------------------------------------------------------------------------------
+
+INICIAR SERVIDOR LOCAL:
+cd C:\Users\Admin\Desktop\sistema-costeo-backend
+node server.js
+
+SUBIR CAMBIOS A PRODUCCIÓN:
+git add -A && git commit -m "descripcion del cambio" && git push
+
+VER LOGS DE RAILWAY:
+- Ir a Railway Dashboard > proyecto > Deploy Logs
+
+ABRIR ARCHIVO PARA EDITAR:
+notepad public\index.html
+notepad services\calculosService.js
+
+BUSCAR EN ARCHIVOS:
+findstr /n "texto a buscar" public\index.html
+
+--------------------------------------------------------------------------------
+SECCIÓN 9: COSTOS DEL PROYECTO
+--------------------------------------------------------------------------------
+
+COSTOS DE DESARROLLO (Ya incurridos):
+- Desarrollo del sistema: Realizado con asistencia de IA (Claude)
+- Horas de trabajo de Luz: Múltiples sesiones desde Diciembre 2025
+- Sin costo monetario directo por desarrollo
+
+COSTOS DE INFRAESTRUCTURA MENSUAL:
+
+Railway (Hosting):
+- Backend (Hobby Plan): ~$5 USD/mes
+- PostgreSQL (Hobby Plan): ~$5 USD/mes
+- TOTAL Railway: ~$10 USD/mes (~$10.000 ARS al TC actual)
+
+GitHub:
+- Repositorio privado: GRATIS
+- TOTAL GitHub: $0
+
+Dominio personalizado (Opcional):
+- Si se desea dominio propio (ej: costeo.goodies.com.ar): ~$15-30 USD/año
+
+RESUMEN COSTO MENSUAL ACTUAL:
+┌─────────────────────────────────────────┐
+│  Railway (Backend + DB): ~$10 USD/mes   │
+│  GitHub: $0                             │
+│  ─────────────────────────────────────  │
+│  TOTAL: ~$10 USD/mes (~$10.000 ARS)     │
+└─────────────────────────────────────────┘
+
+NOTA: Los precios de Railway pueden variar según el uso. Si el sistema
+tiene mucho tráfico o la base de datos crece mucho, podría aumentar.
+Actualmente el uso es bajo y el costo se mantiene en el mínimo.
+
+--------------------------------------------------------------------------------
+SECCIÓN 10: INSTRUCCIONES PARA NUEVOS CHATS
+--------------------------------------------------------------------------------
+
+Al iniciar un nuevo chat dentro del proyecto, decir:
+
+"Continuamos con el Sistema de Costeo GOODIES. 
+Revisar el archivo ESTADO_PROYECTO_FEBRERO_2026.txt en el proyecto para 
+contexto completo.
+
+Quedaron pendientes:
+- PUNTO 4: Crear reporte de Importe Despacho
+- PUNTO 5: Revisar reportes de Revaluación y Último Costo por Artículo
+
+[Agregar aquí lo que se quiera trabajar en esta sesión]"
+
+--------------------------------------------------------------------------------
+SECCIÓN 11: CONTACTO Y SOPORTE
+--------------------------------------------------------------------------------
+
+Desarrollado para: GOODIES S.A.
+Usuario principal: Luz Pardina (lpardina@goodies.com.ar)
+Equipo: Ariana (COMEX), Carlos (Comercial), Ana (Contable)
+
+================================================================================
+FIN DEL DOCUMENTO
+================================================================================
