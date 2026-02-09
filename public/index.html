@@ -1653,8 +1653,8 @@ function abrirCargaManual() {
             document.getElementById('cm_fleteMonto').value = '';
             document.getElementById('cm_seguroMoneda').value = 'USD';
             document.getElementById('cm_seguroMonto').value = '';
-            document.getElementById('cm_margenIntermediaria').value = '';
-            document.getElementById('intermediariaMargenGroup').style.display = 'none';
+            
+            
             agregarArticulo();
             agregarGasto();
             cambiarTab('datosGenerales');
@@ -1666,7 +1666,7 @@ function abrirCargaManual() {
             document.getElementById('cm_facturaIntermGroup').style.display = tiene ? 'block' : 'none';
             document.getElementById('cm_fechaFacturaIntermGroup').style.display = tiene ? 'block' : 'none';
             document.getElementById('cm_fechaVencIntermGroup').style.display = tiene ? 'block' : 'none';
-            document.getElementById('intermediariaMargenGroup').style.display = tiene ? 'flex' : 'none';
+            
             renderizarArticulos();
         }
         
