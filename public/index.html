@@ -464,6 +464,7 @@
                     <div class="form-group"><label>TC GBP</label><input type="number" id="cm_tcGbp" step="0.0001" placeholder="Ej: 1800.00"></div>
                 </div>
                 <div style="text-align: right; margin-top: 20px;">
+                    <button class="btn btn-warning" onclick="refrescarDatosGenerales()" style="margin-right:10px;">🔄 Refrescar</button>
                     <button class="btn btn-primary" onclick="cambiarTab('baseAduana')">Siguiente →</button>
                 </div>
             </div>
@@ -489,6 +490,7 @@
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-top: 20px;">
                     <button class="btn btn-secondary" onclick="cambiarTab('datosGenerales')">← Anterior</button>
+                    <button class="btn btn-warning" onclick="refrescarBaseAduana()">🔄 Refrescar</button>
                     <button class="btn btn-primary" onclick="cambiarTab('articulos')">Siguiente →</button>
                 </div>
             </div>
@@ -526,6 +528,7 @@
                 <button class="btn btn-success" onclick="agregarArticulo()" style="margin-top: 10px;">+ Agregar Articulo</button>
                 <div style="display: flex; justify-content: space-between; margin-top: 20px;">
                     <button class="btn btn-secondary" onclick="cambiarTab('baseAduana')">← Anterior</button>
+                    <button class="btn btn-warning" onclick="refrescarArticulos()">🔄 Refrescar</button>
                     <button class="btn btn-primary" onclick="cambiarTab('gastos')">Siguiente →</button>
                 </div>
             </div>
@@ -563,6 +566,7 @@
                 <button class="btn btn-success" onclick="agregarGasto()" style="margin-top: 10px;">+ Agregar Gasto</button>
                 <div style="display: flex; justify-content: space-between; margin-top: 20px;">
                     <button class="btn btn-secondary" onclick="cambiarTab('articulos')">← Anterior</button>
+                    <button class="btn btn-warning" onclick="refrescarGastos()">🔄 Refrescar</button>
                     <button class="btn btn-primary" onclick="guardarCargaManual()">💾 Guardar Costeo</button>
                 </div>
             </div>
@@ -1858,21 +1862,29 @@ function calcularMontoProrrateado(g) {
             const tcUsd = parseFloat(document.getElementById('cm_tcUsd').value) || 1;
             const tcEur = parseFloat(document.getElementById('cm_tcEur').value) || tcUsd;
             const tcGbp = parseFloat(document.getElementById('cm_tcGbp').value) || tcUsd;
-            let fobActual = 0;
+            const monedaPrincipal = (document.getElementById('cm_moneda').value || 'USD').toUpperCase();
+            let tcPrincipal = tcUsd;
+            if (monedaPrincipal === 'EUR') tcPrincipal = tcEur;
+            else if (monedaPrincipal === 'GBP') tcPrincipal = tcGbp;
+            let fobActualDivisa = 0;
             articulosManual.forEach(a => {
                 const cajas = parseFloat(a.cajas) || 0;
                 const undCaja = parseFloat(a.und_caja) || 0;
                 const valorOrigen = parseFloat(a.valor_intermediaria) || parseFloat(a.valor_origen) || 0;
-                fobActual += cajas * undCaja * valorOrigen;
+                fobActualDivisa += cajas * undCaja * valorOrigen;
             });
+            const fobActual = fobActualDivisa * tcPrincipal;
             const volumenActual = parseFloat(document.getElementById('cm_volumenM3').value) || 0;
             const pesoActual = parseFloat(document.getElementById('cm_pesoKg').value) || 0;
             let fobTotal = fobActual, volumenTotal = volumenActual, pesoTotal = pesoActual;
             proveedoresConsolidado.forEach(p => {
                 let fobProv = parseFloat(p.fob_total) || 0;
-                if (p.moneda === 'EUR') fobProv = fobProv * (tcEur / tcUsd);
-                else if (p.moneda === 'GBP') fobProv = fobProv * (tcGbp / tcUsd);
-                fobTotal += fobProv;
+                const monedaProv = (p.moneda || 'USD').toUpperCase();
+                let tcProv = tcUsd;
+                if (monedaProv === 'EUR') tcProv = tcEur;
+                else if (monedaProv === 'GBP') tcProv = tcGbp;
+                const fobProvARS = fobProv * tcProv;
+                fobTotal += fobProvARS;
                 volumenTotal += parseFloat(p.volumen_m3) || 0;
                 pesoTotal += parseFloat(p.peso_kg) || 0;
             });
@@ -1882,16 +1894,19 @@ function calcularMontoProrrateado(g) {
      function mostrarComparativoParticipaciones() {
             const p = calcularParticipaciones();
             const provActual = document.getElementById('cm_proveedor').value || 'Proveedor Actual';
+            const tcUsd = parseFloat(document.getElementById('cm_tcUsd').value) || 1;
+            const tcEur = parseFloat(document.getElementById('cm_tcEur').value) || tcUsd;
+            const tcGbp = parseFloat(document.getElementById('cm_tcGbp').value) || tcUsd;
             let html = '<div style="padding:10px;"><table style="width:100%;border-collapse:collapse;"><tr style="background:#333;"><th style="padding:12px;text-align:left;">Proveedor</th><th style="padding:12px;text-align:right;">% Por FOB</th><th style="padding:12px;text-align:right;">% Por Volumen</th><th style="padding:12px;text-align:right;">% Por Peso</th></tr>';
             html += '<tr style="background:#1a3a1a;"><td style="padding:12px;font-weight:bold;">' + provActual + ' (actual)</td><td style="padding:12px;text-align:right;color:#4CAF50;font-weight:bold;">' + p.fob.toFixed(2) + '%</td><td style="padding:12px;text-align:right;color:#2196F3;font-weight:bold;">' + p.volumen.toFixed(2) + '%</td><td style="padding:12px;text-align:right;color:#ff9800;font-weight:bold;">' + p.peso.toFixed(2) + '%</td></tr>';
             proveedoresConsolidado.forEach(prov => {
                 let fobProv = parseFloat(prov.fob_total) || 0;
-                const tcUsd = parseFloat(document.getElementById('cm_tcUsd').value) || 1;
-                const tcEur = parseFloat(document.getElementById('cm_tcEur').value) || tcUsd;
-                const tcGbp = parseFloat(document.getElementById('cm_tcGbp').value) || tcUsd;
-                if (prov.moneda === 'EUR') fobProv = fobProv * (tcEur / tcUsd);
-                else if (prov.moneda === 'GBP') fobProv = fobProv * (tcGbp / tcUsd);
-                const pctFob = p.fobTotal > 0 ? (fobProv / p.fobTotal * 100) : 0;
+                const monedaProv = (prov.moneda || 'USD').toUpperCase();
+                let tcProv = tcUsd;
+                if (monedaProv === 'EUR') tcProv = tcEur;
+                else if (monedaProv === 'GBP') tcProv = tcGbp;
+                const fobProvARS = fobProv * tcProv;
+                const pctFob = p.fobTotal > 0 ? (fobProvARS / p.fobTotal * 100) : 0;
                 const volProv = parseFloat(prov.volumen_m3) || 0;
                 const pctVol = p.volumenTotal > 0 ? (volProv / p.volumenTotal * 100) : 0;
                 const pesoProv = parseFloat(prov.peso_kg) || 0;
@@ -1902,6 +1917,29 @@ function calcularMontoProrrateado(g) {
             document.getElementById('comparativoModalBody').innerHTML = html;
             document.getElementById('comparativoModal').style.display = 'flex';
         }
+function refrescarDatosGenerales() {
+            renderizarProveedoresConsolidado();
+            calcularPartesBaseAduana();
+            alert('✅ Datos Generales actualizados');
+        }
+
+        function refrescarBaseAduana() {
+            calcularPartesBaseAduana();
+            alert('✅ Base Aduana recalculada');
+        }
+
+        function refrescarArticulos() {
+            renderizarArticulos();
+            calcularPartesBaseAduana();
+            alert('✅ Artículos y participaciones actualizados');
+        }
+
+        function refrescarGastos() {
+            calcularPartesBaseAduana();
+            renderizarGastos();
+            alert('✅ Gastos y prorrateos recalculados');
+        }
+
 function descargarTemplateArticulos() {
             const contenido = 'Cod_Goodies\tCod_Proveedor\tNombre\tCajas\tUnd_Caja\tValor_Origen\tValor_Interm\tPct_Derecho\tPct_Imp_Interno\n' +
                 'COD001\tPROV001\tProducto Ejemplo\t10\t24\t5.50\t6.00\t18\t0\n';

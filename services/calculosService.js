@@ -39,9 +39,10 @@ class CalculosService {
             let participacionPorPeso = 1;
 
             if (esConsolidado && proveedoresConsolidado.length > 0) {
-                const fobProveedorActual = articulos.reduce((sum, art) => {
+                const fobProveedorActualDivisa = articulos.reduce((sum, art) => {
                     return sum + (parseFloat(art.importe_total_origen) || 0);
                 }, 0);
+                const fobProveedorActual = fobProveedorActualDivisa * tcPrincipal;
                 const volumenActual = parseFloat(costeo.volumen_m3) || 0;
                 const pesoActual = parseFloat(costeo.peso_kg) || 0;
 
@@ -53,24 +54,11 @@ class CalculosService {
                     let fobProv = parseFloat(prov.fob_total) || 0;
                     const monedaProv = (prov.moneda || 'USD').toUpperCase();
                     
-                    if (monedaProv !== monedaPrincipal) {
-                        let fobEnUSD = fobProv;
-                        if (monedaProv === 'EUR') {
-                            fobEnUSD = fobProv * (tc_eur / tc_usd);
-                        } else if (monedaProv === 'GBP') {
-                            fobEnUSD = fobProv * (tc_gbp / tc_usd);
-                        }
-                        
-                        if (monedaPrincipal === 'EUR') {
-                            fobProv = fobEnUSD * (tc_usd / tc_eur);
-                        } else if (monedaPrincipal === 'GBP') {
-                            fobProv = fobEnUSD * (tc_usd / tc_gbp);
-                        } else {
-                            fobProv = fobEnUSD;
-                        }
-                    }
+                    let tcProv = tc_usd;
+                    if (monedaProv === 'EUR') tcProv = tc_eur;
+                    else if (monedaProv === 'GBP') tcProv = tc_gbp;
                     
-                    fobOtrosProveedores += fobProv;
+                    fobOtrosProveedores += fobProv * tcProv;
                     volumenOtros += parseFloat(prov.volumen_m3) || 0;
                     pesoOtros += parseFloat(prov.peso_kg) || 0;
                 }
@@ -340,7 +328,13 @@ class CalculosService {
             const tc_eur = parseFloat(costeo.tc_eur) || tc_usd;
             const tc_gbp = parseFloat(costeo.tc_gbp) || tc_usd;
 
-            const fobActual = articulos.reduce((sum, art) => sum + (parseFloat(art.importe_total_origen) || 0), 0);
+            const monedaPrincipal = (costeo.moneda_principal || 'USD').toUpperCase();
+            let tcPrincipal = tc_usd;
+            if (monedaPrincipal === 'EUR') tcPrincipal = tc_eur;
+            else if (monedaPrincipal === 'GBP') tcPrincipal = tc_gbp;
+
+            const fobActualDivisa = articulos.reduce((sum, art) => sum + (parseFloat(art.importe_total_origen) || 0), 0);
+            const fobActual = fobActualDivisa * tcPrincipal;
             const volActual = parseFloat(costeo.volumen_m3) || 0;
             const pesoActual = parseFloat(costeo.peso_kg) || 0;
 
@@ -354,12 +348,10 @@ class CalculosService {
                 let fob = parseFloat(p.fob_total) || 0;
                 const monedaProv = (p.moneda || 'USD').toUpperCase();
                 
-                let fobConvertido = fob;
-                if (monedaProv === 'EUR') {
-                    fobConvertido = fob * (tc_eur / tc_usd);
-                } else if (monedaProv === 'GBP') {
-                    fobConvertido = fob * (tc_gbp / tc_usd);
-                }
+                let tcProv = tc_usd;
+                if (monedaProv === 'EUR') tcProv = tc_eur;
+                else if (monedaProv === 'GBP') tcProv = tc_gbp;
+                const fobConvertido = fob * tcProv;
 
                 const vol = parseFloat(p.volumen_m3) || 0;
                 const peso = parseFloat(p.peso_kg) || 0;
