@@ -1866,13 +1866,18 @@ function calcularMontoProrrateado(g) {
             let tcPrincipal = tcUsd;
             if (monedaPrincipal === 'EUR') tcPrincipal = tcEur;
             else if (monedaPrincipal === 'GBP') tcPrincipal = tcGbp;
+            const montoFactura = parseFloat(document.getElementById('cm_monto').value) || 0;
             let fobActualDivisa = 0;
-            articulosManual.forEach(a => {
-                const cajas = parseFloat(a.cajas) || 0;
-                const undCaja = parseFloat(a.und_caja) || 0;
-                const valorOrigen = parseFloat(a.valor_intermediaria) || parseFloat(a.valor_origen) || 0;
-                fobActualDivisa += cajas * undCaja * valorOrigen;
-            });
+            if (montoFactura > 0) {
+                fobActualDivisa = montoFactura;
+            } else {
+                articulosManual.forEach(a => {
+                    const cajas = parseFloat(a.cajas) || 0;
+                    const undCaja = parseFloat(a.und_caja) || 0;
+                    const valorOrigen = parseFloat(a.valor_intermediaria) || parseFloat(a.valor_origen) || 0;
+                    fobActualDivisa += cajas * undCaja * valorOrigen;
+                });
+            }
             const fobActual = fobActualDivisa * tcPrincipal;
             const volumenActual = parseFloat(document.getElementById('cm_volumenM3').value) || 0;
             const pesoActual = parseFloat(document.getElementById('cm_pesoKg').value) || 0;

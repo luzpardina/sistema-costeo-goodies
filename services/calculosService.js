@@ -39,10 +39,16 @@ class CalculosService {
             let participacionPorPeso = 1;
 
             if (esConsolidado && proveedoresConsolidado.length > 0) {
-                const fobProveedorActualDivisa = articulos.reduce((sum, art) => {
-                    return sum + (parseFloat(art.importe_total_origen) || 0);
-                }, 0);
-                const fobProveedorActual = fobProveedorActualDivisa * tcPrincipal;
+                const montoFactura = parseFloat(costeo.monto_factura) || 0;
+                let fobProveedorActual;
+                if (montoFactura > 0) {
+                    fobProveedorActual = montoFactura * tcPrincipal;
+                } else {
+                    const fobProveedorActualDivisa = articulos.reduce((sum, art) => {
+                        return sum + (parseFloat(art.importe_total_origen) || 0);
+                    }, 0);
+                    fobProveedorActual = fobProveedorActualDivisa * tcPrincipal;
+                }
                 const volumenActual = parseFloat(costeo.volumen_m3) || 0;
                 const pesoActual = parseFloat(costeo.peso_kg) || 0;
 
@@ -333,8 +339,14 @@ class CalculosService {
             if (monedaPrincipal === 'EUR') tcPrincipal = tc_eur;
             else if (monedaPrincipal === 'GBP') tcPrincipal = tc_gbp;
 
-            const fobActualDivisa = articulos.reduce((sum, art) => sum + (parseFloat(art.importe_total_origen) || 0), 0);
-            const fobActual = fobActualDivisa * tcPrincipal;
+            const montoFactura = parseFloat(costeo.monto_factura) || 0;
+            let fobActual;
+            if (montoFactura > 0) {
+                fobActual = montoFactura * tcPrincipal;
+            } else {
+                const fobActualDivisa = articulos.reduce((sum, art) => sum + (parseFloat(art.importe_total_origen) || 0), 0);
+                fobActual = fobActualDivisa * tcPrincipal;
+            }
             const volActual = parseFloat(costeo.volumen_m3) || 0;
             const pesoActual = parseFloat(costeo.peso_kg) || 0;
 
