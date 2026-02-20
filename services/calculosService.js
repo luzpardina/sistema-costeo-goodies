@@ -203,8 +203,8 @@ class CalculosService {
                     anmatARS = fobTotalArtPesos * 0.005;
                 }
 
-                const gastosBaseAduanaArt = fleteSeguroBaseARS * participacionFOB;
-                const baseAduana = baseAduanaTotalARS * participacionFOB;
+                const gastosBaseAduanaArt = baseAduanaTotalARS * participacionFOB;
+                const baseAduana = fobTotalArtPesos + gastosBaseAduanaArt;
 
                 const derechosARS = derechosPct > 0 ? baseAduana * derechosPct : 0;
                 const estadisticaARS = derechosPct > 0 ? baseAduana * 0.03 : 0;
