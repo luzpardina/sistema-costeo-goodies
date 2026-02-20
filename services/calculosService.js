@@ -101,24 +101,46 @@ class CalculosService {
                 }
             }
 
-            let fobParaBase = parseFloat(costeo.fob_monto) || 0;
-            let fleteParaBase = parseFloat(costeo.flete_monto) || 0;
-            let seguroParaBase = parseFloat(costeo.seguro_monto) || 0;
+            // === BASE ADUANA ===
+            // Componente 1: FOB Factura (suma artículos) - ya calculado como fobTotalPesos
+            // Componente 2: Puesta FOB (tab Base Aduana)
+            // Componente 3: Flete Aduana (tab Base Aduana)
+            // Componente 4: Seguro Aduana (tab Base Aduana)
+
+            let puestaFob = parseFloat(costeo.fob_monto) || 0;
+            let fleteAduana = parseFloat(costeo.flete_monto) || 0;
+            let seguroAduana = parseFloat(costeo.seguro_monto) || 0;
             
             if (esConsolidado) {
-                fobParaBase = parseFloat(costeo.fob_parte) || 0;
-                fleteParaBase = parseFloat(costeo.flete_parte) || 0;
-                seguroParaBase = parseFloat(costeo.seguro_parte) || 0;
+                puestaFob = parseFloat(costeo.fob_parte) || 0;
+                fleteAduana = parseFloat(costeo.flete_parte) || 0;
+                seguroAduana = parseFloat(costeo.seguro_parte) || 0;
             }
 
+            // Convertir Puesta FOB a ARS según su moneda
             const fobMonedaBase = (costeo.fob_moneda || monedaPrincipal).toUpperCase();
             let tcFobBase = tc_usd;
             if (fobMonedaBase === 'EUR') tcFobBase = tc_eur;
             else if (fobMonedaBase === 'GBP') tcFobBase = tc_gbp;
+            const puestaFobARS = puestaFob * tcFobBase;
 
-            const fobBaseAduanaARS = fobParaBase * tcFobBase;
-            const fleteSeguroBaseARS = (fleteParaBase + seguroParaBase) * tcPrincipal;
-            const baseAduanaTotalARS = fobBaseAduanaARS + fleteSeguroBaseARS;
+            // Convertir Flete a ARS según su moneda
+            const fleteMoneda = (costeo.flete_moneda || 'USD').toUpperCase();
+            let tcFlete = tc_usd;
+            if (fleteMoneda === 'EUR') tcFlete = tc_eur;
+            else if (fleteMoneda === 'GBP') tcFlete = tc_gbp;
+            const fleteAduanaARS = fleteAduana * tcFlete;
+
+            // Convertir Seguro a ARS según su moneda
+            const seguroMoneda = (costeo.seguro_moneda || 'USD').toUpperCase();
+            let tcSeguro = tc_usd;
+            if (seguroMoneda === 'EUR') tcSeguro = tc_eur;
+            else if (seguroMoneda === 'GBP') tcSeguro = tc_gbp;
+            const seguroAduanaARS = seguroAduana * tcSeguro;
+
+            // Base Aduana Total = FOB Factura + Puesta FOB + Flete + Seguro (todo en ARS)
+            const gastosBaseAduanaARS = puestaFobARS + fleteAduanaARS + seguroAduanaARS;
+            const baseAduanaTotalARS = fobTotalPesos + gastosBaseAduanaARS;
 
             const gastosPorGrupo = {};
             let totalGastosVariosPesos = 0;
@@ -203,7 +225,7 @@ class CalculosService {
                     anmatARS = fobTotalArtPesos * 0.005;
                 }
 
-                const gastosBaseAduanaArt = baseAduanaTotalARS * participacionFOB;
+                const gastosBaseAduanaArt = gastosBaseAduanaARS * participacionFOB;
                 const baseAduana = fobTotalArtPesos + gastosBaseAduanaArt;
 
                 const derechosARS = derechosPct > 0 ? baseAduana * derechosPct : 0;
