@@ -158,7 +158,8 @@
                 <div class="filtros">
                     <div class="filtro-grupo">
                         <label>Proveedor</label>
-                        <select id="filtroProveedor" onchange="aplicarFiltros()"><option value="">Todos</option></select>
+                        <input type="text" id="filtroProveedor" list="listaProveedores" placeholder="Escribí para buscar..." onkeyup="aplicarFiltros()" onchange="aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
+                        <datalist id="listaProveedores"></datalist>
                     </div>
                     <div class="filtro-grupo">
                         <label>Tipo</label>
@@ -215,9 +216,8 @@
                     </div>
                     <div class="filtro-grupo">
                         <label>Proveedor</label>
-                        <select id="filtroProveedorArticulo" onchange="filtrarArticulos()">
-                            <option value="">Todos</option>
-                        </select>
+                        <input type="text" id="filtroProveedorArticulo" list="listaProveedoresArticulo" placeholder="Escribí para buscar..." onkeyup="filtrarArticulos()" onchange="filtrarArticulos()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
+                        <datalist id="listaProveedoresArticulo"></datalist>
                     </div>
                     <button class="btn btn-secondary" onclick="cargarUltimosCostos()">Actualizar</button>
                     <button class="btn btn-success" onclick="exportarUltimosCostos()">Exportar Excel</button>
@@ -711,9 +711,9 @@ let todosLosArticulos = [];
         }
 
         function actualizarDropdownProveedorArticulo() {
-            const select = document.getElementById('filtroProveedorArticulo');
+            const datalist = document.getElementById('listaProveedoresArticulo');
             const proveedores = [...new Set(todosLosArticulos.map(a => a.proveedor).filter(p => p))].sort();
-            select.innerHTML = '<option value="">Todos</option>' + proveedores.map(p => '<option value="' + p + '">' + p + '</option>').join('');
+            datalist.innerHTML = proveedores.map(p => '<option value="' + p + '">').join('');
         }
 
         function filtrarArticulos() {
@@ -724,7 +724,7 @@ let todosLosArticulos = [];
                 const coincideBusqueda = !busqueda || 
                     (a.codigo_goodies || '').toLowerCase().includes(busqueda) ||
                     (a.nombre || '').toLowerCase().includes(busqueda);
-                const coincideProveedor = !proveedor || a.proveedor === proveedor;
+                const coincideProveedor = !proveedor || (a.proveedor && a.proveedor.toLowerCase().includes(proveedor.toLowerCase()));
                 return coincideBusqueda && coincideProveedor;
             });
             
@@ -1131,9 +1131,9 @@ async function cargarCosteos() {
 
         function esDefinitivo(costeo) { return costeo.fecha_despacho && costeo.fecha_factura; }
         function actualizarDropdownProveedores() {
-            const select = document.getElementById('filtroProveedor');
+            const datalist = document.getElementById('listaProveedores');
             const proveedores = [...new Set(todosLosCosteos.map(c => c.proveedor).filter(p => p))].sort();
-            select.innerHTML = '<option value="">Todos</option>' + proveedores.map(p => '<option value="' + p + '">' + p + '</option>').join('');
+            datalist.innerHTML = proveedores.map(p => '<option value="' + p + '">').join('');
         }
         function toggleCriterio() { const cb = document.getElementById('filtroUltimo'); document.getElementById('criterioContainer').classList.toggle('show', cb.checked); }
         function limpiarFiltros() {
@@ -1151,7 +1151,7 @@ async function cargarCosteos() {
             const soloUltimo = document.getElementById('filtroUltimo').checked;
             const criterio = document.getElementById('filtroCriterio').value;
             let filtrados = [...todosLosCosteos];
-            if (proveedor) filtrados = filtrados.filter(c => c.proveedor === proveedor);
+            if (proveedor) filtrados = filtrados.filter(c => c.proveedor && c.proveedor.toLowerCase().includes(proveedor.toLowerCase()));
             if (tipo === 'definitivo') filtrados = filtrados.filter(c => esDefinitivo(c));
             else if (tipo === 'presupuesto') filtrados = filtrados.filter(c => !esDefinitivo(c));
             if (soloUltimo) {

@@ -144,27 +144,35 @@ router.get('/detalle-articulo/:codigo', auth, async (req, res) => {
 
         const resultado = {
             ultimo: {
-                costeo: ultimo.nombre_costeo,
+                nombre_costeo: ultimo.nombre_costeo,
                 proveedor: ultimo.proveedor,
                 fecha_despacho: ultimo.fecha_despacho,
                 tc_usd: ultimo.tc_usd,
                 tc_eur: ultimo.tc_eur,
                 tc_gbp: ultimo.tc_gbp,
                 moneda: ultimo.moneda_principal,
-                articulo: ultimo.articulos[0]
+                fob_origen: ultimo.articulos[0].valor_unitario_origen,
+                fob_interm: ultimo.articulos[0].valor_proveedor_origen,
+                costo_neto: ultimo.articulos[0].costo_unitario_neto_ars,
+                costo_con_impuestos: ultimo.articulos[0].costo_unitario_ars,
+                nombre: ultimo.articulos[0].nombre
             }
         };
 
         if (anterior) {
             resultado.anterior = {
-                costeo: anterior.nombre_costeo,
+                nombre_costeo: anterior.nombre_costeo,
                 proveedor: anterior.proveedor,
                 fecha_despacho: anterior.fecha_despacho,
                 tc_usd: anterior.tc_usd,
                 tc_eur: anterior.tc_eur,
                 tc_gbp: anterior.tc_gbp,
                 moneda: anterior.moneda_principal,
-                articulo: anterior.articulos[0]
+                fob_origen: anterior.articulos[0].valor_unitario_origen,
+                fob_interm: anterior.articulos[0].valor_proveedor_origen,
+                costo_neto: anterior.articulos[0].costo_unitario_neto_ars,
+                costo_con_impuestos: anterior.articulos[0].costo_unitario_ars,
+                nombre: anterior.articulos[0].nombre
             };
         }
 
@@ -258,6 +266,8 @@ router.put('/:id/actualizar', auth, async (req, res) => {
             flete_monto: datos.flete_monto || 0,
             seguro_moneda: datos.seguro_moneda || 'USD',
             seguro_monto: datos.seguro_monto || 0,
+            fob_moneda: datos.fob_moneda || 'USD',
+            fob_monto: datos.fob_monto || 0,
             fob_parte: datos.fob_parte || 0,
             flete_parte: datos.flete_parte || 0,
             seguro_parte: datos.seguro_parte || 0,
@@ -414,6 +424,11 @@ router.post('/:id/duplicar', auth, async (req, res) => {
             flete_monto: costeoOriginal.flete_monto,
             seguro_moneda: costeoOriginal.seguro_moneda,
             seguro_monto: costeoOriginal.seguro_monto,
+            fob_moneda: costeoOriginal.fob_moneda,
+            fob_monto: costeoOriginal.fob_monto,
+            fob_parte: costeoOriginal.fob_parte,
+            flete_parte: costeoOriginal.flete_parte,
+            seguro_parte: costeoOriginal.seguro_parte,
             es_consolidado: costeoOriginal.es_consolidado,
             volumen_m3: costeoOriginal.volumen_m3,
             peso_kg: costeoOriginal.peso_kg,
