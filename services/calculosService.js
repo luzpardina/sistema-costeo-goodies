@@ -101,14 +101,24 @@ class CalculosService {
                 }
             }
 
+            let fobParaBase = parseFloat(costeo.fob_monto) || 0;
             let fleteParaBase = parseFloat(costeo.flete_monto) || 0;
             let seguroParaBase = parseFloat(costeo.seguro_monto) || 0;
             
             if (esConsolidado) {
+                fobParaBase = parseFloat(costeo.fob_parte) || 0;
                 fleteParaBase = parseFloat(costeo.flete_parte) || 0;
                 seguroParaBase = parseFloat(costeo.seguro_parte) || 0;
             }
-            let gastosBaseAduanaTotal = (fleteParaBase + seguroParaBase) * tcPrincipal;
+
+            const fobMonedaBase = (costeo.fob_moneda || monedaPrincipal).toUpperCase();
+            let tcFobBase = tc_usd;
+            if (fobMonedaBase === 'EUR') tcFobBase = tc_eur;
+            else if (fobMonedaBase === 'GBP') tcFobBase = tc_gbp;
+
+            const fobBaseAduanaARS = fobParaBase * tcFobBase;
+            const fleteSeguroBaseARS = (fleteParaBase + seguroParaBase) * tcPrincipal;
+            const baseAduanaTotalARS = fobBaseAduanaARS + fleteSeguroBaseARS;
 
             const gastosPorGrupo = {};
             let totalGastosVariosPesos = 0;
@@ -193,8 +203,8 @@ class CalculosService {
                     anmatARS = fobTotalArtPesos * 0.005;
                 }
 
-                const gastosBaseAduanaArt = gastosBaseAduanaTotal * participacionFOB;
-                const baseAduana = fobTotalArtPesos + gastosBaseAduanaArt;
+                const gastosBaseAduanaArt = fleteSeguroBaseARS * participacionFOB;
+                const baseAduana = baseAduanaTotalARS * participacionFOB;
 
                 const derechosARS = derechosPct > 0 ? baseAduana * derechosPct : 0;
                 const estadisticaARS = derechosPct > 0 ? baseAduana * 0.03 : 0;
