@@ -1133,7 +1133,7 @@ async function cargarCosteos() {
             finally { loading.classList.remove('show'); }
         }
 
-        function esDefinitivo(costeo) { return costeo.fecha_despacho && costeo.fecha_factura; }
+        function esDefinitivo(costeo) { return costeo.fecha_despacho || costeo.nro_despacho; }
         function actualizarDropdownProveedores() {
             const datalist = document.getElementById('listaProveedores');
             const proveedores = [...new Set(todosLosCosteos.map(c => c.proveedor).filter(p => p))].sort();

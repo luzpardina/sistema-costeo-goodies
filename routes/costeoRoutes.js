@@ -70,8 +70,10 @@ router.get('/ultimos-costos', auth, async (req, res) => {
         const costeos = await Costeo.findAll({
             where: { 
                 estado: 'calculado',
-                fecha_despacho: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] },
-                fecha_factura: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] }
+                [Op.or]: [
+                    { fecha_despacho: { [Op.ne]: null } },
+                    { nro_despacho: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] } }
+                ]
             },
             include: [{ model: ArticuloCosteo, as: 'articulos' }],
             order: [['fecha_despacho', 'DESC']]
@@ -144,8 +146,10 @@ router.get('/detalle-articulo/:codigo', auth, async (req, res) => {
         const costeos = await Costeo.findAll({
             where: { 
                 estado: 'calculado',
-                fecha_despacho: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] },
-                fecha_factura: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] }
+                [Op.or]: [
+                    { fecha_despacho: { [Op.ne]: null } },
+                    { nro_despacho: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] } }
+                ]
             },
             include: [{
                 model: ArticuloCosteo,
