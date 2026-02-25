@@ -66,8 +66,13 @@ router.get('/listar', auth, async (req, res) => {
 
 router.get('/ultimos-costos', auth, async (req, res) => {
     try {
+        const { Op } = require('sequelize');
         const costeos = await Costeo.findAll({
-            where: { estado: 'calculado' },
+            where: { 
+                estado: 'calculado',
+                fecha_despacho: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] },
+                fecha_factura: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] }
+            },
             include: [{ model: ArticuloCosteo, as: 'articulos' }],
             order: [['fecha_despacho', 'DESC']]
         });
@@ -94,20 +99,31 @@ router.get('/ultimos-costos', auth, async (req, res) => {
                         tc_gbp: costeo.tc_gbp
                     };
                 } else if (!anteriores[codigo]) {
-                    anteriores[codigo] = art.costo_unitario_neto_ars;
+                    anteriores[codigo] = {
+                        costo_neto: art.costo_unitario_neto_ars,
+                        costo_con_impuestos: art.costo_unitario_ars,
+                        valor_fob: art.fob_unitario_usd,
+                        proveedor: costeo.proveedor,
+                        nombre_costeo: costeo.nombre_costeo,
+                        fecha_despacho: costeo.fecha_despacho
+                    };
                 }
             }
         }
 
         const resultado = Object.values(ultimosCostos).map(art => {
-            const costoAnterior = anteriores[art.codigo_goodies] || null;
+            const anterior = anteriores[art.codigo_goodies] || null;
             let diferenciaPct = null;
-            if (costoAnterior && art.costo_neto) {
-                diferenciaPct = ((art.costo_neto - costoAnterior) / costoAnterior) * 100;
+            if (anterior && anterior.costo_neto && art.costo_neto) {
+                diferenciaPct = ((art.costo_neto - anterior.costo_neto) / anterior.costo_neto) * 100;
             }
             return {
                 ...art,
-                costo_anterior: costoAnterior,
+                costo_anterior: anterior ? anterior.costo_neto : null,
+                costo_anterior_con_impuestos: anterior ? anterior.costo_con_impuestos : null,
+                anterior_proveedor: anterior ? anterior.proveedor : null,
+                anterior_nombre_costeo: anterior ? anterior.nombre_costeo : null,
+                anterior_fecha_despacho: anterior ? anterior.fecha_despacho : null,
                 diferencia_pct: diferenciaPct
             };
         });
@@ -124,8 +140,13 @@ router.get('/detalle-articulo/:codigo', auth, async (req, res) => {
     try {
         const { codigo } = req.params;
 
+        const { Op } = require('sequelize');
         const costeos = await Costeo.findAll({
-            where: { estado: 'calculado' },
+            where: { 
+                estado: 'calculado',
+                fecha_despacho: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] },
+                fecha_factura: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] }
+            },
             include: [{
                 model: ArticuloCosteo,
                 as: 'articulos',
