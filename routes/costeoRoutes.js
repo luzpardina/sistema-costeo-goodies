@@ -310,7 +310,7 @@ router.put('/:id/actualizar', auth, async (req, res) => {
                     moneda_origen: datos.moneda_principal || 'USD',
                     valor_unitario_origen: valorUnitario,
                     importe_total_origen: importeTotal,
-                    valor_proveedor_origen: parseFloat(art.valor_unitario_origen) || 0,
+                    valor_proveedor_origen: parseFloat(art.valor_fabrica) || parseFloat(art.valor_unitario_origen) || 0,
                     derechos_porcentaje: parseFloat(art.derechos_porcentaje) || 0,
                     impuesto_interno_porcentaje: parseFloat(art.impuesto_interno_porcentaje) || 0,
                     aplica_anmat: art.aplica_anmat !== false,

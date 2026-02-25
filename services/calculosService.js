@@ -146,26 +146,24 @@ class CalculosService {
             let totalGastosVariosPesos = 0;
 
             for (const gasto of gastosVarios) {
-                let montoOriginalARS = parseFloat(gasto.monto_ars) || 0;
+                const montoOriginal = parseFloat(gasto.monto) || 0;
+                const monedaGasto = (gasto.moneda || 'USD').toUpperCase();
+                const recargo = parseFloat(gasto.recargo) || 0;
 
-                if (montoOriginalARS === 0 && gasto.monto) {
-                    const montoOriginal = parseFloat(gasto.monto) || 0;
-                    const monedaGasto = (gasto.moneda || 'USD').toUpperCase();
-                    const recargo = parseFloat(gasto.recargo) || 0;
+                let tcGasto = 1;
+                if (monedaGasto === 'USD') {
+                    tcGasto = tc_usd;
+                } else if (monedaGasto === 'EUR') {
+                    tcGasto = tc_eur || tc_usd;
+                } else if (monedaGasto === 'GBP') {
+                    tcGasto = tc_gbp || tc_usd;
+                } else if (monedaGasto === 'ARS') {
+                    tcGasto = 1;
+                }
 
-                    let tcGasto = 1;
-                    if (monedaGasto === 'USD') {
-                        tcGasto = tc_usd;
-                    } else if (monedaGasto === 'EUR') {
-                        tcGasto = tc_eur || tc_usd;
-                    } else if (monedaGasto === 'GBP') {
-                        tcGasto = tc_gbp || tc_usd;
-                    }
-
-                    montoOriginalARS = montoOriginal * tcGasto;
-                    if (recargo > 0) {
-                        montoOriginalARS = montoOriginalARS * (1 + recargo / 100);
-                    }
+                let montoOriginalARS = montoOriginal * tcGasto;
+                if (recargo > 0) {
+                    montoOriginalARS = montoOriginalARS * (1 + recargo / 100);
                 }
 
                 let montoProrrateado = montoOriginalARS;
@@ -209,8 +207,10 @@ class CalculosService {
             for (const articulo of articulos) {
                 const importeOrigen = parseFloat(articulo.importe_total_origen) || 0;
                 const unidades = parseInt(articulo.unidades_totales) || 1;
-                const derechosPct = parseFloat(articulo.derechos_porcentaje) || 0;
-                const impInternosPct = parseFloat(articulo.impuesto_interno_porcentaje) || 0;
+                const derechosPctRaw = parseFloat(articulo.derechos_porcentaje) || 0;
+                const impInternosPctRaw = parseFloat(articulo.impuesto_interno_porcentaje) || 0;
+                const derechosPct = derechosPctRaw > 1 ? derechosPctRaw / 100 : derechosPctRaw;
+                const impInternosPct = impInternosPctRaw > 1 ? impInternosPctRaw / 100 : impInternosPctRaw;
                 const grupoArticulo = articulo.grupo || '';
                 const aplicaAnmat = articulo.aplica_anmat !== false;
 

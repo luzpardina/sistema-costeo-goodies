@@ -136,13 +136,13 @@ class ExportarService {
                 fob_total_ars: fobTotalARS,
                 anmat: parseFloat(art.anmat_ars) || 0,
                 base_aduana: parseFloat(art.base_aduana_ars) || 0,
-                derechos_pct: parseFloat(art.derechos_porcentaje) || 0,
+                derechos_pct: (parseFloat(art.derechos_porcentaje) || 0) <= 1 ? (parseFloat(art.derechos_porcentaje) || 0) * 100 : (parseFloat(art.derechos_porcentaje) || 0),
                 derechos: parseFloat(art.derechos_total_ars) || 0,
                 estadistica: parseFloat(art.estadistica_total_ars) || 0,
                 gastos_prorrat: parseFloat(art.gastos_varios_ars) || 0,
                 costo_neto: costoNetoUnit,
                 iva: parseFloat(art.iva_unitario_ars) || 0,
-                imp_int_pct: parseFloat(art.impuesto_interno_porcentaje) || 0,
+                imp_int_pct: (parseFloat(art.impuesto_interno_porcentaje) || 0) <= 1 ? (parseFloat(art.impuesto_interno_porcentaje) || 0) * 100 : (parseFloat(art.impuesto_interno_porcentaje) || 0),
                 imp_int: parseFloat(art.impuesto_interno_unitario_ars) || 0,
                 costo_final: parseFloat(art.costo_unitario_ars) || 0,
                 factor: factorImportacion
@@ -188,48 +188,14 @@ class ExportarService {
             { header: 'Observaciones', key: 'observaciones', width: 30 }
         ];
 
-        // Lista de gastos con recargo
-        const gastosConRecargo = ['flete internacional', 'transporte internacional', 'marítima', 'maritima', 'agencia', 'gastos en origen'];
-
         for (const gasto of costeo.gastos_varios) {
-            const descLower = (gasto.descripcion || '').toLowerCase();
-            let recargoPct = 0;
-            
-            // Determinar si tiene recargo
-            for (const g of gastosConRecargo) {
-                if (descLower.includes(g)) {
-                    // Calcular recargo aproximado comparando monto original vs ARS
-                    const montoOrig = parseFloat(gasto.monto) || 0;
-                    const montoARS = parseFloat(gasto.monto_ars) || 0;
-                    const monedaGasto = (gasto.moneda || 'USD').toUpperCase();
-                    
-                    let tcEsperado = parseFloat(costeo.tc_usd) || 1;
-                    if (monedaGasto === 'EUR') {
-                        tcEsperado = parseFloat(costeo.tc_eur) || parseFloat(costeo.tc_usd) || 1;
-                    } else if (monedaGasto === 'GBP') {
-                        tcEsperado = parseFloat(costeo.tc_gbp) || parseFloat(costeo.tc_usd) || 1;
-                    } else if (monedaGasto === 'ARS') {
-                        tcEsperado = 1;
-                    }
-                    
-                    if (montoOrig !== 0 && tcEsperado !== 0) {
-                        const montoSinRecargo = montoOrig * tcEsperado;
-                        if (montoSinRecargo !== 0) {
-                            recargoPct = ((montoARS / montoSinRecargo) - 1) * 100;
-                            if (recargoPct < 0.5) recargoPct = 0; // Ignorar diferencias mínimas
-                        }
-                    }
-                    break;
-                }
-            }
-
            hojaGastos.addRow({
                 descripcion: gasto.descripcion,
                 proveedor: gasto.proveedor_gasto || '',
                 nro_comprobante: gasto.nro_comprobante || '',
                 moneda: gasto.moneda,
                 monto: parseFloat(gasto.monto) || 0,
-                recargo: recargoPct > 0 ? recargoPct : 0,
+                recargo: parseFloat(gasto.recargo) || 0,
                 grupo: gasto.grupo || '',
                 monto_ars: parseFloat(gasto.monto_ars) || 0,
                 observaciones: gasto.observaciones || ''

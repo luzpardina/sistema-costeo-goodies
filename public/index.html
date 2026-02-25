@@ -1289,6 +1289,7 @@ async function duplicarCosteo(id) {
                     document.getElementById('cm_intermediaria').value = costeo.empresa_intermediaria || '';
                     document.getElementById('cm_facturaInterm').value = costeo.factura_intermediaria || '';
                     document.getElementById('cm_fechaFacturaInterm').value = costeo.fecha_factura_intermediaria ? costeo.fecha_factura_intermediaria.split('T')[0] : '';
+                    document.getElementById('cm_fechaVencInterm').value = costeo.fecha_vencimiento_intermediaria ? costeo.fecha_vencimiento_intermediaria.split('T')[0] : '';
                     document.getElementById('cm_facturaNro').value = costeo.factura_nro || '';
                     document.getElementById('cm_moneda').value = costeo.moneda_principal || 'USD';
                     document.getElementById('cm_monto').value = costeo.monto_factura || '';
@@ -1312,7 +1313,8 @@ async function duplicarCosteo(id) {
                         nombre: a.nombre || '',
                         cajas: a.cantidad_cajas || '',
                         und_caja: a.unidades_por_caja || '',
-                        valor_origen: a.valor_proveedor_origen || a.valor_unitario_origen || '',
+                        valor_fabrica: a.valor_proveedor_origen || '',
+                        valor_origen: a.valor_unitario_origen || a.valor_proveedor_origen || '',
                         valor_intermediaria: a.valor_unitario_origen || '',
                         derechos: (a.derechos_porcentaje * 100) || '',
                         imp_interno: (a.impuesto_interno_porcentaje * 100) || '',
@@ -1351,6 +1353,7 @@ async function editarCosteo(id) {
                     document.getElementById('cm_intermediaria').value = costeo.empresa_intermediaria || '';
                     document.getElementById('cm_facturaInterm').value = costeo.factura_intermediaria || '';
                     document.getElementById('cm_fechaFacturaInterm').value = costeo.fecha_factura_intermediaria ? costeo.fecha_factura_intermediaria.split('T')[0] : '';
+                    document.getElementById('cm_fechaVencInterm').value = costeo.fecha_vencimiento_intermediaria ? costeo.fecha_vencimiento_intermediaria.split('T')[0] : '';
                     document.getElementById('cm_facturaNro').value = costeo.factura_nro || '';
                     document.getElementById('cm_moneda').value = costeo.moneda_principal || 'USD';
                     document.getElementById('cm_monto').value = costeo.monto_factura || '';
@@ -1386,7 +1389,8 @@ async function editarCosteo(id) {
                         nombre: a.nombre || '',
                         cajas: a.cantidad_cajas || '',
                         und_caja: a.unidades_por_caja || '',
-                        valor_origen: a.valor_proveedor_origen || a.valor_unitario_origen || '',
+                        valor_fabrica: a.valor_proveedor_origen || '',
+                        valor_origen: a.valor_unitario_origen || a.valor_proveedor_origen || '',
                         valor_intermediaria: a.valor_unitario_origen || '',
                         derechos: (a.derechos_porcentaje * 100) || '',
                         imp_interno: (a.impuesto_interno_porcentaje * 100) || '',
@@ -1991,6 +1995,7 @@ function descargarTemplateArticulos() {
                                 nombre: cols[2] || '',
                                 cajas: cols[3] || '',
                                 und_caja: cols[4] || '',
+                                valor_fabrica: cols[5] || '',
                                 valor_origen: valorOrigen,
                                 valor_intermediaria: tieneInterm ? valorInterm : valorOrigen,
                                 derechos: cols[7] || '',
@@ -2058,6 +2063,7 @@ function descargarTemplateArticulos() {
                     nombre: a.nombre,
                     cantidad_cajas: parseFloat(a.cajas) || 0,
                     unidades_por_caja: parseFloat(a.und_caja) || 0,
+                    valor_fabrica: parseFloat(a.valor_fabrica) || 0,
                     valor_unitario_origen: parseFloat(a.valor_origen) || 0,
                     valor_unitario_intermediaria: valorInterm,
                     derechos_porcentaje: (parseFloat(a.derechos) || 0) / 100,
@@ -2087,6 +2093,7 @@ monto_prorrateado: parseFloat(calcularMontoProrrateado(g)) || 0,
                 empresa_intermediaria: tieneIntermediaria ? document.getElementById('cm_intermediaria').value : null,
                 factura_intermediaria: tieneIntermediaria ? document.getElementById('cm_facturaInterm').value : null,
                 fecha_factura_intermediaria: tieneIntermediaria ? document.getElementById('cm_fechaFacturaInterm').value : null,
+                fecha_vencimiento_intermediaria: tieneIntermediaria ? document.getElementById('cm_fechaVencInterm').value : null,
                 factura_nro: document.getElementById('cm_facturaNro').value,
                 moneda_principal: moneda,
                 monto_factura: parseFloat(document.getElementById('cm_monto').value) || 0,

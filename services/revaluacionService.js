@@ -82,8 +82,10 @@ class RevaluacionService {
             const fobProveedorOrigen = parseFloat(articulo.valor_proveedor_origen) || 0;
             const fobIntermediaria = parseFloat(articulo.valor_unitario_origen) || 0;
             const unidades = parseInt(articulo.unidades_totales) || 1;
-            const derechosPct = parseFloat(articulo.derechos_porcentaje) || 0;
-            const impInternosPct = parseFloat(articulo.impuesto_interno_porcentaje) || 0;
+            const derechosPctRaw = parseFloat(articulo.derechos_porcentaje) || 0;
+            const impInternosPctRaw = parseFloat(articulo.impuesto_interno_porcentaje) || 0;
+            const derechosPct = derechosPctRaw > 1 ? derechosPctRaw / 100 : derechosPctRaw;
+            const impInternosPct = impInternosPctRaw > 1 ? impInternosPctRaw / 100 : impInternosPctRaw;
             
             // Costo neto original
             const costoNetoOriginal = parseFloat(articulo.costo_unitario_neto_ars) || 0;

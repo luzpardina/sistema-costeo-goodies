@@ -145,8 +145,8 @@ const importarExcel = async (req, res) => {
                 unidades_totales: parseFloat(getCellValue(sheetArticulos, row, 5)) || 0,
                 valor_unitario_origen: parseFloat(getCellValue(sheetArticulos, row, 6)) || 0,
                 importe_total_origen: parseFloat(getCellValue(sheetArticulos, row, 7)) || 0,
-                derechos_porcentaje: parseFloat(getCellValue(sheetArticulos, row, 8)) || 0,
-                impuesto_interno_porcentaje: parseFloat(getCellValue(sheetArticulos, row, 9)) || 0,
+                derechos_porcentaje: (() => { const v = parseFloat(getCellValue(sheetArticulos, row, 8)) || 0; return v > 1 ? v / 100 : v; })(),
+                impuesto_interno_porcentaje: (() => { const v = parseFloat(getCellValue(sheetArticulos, row, 9)) || 0; return v > 1 ? v / 100 : v; })(),
                 moneda_origen: datosGenerales.moneda_principal
             };
 
@@ -577,7 +577,7 @@ fob_parte: datos.fob_parte || 0,
                 moneda_origen: datos.moneda_principal || 'USD',
                 valor_unitario_origen: valorUnitario,
                 importe_total_origen: importeTotal,
-                valor_proveedor_origen: parseFloat(art.valor_unitario_origen) || 0,
+                valor_proveedor_origen: parseFloat(art.valor_fabrica) || parseFloat(art.valor_unitario_origen) || 0,
                 derechos_porcentaje: parseFloat(art.derechos_porcentaje) || 0,
                 impuesto_interno_porcentaje: parseFloat(art.impuesto_interno_porcentaje) || 0,
                 aplica_anmat: art.aplica_anmat !== false,
@@ -708,8 +708,8 @@ const precargarExcel = async (req, res) => {
                 cantidad_cajas: parseFloat(getCellValue(sheetArticulos, row, 3)) || 0,
                 unidades_por_caja: parseFloat(getCellValue(sheetArticulos, row, 4)) || 0,
                 valor_unitario_origen: parseFloat(getCellValue(sheetArticulos, row, 6)) || 0,
-                derechos_porcentaje: parseFloat(getCellValue(sheetArticulos, row, 8)) || 0,
-                impuesto_interno_porcentaje: parseFloat(getCellValue(sheetArticulos, row, 9)) || 0
+                derechos_porcentaje: (() => { const v = parseFloat(getCellValue(sheetArticulos, row, 8)) || 0; return v > 1 ? v / 100 : v; })(),
+                impuesto_interno_porcentaje: (() => { const v = parseFloat(getCellValue(sheetArticulos, row, 9)) || 0; return v > 1 ? v / 100 : v; })()
             };
             
             if (articulo.nombre) {
