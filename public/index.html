@@ -1927,19 +1927,25 @@ function calcularMontoProrrateado(g) {
             document.getElementById('comparativoModal').style.display = 'flex';
         }
 function refrescarDatosGenerales() {
+            recalcularValoresOrigen();
             renderizarProveedoresConsolidado();
             calcularPartesBaseAduana();
+            renderizarArticulos();
+            renderizarGastos();
             alert('✅ Datos Generales actualizados');
         }
 
         function refrescarBaseAduana() {
             calcularPartesBaseAduana();
+            renderizarGastos();
             alert('✅ Base Aduana recalculada');
         }
 
         function refrescarArticulos() {
+            recalcularValoresOrigen();
             renderizarArticulos();
             calcularPartesBaseAduana();
+            renderizarGastos();
             alert('✅ Artículos y participaciones actualizados');
         }
 
