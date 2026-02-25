@@ -80,6 +80,7 @@ router.get('/ultimos-costos', auth, async (req, res) => {
         });
 
         const ultimosCostos = {};
+        const ultimoCosteoId = {};
         const anteriores = {};
 
         for (const costeo of costeos) {
@@ -100,7 +101,8 @@ router.get('/ultimos-costos', auth, async (req, res) => {
                         tc_eur: costeo.tc_eur,
                         tc_gbp: costeo.tc_gbp
                     };
-                } else if (!anteriores[codigo]) {
+                    ultimoCosteoId[codigo] = costeo.id;
+                } else if (!anteriores[codigo] && costeo.id !== ultimoCosteoId[codigo]) {
                     anteriores[codigo] = {
                         costo_neto: art.costo_unitario_neto_ars,
                         costo_con_impuestos: art.costo_unitario_ars,
@@ -156,8 +158,7 @@ router.get('/detalle-articulo/:codigo', auth, async (req, res) => {
                 as: 'articulos',
                 where: { codigo_goodies: codigo }
             }],
-            order: [['fecha_despacho', 'DESC']],
-            limit: 2
+            order: [['fecha_despacho', 'DESC']]
         });
 
         if (costeos.length === 0) {
@@ -165,7 +166,13 @@ router.get('/detalle-articulo/:codigo', auth, async (req, res) => {
         }
 
         const ultimo = costeos[0];
-        const anterior = costeos.length > 1 ? costeos[1] : null;
+        let anterior = null;
+        for (let i = 1; i < costeos.length; i++) {
+            if (costeos[i].id !== ultimo.id) {
+                anterior = costeos[i];
+                break;
+            }
+        }
 
         const resultado = {
             ultimo: {
