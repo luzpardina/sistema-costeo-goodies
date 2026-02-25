@@ -297,8 +297,7 @@ router.put('/:id/actualizar', auth, async (req, res) => {
             for (const art of datos.articulos) {
                 const unidadesTotales = (parseFloat(art.cantidad_cajas) || 0) * (parseFloat(art.unidades_por_caja) || 0);
                 const valorOrigen = parseFloat(art.valor_unitario_origen) || 0;
-                const valorUnitario = parseFloat(art.valor_unitario_intermediaria) || valorOrigen;
-                const importeTotal = unidadesTotales * valorUnitario;
+                const importeTotal = unidadesTotales * valorOrigen;
 
                 await ArticuloCosteo.create({
                     costeo_id: id,
