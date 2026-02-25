@@ -101,6 +101,21 @@ class CalculosService {
                 }
             }
 
+            // === VERIFICACIÓN: suma artículos vs monto factura ===
+            const montoFactura = parseFloat(costeo.monto_factura) || 0;
+            let avisos = [];
+            if (montoFactura > 0) {
+                const diferencia = Math.abs(fobTotalDivisa - montoFactura);
+                const tolerancia = montoFactura * 0.01; // 1% de tolerancia por redondeos
+                if (diferencia > tolerancia) {
+                    avisos.push(
+                        'ATENCIÓN: La suma de artículos (' + fobTotalDivisa.toFixed(2) + ' ' + monedaPrincipal + 
+                        ') NO coincide con el monto factura (' + montoFactura.toFixed(2) + ' ' + monedaPrincipal + 
+                        '). Diferencia: ' + diferencia.toFixed(2) + ' ' + monedaPrincipal
+                    );
+                }
+            }
+
             // === BASE ADUANA ===
             // Componente 1: FOB Factura (suma artículos) - ya calculado como fobTotalPesos
             // Componente 2: Puesta FOB (tab Base Aduana)
@@ -324,6 +339,7 @@ class CalculosService {
                 exito: true,
                 costeo_id: costeoId,
                 es_consolidado: esConsolidado,
+                avisos: avisos,
                 resumen: {
                     fob_total_pesos: fobTotalPesos.toFixed(2),
                     gastos_varios_ars: totalGastosVariosPesos.toFixed(2),

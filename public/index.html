@@ -663,17 +663,21 @@
             document.getElementById('cm_fechaFacturaIntermGroup').style.display = tieneInterm ? 'block' : 'none';
             document.getElementById('cm_fechaVencIntermGroup').style.display = tieneInterm ? 'block' : 'none';
             document.getElementById('intermediariaMargenGroup').style.display = tieneInterm ? 'flex' : 'none';
-            articulosManual = (data.articulos || []).map(a => ({
+            articulosManual = (data.articulos || []).map(a => {
+                const dRaw = parseFloat(a.derechos_porcentaje) || 0;
+                const iRaw = parseFloat(a.impuesto_interno_porcentaje) || 0;
+                return {
                 codigo_goodies: a.codigo_goodies || '',
                 codigo_proveedor: a.codigo_proveedor || '',
                 nombre: a.nombre || '',
                 cajas: a.cantidad_cajas || '',
                 und_caja: a.unidades_por_caja || '',
-                valor_origen: a.valor_unitario_origen || '',
-                valor_intermediaria: a.valor_unitario_origen || '',
-                derechos: ((a.derechos_porcentaje || 0) * 100) || '',
-                imp_interno: ((a.impuesto_interno_porcentaje || 0) * 100) || ''
-            }));
+                valor_fabrica: (a.valor_proveedor_origen != null && parseFloat(a.valor_proveedor_origen) > 0) ? a.valor_proveedor_origen : '',
+                valor_origen: (a.valor_unitario_origen != null && a.valor_unitario_origen !== '') ? a.valor_unitario_origen : '',
+                derechos: dRaw > 0 ? (dRaw <= 1 ? +(dRaw * 100).toFixed(4) : dRaw) : '',
+                imp_interno: iRaw > 0 ? (iRaw <= 1 ? +(iRaw * 100).toFixed(4) : iRaw) : '',
+                };
+            });
             if (articulosManual.length === 0) agregarArticulo();
             renderizarArticulos();
             gastosManual = (data.gastos || []).map(g => ({
@@ -1307,20 +1311,7 @@ async function duplicarCosteo(id) {
                     document.getElementById('cm_seguroMoneda').value = costeo.seguro_moneda || 'USD';
                     document.getElementById('cm_seguroMonto').value = costeo.seguro_monto || '';
                     toggleIntermediaria();
-                    articulosManual = (costeo.articulos || []).map(a => ({
-                        codigo_goodies: a.codigo_goodies || '',
-                        codigo_proveedor: a.codigo_proveedor || '',
-                        nombre: a.nombre || '',
-                        cajas: a.cantidad_cajas || '',
-                        und_caja: a.unidades_por_caja || '',
-                        valor_fabrica: a.valor_proveedor_origen || '',
-                        valor_origen: a.valor_unitario_origen || a.valor_proveedor_origen || '',
-                        valor_intermediaria: a.valor_unitario_origen || '',
-                        derechos: (a.derechos_porcentaje * 100) || '',
-                        imp_interno: (a.impuesto_interno_porcentaje * 100) || '',
-                        aplica_anmat: a.aplica_anmat !== false,
-                        grupo: a.grupo || ''
-                    }));
+                    articulosManual = (costeo.articulos || []).map(mapearArticuloDesdeDB);
                     if (articulosManual.length === 0) agregarArticulo();
                     renderizarArticulos();
                     gastosManual = (costeo.gastos_varios || []).map(g => ({
@@ -1383,20 +1374,7 @@ async function editarCosteo(id) {
                     }));
                     toggleIntermediaria();
                     toggleConsolidado();
-                    articulosManual = (costeo.articulos || []).map(a => ({
-                        codigo_goodies: a.codigo_goodies || '',
-                        codigo_proveedor: a.codigo_proveedor || '',
-                        nombre: a.nombre || '',
-                        cajas: a.cantidad_cajas || '',
-                        und_caja: a.unidades_por_caja || '',
-                        valor_fabrica: a.valor_proveedor_origen || '',
-                        valor_origen: a.valor_unitario_origen || a.valor_proveedor_origen || '',
-                        valor_intermediaria: a.valor_unitario_origen || '',
-                        derechos: (a.derechos_porcentaje * 100) || '',
-                        imp_interno: (a.impuesto_interno_porcentaje * 100) || '',
-                        aplica_anmat: a.aplica_anmat !== false,
-                        grupo: a.grupo || ''
-                    }));
+                    articulosManual = (costeo.articulos || []).map(mapearArticuloDesdeDB);
                     if (articulosManual.length === 0) agregarArticulo();
                     renderizarArticulos();
                     gastosManual = (costeo.gastos_varios || []).map(g => ({
@@ -1525,6 +1503,9 @@ async function ejecutarCalculo(id, metodo) {
             if (data.consolidado) {
                 mensaje += '\n\n📦 Consolidado - Método: ' + data.consolidado.metodo_usado.toUpperCase();
                 mensaje += '\nParticipación aplicada: ' + data.consolidado.participacion_aplicada;
+            }
+            if (data.avisos && data.avisos.length > 0) {
+                mensaje += '\n\n⚠️ AVISOS:\n' + data.avisos.join('\n');
             }
             alert(mensaje); 
             cargarCosteos(); 
@@ -1736,6 +1717,23 @@ const fleteParteGroup = document.getElementById('fleteParteGroup'); if (fletePar
             document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1)).classList.add('active');
 if (tabId === 'baseAduana') calcularPartesBaseAduana();
         }
+function mapearArticuloDesdeDB(a) {
+            const dRaw = parseFloat(a.derechos_porcentaje) || 0;
+            const iRaw = parseFloat(a.impuesto_interno_porcentaje) || 0;
+            return {
+                codigo_goodies: a.codigo_goodies || '',
+                codigo_proveedor: a.codigo_proveedor || '',
+                nombre: a.nombre || '',
+                cajas: a.cantidad_cajas || '',
+                und_caja: a.unidades_por_caja || '',
+                valor_fabrica: (a.valor_proveedor_origen != null && parseFloat(a.valor_proveedor_origen) > 0) ? a.valor_proveedor_origen : '',
+                valor_origen: (a.valor_unitario_origen != null && a.valor_unitario_origen !== '') ? a.valor_unitario_origen : '',
+                derechos: dRaw > 0 ? (dRaw <= 1 ? +(dRaw * 100).toFixed(4) : dRaw) : '',
+                imp_interno: iRaw > 0 ? (iRaw <= 1 ? +(iRaw * 100).toFixed(4) : iRaw) : '',
+                aplica_anmat: a.aplica_anmat !== false,
+                grupo: a.grupo || ''
+            };
+        }
 function agregarArticulo() {
             const idx = articulosManual.length;
             articulosManual.push({ codigo_goodies: '', codigo_proveedor: '', nombre: '', cajas: '', und_caja: '', valor_fabrica: '', valor_origen: '', derechos: '', imp_interno: '', aplica_anmat: true, grupo: '' });
@@ -1878,7 +1876,7 @@ function calcularMontoProrrateado(g) {
                 articulosManual.forEach(a => {
                     const cajas = parseFloat(a.cajas) || 0;
                     const undCaja = parseFloat(a.und_caja) || 0;
-                    const valorOrigen = parseFloat(a.valor_intermediaria) || parseFloat(a.valor_origen) || 0;
+                    const valorOrigen = parseFloat(a.valor_origen) || 0;
                     fobActualDivisa += cajas * undCaja * valorOrigen;
                 });
             }
@@ -2003,7 +2001,6 @@ function descargarTemplateArticulos() {
                                 und_caja: cols[4] || '',
                                 valor_fabrica: cols[5] || '',
                                 valor_origen: valorOrigen,
-                                valor_intermediaria: tieneInterm ? valorInterm : valorOrigen,
                                 derechos: cols[7] || '',
                                 imp_interno: cols[8] || ''
                             });
@@ -2062,7 +2059,6 @@ function descargarTemplateArticulos() {
             if (articulosManual.length === 0 || !articulosManual[0].nombre) { alert('Debe agregar al menos un articulo'); cambiarTab('articulos'); return; }
             const tieneIntermediaria = document.getElementById('cm_tieneIntermediaria').checked;
             const articulos = articulosManual.filter(a => a.nombre).map(a => {
-                const valorInterm = tieneIntermediaria ? (parseFloat(a.valor_intermediaria) || 0) : (parseFloat(a.valor_origen) || 0);
                 return {
                     codigo_goodies: a.codigo_goodies || 'S/COD',
                     codigo_proveedor: a.codigo_proveedor || '',
@@ -2071,7 +2067,6 @@ function descargarTemplateArticulos() {
                     unidades_por_caja: parseFloat(a.und_caja) || 0,
                     valor_fabrica: parseFloat(a.valor_fabrica) || 0,
                     valor_unitario_origen: parseFloat(a.valor_origen) || 0,
-                    valor_unitario_intermediaria: valorInterm,
                     derechos_porcentaje: (parseFloat(a.derechos) || 0) / 100,
                     impuesto_interno_porcentaje: (parseFloat(a.imp_interno) || 0) / 100,
                     aplica_anmat: a.aplica_anmat !== false,
