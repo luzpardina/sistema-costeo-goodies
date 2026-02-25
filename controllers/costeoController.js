@@ -563,7 +563,8 @@ fob_parte: datos.fob_parte || 0,
         // Crear artículos
         for (const art of datos.articulos) {
             const unidadesTotales = (parseFloat(art.cantidad_cajas) || 0) * (parseFloat(art.unidades_por_caja) || 0);
-            const valorUnitario = parseFloat(art.valor_unitario_intermediaria) || parseFloat(art.valor_unitario_origen) || 0;
+            const valorOrigen = parseFloat(art.valor_unitario_origen) || 0;
+            const valorUnitario = parseFloat(art.valor_unitario_intermediaria) || valorOrigen;
             const importeTotal = unidadesTotales * valorUnitario;
             
             await ArticuloCosteo.create({
@@ -575,9 +576,9 @@ fob_parte: datos.fob_parte || 0,
                 unidades_por_caja: parseFloat(art.unidades_por_caja) || 0,
                 unidades_totales: unidadesTotales,
                 moneda_origen: datos.moneda_principal || 'USD',
-                valor_unitario_origen: valorUnitario,
+                valor_unitario_origen: valorOrigen,
                 importe_total_origen: importeTotal,
-                valor_proveedor_origen: parseFloat(art.valor_fabrica) || parseFloat(art.valor_unitario_origen) || 0,
+                valor_proveedor_origen: art.valor_fabrica ? parseFloat(art.valor_fabrica) : 0,
                 derechos_porcentaje: parseFloat(art.derechos_porcentaje) || 0,
                 impuesto_interno_porcentaje: parseFloat(art.impuesto_interno_porcentaje) || 0,
                 aplica_anmat: art.aplica_anmat !== false,
