@@ -305,7 +305,8 @@ router.put('/:id/actualizar', auth, async (req, res) => {
             seguro_parte: datos.seguro_parte || 0,
             es_consolidado: datos.es_consolidado || false,
             volumen_m3: datos.volumen_m3 || null,
-            peso_kg: datos.peso_kg || null
+            peso_kg: datos.peso_kg || null,
+            metodo_prorrateo: datos.metodo_prorrateo || null
         });
 
         await ConsolidadoProveedor.destroy({ where: { costeo_id: id } });
@@ -464,6 +465,7 @@ router.post('/:id/duplicar', auth, async (req, res) => {
             es_consolidado: costeoOriginal.es_consolidado,
             volumen_m3: costeoOriginal.volumen_m3,
             peso_kg: costeoOriginal.peso_kg,
+            metodo_prorrateo: costeoOriginal.metodo_prorrateo,
             usuario_id: req.usuario.id,
             empresa_id: costeoOriginal.empresa_id,
             estado: 'borrador'

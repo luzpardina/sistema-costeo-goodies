@@ -43,10 +43,6 @@ async function iniciarServidor() {
             console.log('✅ Columna monto_prorrateado verificada');
         } catch (e) { console.log('Columna monto_prorrateado ya existe'); }
 
-        try {
-            await sequelize.query("UPDATE gastos_varios SET metodo_prorrateo = 'por_fob' WHERE metodo_prorrateo = 'no_prorratear' OR metodo_prorrateo IS NULL;");
-        } catch (e) { }
-
         await sequelize.sync({ alter: true });
         console.log('✅ Modelos sincronizados con la base de datos');
 

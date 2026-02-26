@@ -620,6 +620,7 @@ fob_parte: datos.fob_parte || 0,
                         recargo: recargo,
                         grupo: g.grupo || '',
                         prorratear_consolidado: g.prorratear_consolidado || false,
+                        metodo_prorrateo: g.metodo_prorrateo || 'por_fob',
                         monto_ars: montoARS,
                         observaciones: g.observaciones || ''
                     });
