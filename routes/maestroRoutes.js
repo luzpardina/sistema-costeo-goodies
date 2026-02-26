@@ -183,4 +183,52 @@ router.get('/stats', auth, async (req, res) => {
     }
 });
 
+// Obtener marcas por proveedor
+router.get('/marcas', auth, async (req, res) => {
+    try {
+        const { proveedor } = req.query;
+        const where = { activo: true, marca: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } };
+        if (proveedor) {
+            where.proveedor = { [Op.iLike]: `%${proveedor}%` };
+        }
+
+        const marcas = await ArticuloMaestro.findAll({
+            attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col('marca')), 'marca']],
+            where,
+            order: [['marca', 'ASC']],
+            raw: true
+        });
+
+        res.json(marcas.map(m => m.marca).filter(m => m));
+    } catch (error) {
+        console.error('Error al obtener marcas:', error);
+        res.status(500).json({ error: 'Error al obtener marcas' });
+    }
+});
+
+// Obtener artículos por marca
+router.get('/por-marca', auth, async (req, res) => {
+    try {
+        const { marca, proveedor } = req.query;
+        if (!marca) {
+            return res.json([]);
+        }
+
+        const where = { activo: true, marca: { [Op.iLike]: `%${marca}%` } };
+        if (proveedor) {
+            where.proveedor = { [Op.iLike]: `%${proveedor}%` };
+        }
+
+        const articulos = await ArticuloMaestro.findAll({
+            where,
+            order: [['codigo', 'ASC']]
+        });
+
+        res.json(articulos);
+    } catch (error) {
+        console.error('Error al buscar por marca:', error);
+        res.status(500).json({ error: 'Error al buscar' });
+    }
+});
+
 module.exports = router;

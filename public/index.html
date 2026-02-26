@@ -415,7 +415,7 @@
                 <h4>Datos del Costeo</h4>
                 <div class="form-row">
                     <div class="form-group"><label>Nombre del Costeo *</label><input type="text" id="cm_nombre" placeholder="Ej: BACKUS 1-25"></div>
-                    <div class="form-group"><label>Proveedor de Origen *</label><input type="text" id="cm_proveedor" placeholder="Ej: STABZ"></div>
+                    <div class="form-group"><label>Proveedor de Origen *</label><input type="text" id="cm_proveedor" list="listaProveedoresMaestro" placeholder="Seleccione o escriba proveedor" onchange="cargarMarcasDelProveedor()"><datalist id="listaProveedoresMaestro"></datalist></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -517,6 +517,8 @@
                         <input type="file" accept=".xlsx,.xls,.txt,.csv" onchange="importarArticulosExcel(this)" style="display:none;">
                     </label>
                     <button class="btn btn-success" onclick="cargarArticulosDelProveedor()" title="Carga todos los artículos del proveedor desde el catálogo maestro">📦 Cargar artículos del proveedor</button>
+                    <select id="selectMarcaMaestro" style="padding:8px;border-radius:5px;background:#2a2a3e;color:#fff;border:1px solid #444;"><option value="">Filtrar por marca...</option></select>
+                    <button class="btn btn-info" onclick="cargarArticulosPorMarca()" style="background:#2196F3;" title="Carga artículos filtrados por marca">📦 Cargar por marca</button>
                 </div>
                 <div id="maestroAlertas" style="display:none; margin-bottom:10px;"></div>
                 <div class="table-container" style="max-height: 400px; overflow-y: auto; overflow-x: auto;">
@@ -2173,8 +2175,46 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 });
                 const data = await res.json();
                 document.getElementById('totalMaestro').textContent = data.total || 0;
+                cargarProveedoresMaestro();
             } catch (e) {
                 document.getElementById('totalMaestro').textContent = '0';
+            }
+        }
+
+        async function cargarProveedoresMaestro() {
+            try {
+                const res = await fetch(`${window.location.origin}/api/maestro/proveedores`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const proveedores = await res.json();
+                const datalist = document.getElementById('listaProveedoresMaestro');
+                if (datalist) {
+                    datalist.innerHTML = proveedores.map(p => '<option value="' + p + '">').join('');
+                }
+            } catch (e) {
+                console.error('Error cargando proveedores maestro:', e);
+            }
+        }
+
+        async function cargarMarcasDelProveedor() {
+            const proveedor = document.getElementById('cm_proveedor').value;
+            const select = document.getElementById('selectMarcaMaestro');
+            if (!select) return;
+
+            select.innerHTML = '<option value="">Filtrar por marca...</option>';
+
+            if (!proveedor) return;
+
+            try {
+                const res = await fetch(`${window.location.origin}/api/maestro/marcas?proveedor=${encodeURIComponent(proveedor)}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const marcas = await res.json();
+                for (const m of marcas) {
+                    select.innerHTML += '<option value="' + m + '">' + m + '</option>';
+                }
+            } catch (e) {
+                console.error('Error cargando marcas:', e);
             }
         }
 
@@ -2259,34 +2299,69 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                     return;
                 }
 
-                const existentes = articulosManual.map(a => (a.codigo_goodies || '').toUpperCase());
-                let agregados = 0;
-
-                for (const art of articulos) {
-                    if (!existentes.includes(art.codigo.toUpperCase())) {
-                        articulosManual.push({
-                            codigo_goodies: art.codigo,
-                            codigo_proveedor: '',
-                            nombre: art.nombre,
-                            cajas: '',
-                            und_caja: '',
-                            valor_fabrica: '',
-                            valor_origen: '',
-                            derechos: '',
-                            imp_interno: '',
-                            aplica_anmat: true,
-                            grupo: ''
-                        });
-                        agregados++;
-                    }
-                }
-
-                renderizarArticulos();
-                alert('Se cargaron ' + agregados + ' artículos nuevos.\n' + (articulos.length - agregados) + ' ya existían.\n\nComplete cajas, valores y derechos para cada uno.');
+                agregarArticulosDesdeMaestro(articulos);
             } catch (e) {
                 alert('Error al cargar artículos del proveedor');
                 console.error(e);
             }
+        }
+
+        async function cargarArticulosPorMarca() {
+            const marca = document.getElementById('selectMarcaMaestro').value;
+            if (!marca) {
+                alert('Seleccione una marca del desplegable');
+                return;
+            }
+
+            const proveedor = document.getElementById('cm_proveedor').value;
+
+            try {
+                const res = await fetch(`${window.location.origin}/api/maestro/por-marca?marca=${encodeURIComponent(marca)}&proveedor=${encodeURIComponent(proveedor)}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const articulos = await res.json();
+
+                if (!articulos || articulos.length === 0) {
+                    alert('No se encontraron artículos de marca "' + marca + '"');
+                    return;
+                }
+
+                if (!confirm('Se encontraron ' + articulos.length + ' artículos de marca "' + marca + '".\n\n¿Cargar todos?')) {
+                    return;
+                }
+
+                agregarArticulosDesdeMaestro(articulos);
+            } catch (e) {
+                alert('Error al cargar artículos por marca');
+                console.error(e);
+            }
+        }
+
+        function agregarArticulosDesdeMaestro(articulos) {
+            const existentes = articulosManual.map(a => (a.codigo_goodies || '').toUpperCase());
+            let agregados = 0;
+
+            for (const art of articulos) {
+                if (!existentes.includes(art.codigo.toUpperCase())) {
+                    articulosManual.push({
+                        codigo_goodies: art.codigo,
+                        codigo_proveedor: '',
+                        nombre: art.nombre,
+                        cajas: '',
+                        und_caja: '',
+                        valor_fabrica: '',
+                        valor_origen: '',
+                        derechos: '',
+                        imp_interno: '',
+                        aplica_anmat: true,
+                        grupo: ''
+                    });
+                    agregados++;
+                }
+            }
+
+            renderizarArticulos();
+            alert('Se cargaron ' + agregados + ' artículos nuevos.\n' + (articulos.length - agregados) + ' ya existían.\n\nComplete cajas, valores y derechos para cada uno.');
         }
 
         async function validarArticulosContraMaestro() {
