@@ -7,6 +7,7 @@ const GastosVarios = require('./GastosVarios');
 const Revaluacion = require('./Revaluacion');
 const RevaluacionArticulo = require('./RevaluacionArticulo');
 const ConsolidadoProveedor = require('./ConsolidadoProveedor');
+const ArticuloMaestro = require('./ArticuloMaestro');
 
 // Relaciones Usuario - Empresa
 Empresa.hasMany(Usuario, {
@@ -104,5 +105,6 @@ module.exports = {
     GastosVarios,
     Revaluacion,
     RevaluacionArticulo,
-    ConsolidadoProveedor
+    ConsolidadoProveedor,
+    ArticuloMaestro
 };
