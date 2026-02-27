@@ -185,6 +185,7 @@ class ExportarService {
             { header: '% Recargo', key: 'recargo', width: 12 },
             { header: 'Grupo', key: 'grupo', width: 12 },
             { header: 'Monto ARS', key: 'monto_ars', width: 18 },
+            { header: 'No Contable', key: 'no_contable', width: 12 },
             { header: 'Observaciones', key: 'observaciones', width: 30 }
         ];
 
@@ -198,6 +199,7 @@ class ExportarService {
                 recargo: parseFloat(gasto.recargo) || 0,
                 grupo: gasto.grupo || '',
                 monto_ars: parseFloat(gasto.monto_ars) || 0,
+                no_contable: gasto.no_contable ? 'SI' : '',
                 observaciones: gasto.observaciones || ''
             });
         }
