@@ -2378,12 +2378,12 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                     }
                     // Derechos
                     if ((!articulosManual[idx].derechos || articulosManual[idx].derechos === '') && exacto.derechos_porcentaje != null) {
-                        articulosManual[idx].derechos = exacto.derechos_porcentaje;
+                        articulosManual[idx].derechos = +(parseFloat(exacto.derechos_porcentaje) * 100).toFixed(4);
                         cambios.push('derechos ' + (exacto.derechos_porcentaje * 100).toFixed(1) + '%');
                     }
                     // Imp. Interno
                     if ((!articulosManual[idx].imp_interno || articulosManual[idx].imp_interno === '') && exacto.imp_interno_porcentaje != null) {
-                        articulosManual[idx].imp_interno = exacto.imp_interno_porcentaje;
+                        articulosManual[idx].imp_interno = +(parseFloat(exacto.imp_interno_porcentaje) * 100).toFixed(4);
                         cambios.push('imp.int. ' + (exacto.imp_interno_porcentaje * 100).toFixed(1) + '%');
                     }
                     // Und/Caja
@@ -2445,11 +2445,11 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                             cambiosArt.push('nombre');
                         }
                         if ((!art.derechos || art.derechos === '') && cat.derechos_porcentaje != null) {
-                            articulosManual[i].derechos = cat.derechos_porcentaje;
+                            articulosManual[i].derechos = +(parseFloat(cat.derechos_porcentaje) * 100).toFixed(4);
                             cambiosArt.push('der ' + (cat.derechos_porcentaje * 100).toFixed(1) + '%');
                         }
                         if ((!art.imp_interno || art.imp_interno === '') && cat.imp_interno_porcentaje != null) {
-                            articulosManual[i].imp_interno = cat.imp_interno_porcentaje;
+                            articulosManual[i].imp_interno = +(parseFloat(cat.imp_interno_porcentaje) * 100).toFixed(4);
                             cambiosArt.push('imp.int ' + (cat.imp_interno_porcentaje * 100).toFixed(1) + '%');
                         }
                         if ((!art.codigo_proveedor || art.codigo_proveedor === '') && cat.codigo_elaborador) {
