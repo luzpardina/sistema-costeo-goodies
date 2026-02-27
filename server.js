@@ -9,6 +9,10 @@ const revaluacionRoutes = require('./routes/revaluacionRoutes');
 const maestroRoutes = require('./routes/maestroRoutes');
 const catalogoRoutes = require('./routes/catalogoRoutes');
 
+// === NUEVAS RUTAS ===
+const comercialRoutes = require('./routes/comercialRoutes');
+const contableRoutes = require('./routes/contableRoutes');
+
 const app = express();
 
 app.use(cors());
@@ -21,6 +25,10 @@ app.use('/api/costeos', costeoRoutes);
 app.use('/api/revaluaciones', revaluacionRoutes);
 app.use('/api/maestro', maestroRoutes);
 app.use('/api/catalogo', catalogoRoutes);
+
+// === NUEVAS RUTAS ===
+app.use('/api/comercial', comercialRoutes);
+app.use('/api/contable', contableRoutes);
 
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/public/index.html');
