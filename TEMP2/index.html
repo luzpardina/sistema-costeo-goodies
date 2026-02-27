@@ -1070,9 +1070,10 @@ async function verDetalleArticulo(codigo) {
                 if (ultimo.gastos && ultimo.gastos.length > 0) {
                     html += '<a href="#" onclick="document.getElementById(\'gastosUltimo\').style.display = document.getElementById(\'gastosUltimo\').style.display === \'none\' ? \'block\' : \'none\'; return false;" style="color:#4CAF50;font-size:13px;">▶ Ver detalle gastos (' + ultimo.gastos.length + ')</a>';
                     html += '<div id="gastosUltimo" style="display:none;margin-top:8px;font-size:12px;background:#16162a;padding:10px;border-radius:5px;max-height:200px;overflow-y:auto;">';
-                    html += '<table style="width:100%;font-size:12px;"><thead><tr><th style="text-align:left;padding:2px 5px;">Gasto</th><th style="text-align:right;padding:2px 5px;">Monto ARS</th></tr></thead><tbody>';
+                    html += '<table style="width:100%;font-size:12px;"><thead><tr><th style="text-align:left;padding:2px 5px;">Gasto</th><th style="text-align:right;padding:2px 5px;">Divisa</th><th style="text-align:right;padding:2px 5px;">Monto ARS</th></tr></thead><tbody>';
                     ultimo.gastos.forEach(g => {
-                        html += '<tr><td style="padding:2px 5px;">' + g.descripcion + '</td><td style="text-align:right;padding:2px 5px;">' + fmtARS(g.monto_ars) + '</td></tr>';
+                        const divisa = (g.moneda && g.monto_orig && g.moneda !== 'ARS') ? g.moneda + ' ' + parseFloat(g.monto_orig).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-';
+                        html += '<tr><td style="padding:2px 5px;">' + g.descripcion + '</td><td style="text-align:right;padding:2px 5px;color:#aaa;">' + divisa + '</td><td style="text-align:right;padding:2px 5px;">' + fmtARS(g.monto_ars) + '</td></tr>';
                     });
                     html += '</tbody></table></div>';
                 }
@@ -1103,9 +1104,10 @@ async function verDetalleArticulo(codigo) {
                     if (anterior.gastos && anterior.gastos.length > 0) {
                         html += '<a href="#" onclick="document.getElementById(\'gastosAnterior\').style.display = document.getElementById(\'gastosAnterior\').style.display === \'none\' ? \'block\' : \'none\'; return false;" style="color:#ff9800;font-size:13px;">▶ Ver detalle gastos (' + anterior.gastos.length + ')</a>';
                         html += '<div id="gastosAnterior" style="display:none;margin-top:8px;font-size:12px;background:#16162a;padding:10px;border-radius:5px;max-height:200px;overflow-y:auto;">';
-                        html += '<table style="width:100%;font-size:12px;"><thead><tr><th style="text-align:left;padding:2px 5px;">Gasto</th><th style="text-align:right;padding:2px 5px;">Monto ARS</th></tr></thead><tbody>';
+                        html += '<table style="width:100%;font-size:12px;"><thead><tr><th style="text-align:left;padding:2px 5px;">Gasto</th><th style="text-align:right;padding:2px 5px;">Divisa</th><th style="text-align:right;padding:2px 5px;">Monto ARS</th></tr></thead><tbody>';
                         anterior.gastos.forEach(g => {
-                            html += '<tr><td style="padding:2px 5px;">' + g.descripcion + '</td><td style="text-align:right;padding:2px 5px;">' + fmtARS(g.monto_ars) + '</td></tr>';
+                            const divisa = (g.moneda && g.monto_orig && g.moneda !== 'ARS') ? g.moneda + ' ' + parseFloat(g.monto_orig).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-';
+                            html += '<tr><td style="padding:2px 5px;">' + g.descripcion + '</td><td style="text-align:right;padding:2px 5px;color:#aaa;">' + divisa + '</td><td style="text-align:right;padding:2px 5px;">' + fmtARS(g.monto_ars) + '</td></tr>';
                         });
                         html += '</tbody></table></div>';
                     }
@@ -1155,26 +1157,26 @@ async function verDetalleArticulo(codigo) {
                         const desc = gU ? gU.desc : gA.desc;
                         let varPct = '';
                         let varColor = '#fff';
-                        if (mA > 0 && mU > 0) {
-                            const pct = ((mU - mA) / mA * 100).toFixed(2);
+                        if (mA !== 0 && mU !== 0) {
+                            const pct = ((mU - mA) / Math.abs(mA) * 100).toFixed(2);
                             varColor = pct > 0 ? '#f44336' : pct < 0 ? '#4CAF50' : '#fff';
                             varPct = (pct > 0 ? '+' : '') + pct + '%';
-                        } else if (mU > 0 && mA === 0) {
+                        } else if (mU !== 0 && mA === 0) {
                             varPct = 'NUEVO'; varColor = '#ff9800';
-                        } else if (mU === 0 && mA > 0) {
+                        } else if (mU === 0 && mA !== 0) {
                             varPct = 'ELIMINADO'; varColor = '#888';
                         }
                         html += '<tr style="border-bottom:1px solid #333;"><td style="padding:4px 5px;">' + desc + '</td>';
-                        html += '<td style="text-align:right;padding:4px 5px;">' + (mU > 0 ? fmtARS(mU) : '-') + '</td>';
-                        html += '<td style="text-align:right;padding:4px 5px;">' + (mA > 0 ? fmtARS(mA) : '-') + '</td>';
+                        html += '<td style="text-align:right;padding:4px 5px;">' + (mU !== 0 ? fmtARS(mU) : '-') + '</td>';
+                        html += '<td style="text-align:right;padding:4px 5px;">' + (mA !== 0 ? fmtARS(mA) : '-') + '</td>';
                         html += '<td style="text-align:right;padding:4px 5px;color:' + varColor + ';font-weight:bold;">' + varPct + '</td></tr>';
                     });
                     
                     // Fila total
                     let varTotal = '';
                     let varTotalColor = '#fff';
-                    if (totalA > 0 && totalU > 0) {
-                        const pctT = ((totalU - totalA) / totalA * 100).toFixed(2);
+                    if (totalA !== 0 && totalU !== 0) {
+                        const pctT = ((totalU - totalA) / Math.abs(totalA) * 100).toFixed(2);
                         varTotalColor = pctT > 0 ? '#f44336' : pctT < 0 ? '#4CAF50' : '#fff';
                         varTotal = (pctT > 0 ? '+' : '') + pctT + '%';
                     }
