@@ -89,6 +89,7 @@
         .tab { padding: 10px 20px; background: transparent; border: none; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
         .tab:hover { color: #fff; }
         .tab.active { color: #4CAF50; border-bottom-color: #4CAF50; }
+        .modulo-tab:hover { background: #1a3a1a !important; color: #fff !important; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .articulos-tabla input, .gastos-tabla input, .gastos-tabla select { width: 100%; padding: 6px; border: 1px solid #444; border-radius: 4px; background: #1e1e2f; color: #fff; font-size: 12px; }
@@ -121,6 +122,15 @@
                     <button class="btn btn-danger" onclick="logout()">Cerrar Sesion</button>
                 </div>
             </header>
+            <!-- NAVEGACIÓN DE MÓDULOS -->
+            <div style="display:flex;gap:0;margin-bottom:20px;background:#0d1117;border-radius:10px;overflow:hidden;border:1px solid #333;">
+                <button class="modulo-tab active" id="btnModComex" onclick="cambiarModulo('comex')" style="flex:1;padding:12px 20px;border:none;background:#4CAF50;color:#fff;font-size:15px;font-weight:bold;cursor:pointer;transition:all 0.3s;">📦 COMEX</button>
+                <button class="modulo-tab" id="btnModComercial" onclick="cambiarModulo('comercial')" style="flex:1;padding:12px 20px;border:none;background:transparent;color:#888;font-size:15px;font-weight:bold;cursor:pointer;transition:all 0.3s;">💰 COMERCIAL</button>
+                <button class="modulo-tab" id="btnModContable" onclick="cambiarModulo('contable')" style="flex:1;padding:12px 20px;border:none;background:transparent;color:#888;font-size:15px;font-weight:bold;cursor:pointer;transition:all 0.3s;">📊 CONTABLE</button>
+                <button class="modulo-tab" id="btnModAdmin" onclick="cambiarModulo('admin')" style="flex:1;padding:12px 20px;border:none;background:transparent;color:#888;font-size:15px;font-weight:bold;cursor:pointer;transition:all 0.3s;">⚙️ ADMIN</button>
+            </div>
+            <!-- MÓDULO COMEX (contenido existente) -->
+            <div id="modComex">
             <div class="cards">
                 <div class="card">
                     <h3>Importar / Cargar Legajo</h3>
@@ -293,6 +303,188 @@
                         </thead>
                         <tbody id="historialRevaluacionesBody"></tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div><!-- FIN MÓDULO COMEX -->
+
+    <!-- =============================================
+         MÓDULO COMERCIAL
+         ============================================= -->
+    <div id="modComercial" style="display:none;">
+        <div class="cards">
+            <!-- LISTAS DE PRECIOS -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <h3>💰 Listas de Precios</h3>
+                <div style="display:flex;gap:10px;margin-bottom:15px;">
+                    <button class="btn btn-primary" onclick="abrirNuevaLista()">+ Nueva Lista</button>
+                    <button class="btn btn-secondary" onclick="cargarListasPorDefecto()">Cargar Listas por Defecto</button>
+                </div>
+                <div class="table-container" style="max-height:400px;overflow-y:auto;">
+                    <table>
+                        <thead><tr>
+                            <th>Nombre</th><th>% Logístico</th><th>% IIBB</th><th>% Financiero</th><th>% Comisión</th><th>% Margen Cliente</th><th>Activa</th><th>Acciones</th>
+                        </tr></thead>
+                        <tbody id="listasBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ACUERDOS COMERCIALES -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <h3>🤝 Acuerdos Comerciales (% Acuerdo por Lista + Categoría)</h3>
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                    <select id="acuerdoListaSelect" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                        <option value="">Seleccionar Lista...</option>
+                    </select>
+                    <select id="acuerdoCategoriaSelect" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                        <option value="Frescos">Frescos</option>
+                        <option value="Almacén">Almacén</option>
+                        <option value="Bebidas">Bebidas</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                    <input type="number" id="acuerdoPct" placeholder="% Acuerdo" step="0.1" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;width:120px;">
+                    <button class="btn btn-primary" onclick="agregarAcuerdo()">+ Agregar</button>
+                </div>
+                <div class="table-container" style="max-height:300px;overflow-y:auto;">
+                    <table>
+                        <thead><tr><th>Lista</th><th>Categoría</th><th>% Acuerdo</th><th>Acciones</th></tr></thead>
+                        <tbody id="acuerdosBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- CÁLCULO DE MÁRGENES -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <h3>📊 Cálculo de Márgenes (Multi-Lista)</h3>
+                <p style="color:#aaa;margin-bottom:15px;">Ingresá el PVP de cada artículo y calculá el margen para TODAS las listas simultáneamente.</p>
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                    <button class="btn btn-secondary" onclick="cargarArticulosParaMargen()">📦 Cargar Artículos del Catálogo</button>
+                    <button class="btn btn-primary" onclick="calcularMargenes()">📊 Calcular Márgenes</button>
+                    <button class="btn btn-success" onclick="exportarMargenes()">📥 Exportar Excel</button>
+                </div>
+                <div class="table-container" style="max-height:300px;overflow-y:auto;">
+                    <table>
+                        <thead><tr>
+                            <th>Código</th><th>Nombre</th><th>Costo Neto</th><th>PVP</th>
+                        </tr></thead>
+                        <tbody id="articulosPvpBody"></tbody>
+                    </table>
+                </div>
+                <div id="resultadoMargenes" style="margin-top:20px;"></div>
+            </div>
+
+            <!-- SIMULADOR DE DESCUENTO -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <h3>🎯 Simulador de Descuento (Break-Even)</h3>
+                <p style="color:#aaa;margin-bottom:15px;">Calculá el descuento máximo que podés ofrecer según diferentes aumentos de volumen.</p>
+                <div class="form-row" style="margin-bottom:15px;">
+                    <div class="form-group">
+                        <label>Artículo</label>
+                        <select id="simArticulo" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;width:100%;"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Lista</label>
+                        <select id="simLista" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;width:100%;"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Precio Actual</label>
+                        <input type="number" id="simPrecio" step="0.01" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;width:100%;">
+                    </div>
+                    <div class="form-group">
+                        <label>Cantidad Actual</label>
+                        <input type="number" id="simCantidad" step="1" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;width:100%;">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="simularDescuento()">🎯 Simular</button>
+                <div id="resultadoSimulador" style="margin-top:20px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =============================================
+         MÓDULO CONTABLE
+         ============================================= -->
+    <div id="modContable" style="display:none;">
+        <div class="cards">
+            <!-- NUEVA VALUACIÓN -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <h3>📊 Nueva Valuación de Inventario</h3>
+                <p style="color:#aaa;margin-bottom:15px;">Comparar costos contables (Centum) vs costos revaluados del sistema.</p>
+                <div class="form-row" style="margin-bottom:15px;">
+                    <div class="form-group">
+                        <label>Nombre de la Valuación *</label>
+                        <input type="text" id="valNombre" placeholder="Ej: Valuación Febrero 2026" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;width:100%;">
+                    </div>
+                    <div class="form-group">
+                        <label>Base de Comparación</label>
+                        <select id="valRevaluacion" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;width:100%;">
+                            <option value="">Último costo original</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="color:#aaa;font-size:13px;">Pegar datos de Centum (Código | Descripción | Cantidad | Costo Unit | Costo Total)</label>
+                    <textarea id="valDatosCentum" rows="8" placeholder="Pegar datos del Excel de Centum aquí (separados por tab)..." style="width:100%;background:#1e1e2f;border:1px solid #444;color:#fff;padding:10px;border-radius:5px;font-family:monospace;font-size:12px;margin-top:5px;"></textarea>
+                </div>
+                <div style="display:flex;gap:10px;">
+                    <button class="btn btn-primary" onclick="crearValuacion()">📊 Generar Valuación</button>
+                    <button class="btn btn-secondary" onclick="cargarRevaluacionesDisponibles()">🔄 Actualizar Revaluaciones</button>
+                </div>
+            </div>
+
+            <!-- RESULTADO VALUACIÓN -->
+            <div class="card" style="grid-column: 1 / -1; display:none;" id="resultadoValuacionCard">
+                <h3>📋 Resultado de Valuación</h3>
+                <div id="resumenValuacion" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:20px;"></div>
+                <div class="table-container" style="max-height:400px;overflow-y:auto;">
+                    <table>
+                        <thead><tr>
+                            <th>Código</th><th>Descripción</th><th>Cantidad</th>
+                            <th>Costo Unit Contable</th><th>Costo Total Contable</th>
+                            <th>Costo Unit Revaluado</th><th>Costo Total Revaluado</th>
+                            <th>Dif Unit</th><th>Dif Total</th><th>Dif %</th>
+                        </tr></thead>
+                        <tbody id="valuacionDetalleBody"></tbody>
+                    </table>
+                </div>
+                <button class="btn btn-success" onclick="exportarValuacion()" style="margin-top:15px;">📥 Exportar Excel</button>
+            </div>
+
+            <!-- HISTORIAL VALUACIONES -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <h3>📚 Historial de Valuaciones</h3>
+                <button class="btn btn-secondary" onclick="cargarHistorialValuaciones()" style="margin-bottom:15px;">🔄 Actualizar</button>
+                <div class="table-container" style="max-height:400px;overflow-y:auto;">
+                    <table>
+                        <thead><tr>
+                            <th>Fecha</th><th>Nombre</th><th>Total Contable</th><th>Total Revaluado</th><th>Diferencia</th><th>Artículos</th><th>Acciones</th>
+                        </tr></thead>
+                        <tbody id="historialValuacionesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =============================================
+         MÓDULO ADMIN
+         ============================================= -->
+    <div id="modAdmin" style="display:none;">
+        <div class="cards">
+            <div class="card">
+                <h3>👥 Usuarios del Sistema</h3>
+                <p style="color:#aaa;margin-bottom:10px;">Roles: admin (acceso total), comex, comercial, contable, visualizador</p>
+                <div id="listaUsuarios" style="color:#ccc;">Próximamente: gestión de usuarios</div>
+            </div>
+            <div class="card">
+                <h3>⚙️ Configuración</h3>
+                <div style="padding:15px;background:#2a2a3e;border-radius:8px;">
+                    <p style="color:#aaa;">Sistema de Costeo - GOODIES S.A.</p>
+                    <p style="color:#aaa;margin-top:10px;">Versión: 2.0 (con módulos COMEX + COMERCIAL + CONTABLE)</p>
+                    <p style="color:#aaa;margin-top:10px;">Hosting: Railway</p>
+                    <p style="color:#aaa;margin-top:10px;">Base de datos: PostgreSQL</p>
                 </div>
             </div>
         </div>
@@ -3168,6 +3360,426 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 console.error('Error validando:', e);
             }
         }
+
+    // =============================================
+    // NAVEGACIÓN DE MÓDULOS
+    // =============================================
+    function cambiarModulo(modulo) {
+        ['comex','comercial','contable','admin'].forEach(m => {
+            const div = document.getElementById('mod' + m.charAt(0).toUpperCase() + m.slice(1));
+            const btn = document.getElementById('btnMod' + m.charAt(0).toUpperCase() + m.slice(1));
+            if (div) div.style.display = m === modulo ? 'block' : 'none';
+            if (btn) {
+                btn.style.background = m === modulo ? '#4CAF50' : 'transparent';
+                btn.style.color = m === modulo ? '#fff' : '#888';
+            }
+        });
+        // Cargar datos del módulo al entrar
+        if (modulo === 'comercial') { cargarListas(); cargarAcuerdos(); }
+        if (modulo === 'contable') { cargarHistorialValuaciones(); cargarRevaluacionesDisponibles(); }
+    }
+
+    // =============================================
+    // MÓDULO COMERCIAL - LISTAS DE PRECIOS
+    // =============================================
+    let listasPrecios = [];
+    let acuerdosComerciales = [];
+
+    async function cargarListas() {
+        try {
+            const resp = await fetch(API_URL + '/api/comercial/listas', { headers: { 'Authorization': 'Bearer ' + token } });
+            listasPrecios = await resp.json();
+            renderListas();
+            actualizarSelectsListas();
+        } catch(e) { console.error('Error cargando listas:', e); }
+    }
+
+    function renderListas() {
+        const body = document.getElementById('listasBody');
+        if (!body) return;
+        body.innerHTML = listasPrecios.map(l => `<tr>
+            <td>${l.nombre}</td>
+            <td>${l.pct_logistico}%</td><td>${l.pct_iibb}%</td><td>${l.pct_financiero}%</td>
+            <td>${l.pct_comision}%</td><td>${l.pct_margen_cliente}%</td>
+            <td style="color:${l.activa ? '#4CAF50' : '#f44336'}">${l.activa ? 'Sí' : 'No'}</td>
+            <td class="actions">
+                <button class="btn btn-sm btn-secondary" onclick="editarLista('${l.id}')">✏️</button>
+                <button class="btn btn-sm btn-danger" onclick="eliminarLista('${l.id}')">🗑️</button>
+            </td>
+        </tr>`).join('');
+    }
+
+    function actualizarSelectsListas() {
+        const selects = ['acuerdoListaSelect','simLista'];
+        selects.forEach(id => {
+            const sel = document.getElementById(id);
+            if (!sel) return;
+            const val = sel.value;
+            sel.innerHTML = '<option value="">Seleccionar Lista...</option>' +
+                listasPrecios.filter(l => l.activa).map(l => `<option value="${l.id}">${l.nombre}</option>`).join('');
+            if (val) sel.value = val;
+        });
+    }
+
+    async function cargarListasPorDefecto() {
+        try {
+            const resp = await fetch(API_URL + '/api/comercial/listas/seed', {
+                method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+            });
+            const data = await resp.json();
+            alert('✅ ' + (data.message || 'Listas creadas'));
+            cargarListas();
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    function abrirNuevaLista() {
+        const nombre = prompt('Nombre de la lista:');
+        if (!nombre) return;
+        const logistico = parseFloat(prompt('% Logístico:', '5')) || 0;
+        const iibb = parseFloat(prompt('% IIBB:', '3.5')) || 0;
+        const financiero = parseFloat(prompt('% Financiero:', '3')) || 0;
+        const comision = parseFloat(prompt('% Comisión:', '0')) || 0;
+        const margen = parseFloat(prompt('% Margen Cliente:', '30')) || 0;
+
+        fetch(API_URL + '/api/comercial/listas', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre, pct_logistico: logistico, pct_iibb: iibb, pct_financiero: financiero, pct_comision: comision, pct_margen_cliente: margen })
+        }).then(() => cargarListas()).catch(e => alert('Error: ' + e.message));
+    }
+
+    async function editarLista(id) {
+        const lista = listasPrecios.find(l => l.id === id);
+        if (!lista) return;
+        const nombre = prompt('Nombre:', lista.nombre);
+        if (!nombre) return;
+        const logistico = parseFloat(prompt('% Logístico:', lista.pct_logistico)) || 0;
+        const iibb = parseFloat(prompt('% IIBB:', lista.pct_iibb)) || 0;
+        const financiero = parseFloat(prompt('% Financiero:', lista.pct_financiero)) || 0;
+        const comision = parseFloat(prompt('% Comisión:', lista.pct_comision)) || 0;
+        const margen = parseFloat(prompt('% Margen Cliente:', lista.pct_margen_cliente)) || 0;
+        const activa = confirm('¿Lista activa?');
+
+        await fetch(API_URL + '/api/comercial/listas/' + id, {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre, pct_logistico: logistico, pct_iibb: iibb, pct_financiero: financiero, pct_comision: comision, pct_margen_cliente: margen, activa })
+        });
+        cargarListas();
+    }
+
+    async function eliminarLista(id) {
+        if (!confirm('¿Eliminar esta lista?')) return;
+        await fetch(API_URL + '/api/comercial/listas/' + id, {
+            method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token }
+        });
+        cargarListas();
+    }
+
+    // =============================================
+    // MÓDULO COMERCIAL - ACUERDOS
+    // =============================================
+    async function cargarAcuerdos() {
+        try {
+            const resp = await fetch(API_URL + '/api/comercial/acuerdos', { headers: { 'Authorization': 'Bearer ' + token } });
+            acuerdosComerciales = await resp.json();
+            renderAcuerdos();
+        } catch(e) { console.error('Error cargando acuerdos:', e); }
+    }
+
+    function renderAcuerdos() {
+        const body = document.getElementById('acuerdosBody');
+        if (!body) return;
+        body.innerHTML = acuerdosComerciales.map(a => {
+            const lista = listasPrecios.find(l => l.id === a.lista_id);
+            return `<tr>
+                <td>${lista ? lista.nombre : a.lista_id}</td>
+                <td>${a.categoria}</td>
+                <td>${a.pct_acuerdo}%</td>
+                <td><button class="btn btn-sm btn-danger" onclick="eliminarAcuerdo('${a.id}')">🗑️</button></td>
+            </tr>`;
+        }).join('');
+    }
+
+    async function agregarAcuerdo() {
+        const lista_id = document.getElementById('acuerdoListaSelect').value;
+        const categoria = document.getElementById('acuerdoCategoriaSelect').value;
+        const pct_acuerdo = parseFloat(document.getElementById('acuerdoPct').value) || 0;
+        if (!lista_id) { alert('Seleccioná una lista'); return; }
+        await fetch(API_URL + '/api/comercial/acuerdos', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lista_id, categoria, pct_acuerdo })
+        });
+        cargarAcuerdos();
+    }
+
+    async function eliminarAcuerdo(id) {
+        if (!confirm('¿Eliminar acuerdo?')) return;
+        await fetch(API_URL + '/api/comercial/acuerdos/' + id, {
+            method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token }
+        });
+        cargarAcuerdos();
+    }
+
+    // =============================================
+    // MÓDULO COMERCIAL - CÁLCULO MÁRGENES
+    // =============================================
+    let articulosPvp = [];
+
+    async function cargarArticulosParaMargen() {
+        try {
+            const resp = await fetch(API_URL + '/api/costeos/ultimo-costo', { headers: { 'Authorization': 'Bearer ' + token } });
+            const data = await resp.json();
+            articulosPvp = (data.articulos || data).map(a => ({
+                codigo_goodies: a.codigo_goodies || a.codigo,
+                nombre: a.nombre,
+                costo_neto: parseFloat(a.costo_unitario_neto_ars || a.costo_neto) || 0,
+                pvp: 0
+            }));
+            renderArticulosPvp();
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    function renderArticulosPvp() {
+        const body = document.getElementById('articulosPvpBody');
+        if (!body) return;
+        body.innerHTML = articulosPvp.map((a, i) => `<tr>
+            <td>${a.codigo_goodies}</td><td>${a.nombre}</td>
+            <td>$${a.costo_neto.toFixed(2)}</td>
+            <td><input type="number" step="0.01" value="${a.pvp || ''}" onchange="articulosPvp[${i}].pvp=parseFloat(this.value)||0" style="width:100px;background:#1e1e2f;border:1px solid #444;color:#fff;padding:4px;border-radius:3px;"></td>
+        </tr>`).join('');
+    }
+
+    async function calcularMargenes() {
+        const artConPvp = articulosPvp.filter(a => a.pvp > 0);
+        if (artConPvp.length === 0) { alert('Ingresá al menos un PVP'); return; }
+
+        try {
+            const resp = await fetch(API_URL + '/api/comercial/calcular-margenes', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ articulos_pvp: artConPvp.map(a => ({ codigo_goodies: a.codigo_goodies, pvp: a.pvp })) })
+            });
+            const resultados = await resp.json();
+            renderResultadoMargenes(resultados);
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    function renderResultadoMargenes(resultados) {
+        const div = document.getElementById('resultadoMargenes');
+        if (!div || !resultados.length) return;
+
+        const listas = resultados[0].margenes.map(m => m.lista_nombre);
+        let html = '<div class="table-container" style="overflow-x:auto;"><table><thead><tr><th>Código</th><th>Nombre</th><th>Costo Neto</th><th>PVP</th>';
+        listas.forEach(l => { html += '<th style="text-align:center;">' + l + '</th>'; });
+        html += '</tr></thead><tbody>';
+
+        resultados.forEach(r => {
+            html += '<tr><td>' + r.codigo_goodies + '</td><td>' + r.nombre + '</td><td>$' + r.costo_neto.toFixed(2) + '</td><td>$' + r.pvp.toFixed(2) + '</td>';
+            r.margenes.forEach(m => {
+                const color = m.margen_pct < 10 ? '#f44336' : m.margen_pct < 20 ? '#ff9800' : '#4CAF50';
+                html += '<td style="text-align:center;color:' + color + ';font-weight:bold;">' + m.margen_pct.toFixed(1) + '%<br><span style="font-size:10px;color:#888;">Neto: $' + m.ingreso_neto.toFixed(0) + '</span></td>';
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        div.innerHTML = html;
+    }
+
+    function exportarMargenes() {
+        alert('Función de exportación en desarrollo');
+    }
+
+    // =============================================
+    // MÓDULO COMERCIAL - SIMULADOR DESCUENTO
+    // =============================================
+    async function simularDescuento() {
+        const codigo = document.getElementById('simArticulo').value;
+        const lista_id = document.getElementById('simLista').value;
+        const precio = parseFloat(document.getElementById('simPrecio').value) || 0;
+        const cantidad = parseInt(document.getElementById('simCantidad').value) || 0;
+
+        if (!codigo || !lista_id || !precio || !cantidad) { alert('Completá todos los campos'); return; }
+
+        try {
+            const resp = await fetch(API_URL + '/api/comercial/simular-descuento', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ codigo_goodies: codigo, lista_id, precio_actual: precio, cantidad_actual: cantidad })
+            });
+            const data = await resp.json();
+            renderSimulador(data);
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    function renderSimulador(data) {
+        const div = document.getElementById('resultadoSimulador');
+        if (!div) return;
+
+        let html = '<div style="background:#2a2a3e;padding:15px;border-radius:8px;margin-bottom:15px;">';
+        html += '<p style="color:#4CAF50;font-weight:bold;">' + data.nombre + ' | Lista: ' + data.lista_nombre + '</p>';
+        html += '<p style="color:#aaa;">Costo Neto: $' + data.costo_neto.toFixed(2) + ' | Ingreso Neto Actual: $' + data.ingreso_neto_actual.toFixed(2) + '</p>';
+        html += '<p style="color:#aaa;">Ganancia Unit: $' + data.ganancia_unit_actual.toFixed(2) + ' | Ganancia Total: $' + data.ganancia_total_actual.toFixed(2) + '</p>';
+        html += '</div>';
+
+        html += '<table><thead><tr><th>Aumento Volumen</th><th>Nueva Cantidad</th><th>Precio Mínimo</th><th style="color:#4CAF50;">Descuento Máximo</th><th>Ganancia Total</th></tr></thead><tbody>';
+        data.escenarios.forEach(e => {
+            html += '<tr><td>+' + e.aumento_volumen_pct + '%</td><td>' + e.nueva_cantidad + '</td><td>$' + e.precio_minimo.toFixed(2) + '</td>';
+            html += '<td style="color:#4CAF50;font-weight:bold;font-size:16px;">' + e.descuento_max_pct.toFixed(1) + '%</td>';
+            html += '<td>$' + e.ganancia_total_nueva.toFixed(2) + '</td></tr>';
+        });
+        html += '</tbody></table>';
+
+        div.innerHTML = html;
+    }
+
+    // =============================================
+    // MÓDULO CONTABLE - VALUACIONES
+    // =============================================
+    async function cargarRevaluacionesDisponibles() {
+        try {
+            const resp = await fetch(API_URL + '/api/contable/revaluaciones-disponibles', { headers: { 'Authorization': 'Bearer ' + token } });
+            const revs = await resp.json();
+            const sel = document.getElementById('valRevaluacion');
+            if (!sel) return;
+            sel.innerHTML = '<option value="">Último costo original</option>' +
+                revs.map(r => `<option value="${r.id}">${r.motivo} (${new Date(r.fecha_revaluacion).toLocaleDateString()}) - TC USD: ${r.tc_usd_nuevo}</option>`).join('');
+        } catch(e) { console.error('Error:', e); }
+    }
+
+    async function crearValuacion() {
+        const nombre = document.getElementById('valNombre').value;
+        if (!nombre) { alert('Ingresá un nombre para la valuación'); return; }
+
+        const revaluacion_id = document.getElementById('valRevaluacion').value || null;
+        const texto = document.getElementById('valDatosCentum').value.trim();
+        if (!texto) { alert('Pegá los datos de Centum'); return; }
+
+        const lineas = texto.split('\n').filter(l => l.trim());
+        const articulos_centum = lineas.map(l => {
+            const cols = l.split('\t');
+            if (cols.length < 4) return null;
+            return {
+                codigo_goodies: cols[0].trim(),
+                descripcion: cols[1] ? cols[1].trim() : '',
+                cantidad: parseFloat((cols[2] || '0').replace(',', '.')) || 0,
+                costo_unit_contable: parseFloat((cols[3] || '0').replace(',', '.')) || 0,
+                costo_total_contable: cols[4] ? parseFloat(cols[4].replace(',', '.')) || 0 : 0
+            };
+        }).filter(a => a && a.codigo_goodies);
+
+        if (articulos_centum.length === 0) { alert('No se encontraron artículos válidos. Verificá el formato (separado por tabs).'); return; }
+
+        try {
+            const resp = await fetch(API_URL + '/api/contable/valuaciones', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre, revaluacion_id, articulos_centum })
+            });
+            const data = await resp.json();
+            if (data.error) { alert('Error: ' + data.error); return; }
+            renderResultadoValuacion(data);
+            cargarHistorialValuaciones();
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    function renderResultadoValuacion(data) {
+        document.getElementById('resultadoValuacionCard').style.display = 'block';
+
+        const res = data.resumen || data.valuacion;
+        const resDiv = document.getElementById('resumenValuacion');
+        const totalContable = parseFloat(res.total_contable) || 0;
+        const totalRevaluado = parseFloat(res.total_revaluado) || 0;
+        const diferencia = parseFloat(res.diferencia) || 0;
+        const colorDif = diferencia >= 0 ? '#4CAF50' : '#f44336';
+
+        resDiv.innerHTML = `
+            <div style="padding:15px;background:#2a2a3e;border-radius:8px;"><div style="color:#888;font-size:12px;">Total Contable</div><div style="color:#fff;font-size:20px;font-weight:bold;">$${totalContable.toLocaleString('es-AR', {minimumFractionDigits:2})}</div></div>
+            <div style="padding:15px;background:#2a2a3e;border-radius:8px;"><div style="color:#888;font-size:12px;">Total Revaluado</div><div style="color:#2196F3;font-size:20px;font-weight:bold;">$${totalRevaluado.toLocaleString('es-AR', {minimumFractionDigits:2})}</div></div>
+            <div style="padding:15px;background:#2a2a3e;border-radius:8px;"><div style="color:#888;font-size:12px;">Diferencia (Ajuste)</div><div style="color:${colorDif};font-size:20px;font-weight:bold;">$${diferencia.toLocaleString('es-AR', {minimumFractionDigits:2})}</div></div>
+            <div style="padding:15px;background:#2a2a3e;border-radius:8px;"><div style="color:#888;font-size:12px;">Artículos</div><div style="color:#fff;font-size:16px;">↑ ${res.art_dif_positiva || 0} positiva / ↓ ${res.art_dif_negativa || 0} negativa</div></div>
+        `;
+
+        const body = document.getElementById('valuacionDetalleBody');
+        body.innerHTML = (data.detalle || []).map(d => {
+            const colorPct = d.diferencia_pct > 0 ? '#4CAF50' : d.diferencia_pct < 0 ? '#f44336' : '#888';
+            return `<tr>
+                <td>${d.codigo_goodies}</td><td>${d.descripcion}</td><td>${d.cantidad}</td>
+                <td>$${parseFloat(d.costo_unit_contable).toFixed(2)}</td><td>$${parseFloat(d.costo_total_contable).toFixed(2)}</td>
+                <td>$${parseFloat(d.costo_unit_revaluado).toFixed(2)}</td><td>$${parseFloat(d.costo_total_revaluado).toFixed(2)}</td>
+                <td style="color:${colorPct}">$${parseFloat(d.diferencia_unit).toFixed(2)}</td>
+                <td style="color:${colorPct}">$${parseFloat(d.diferencia_total).toFixed(2)}</td>
+                <td style="color:${colorPct};font-weight:bold;">${parseFloat(d.diferencia_pct).toFixed(1)}%</td>
+            </tr>`;
+        }).join('');
+    }
+
+    async function cargarHistorialValuaciones() {
+        try {
+            const resp = await fetch(API_URL + '/api/contable/valuaciones', { headers: { 'Authorization': 'Bearer ' + token } });
+            const valuaciones = await resp.json();
+            const body = document.getElementById('historialValuacionesBody');
+            if (!body) return;
+            body.innerHTML = valuaciones.map(v => `<tr>
+                <td>${new Date(v.created_at).toLocaleDateString()}</td>
+                <td>${v.nombre}</td>
+                <td>$${parseFloat(v.total_contable).toLocaleString('es-AR', {minimumFractionDigits:2})}</td>
+                <td>$${parseFloat(v.total_revaluado).toLocaleString('es-AR', {minimumFractionDigits:2})}</td>
+                <td style="color:${parseFloat(v.diferencia) >= 0 ? '#4CAF50' : '#f44336'}">$${parseFloat(v.diferencia).toLocaleString('es-AR', {minimumFractionDigits:2})}</td>
+                <td>${v.cantidad_articulos}</td>
+                <td class="actions">
+                    <button class="btn btn-sm btn-secondary" onclick="verValuacion('${v.id}')">👁️</button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarValuacion('${v.id}')">🗑️</button>
+                </td>
+            </tr>`).join('');
+        } catch(e) { console.error('Error:', e); }
+    }
+
+    async function verValuacion(id) {
+        try {
+            const resp = await fetch(API_URL + '/api/contable/valuaciones/' + id, { headers: { 'Authorization': 'Bearer ' + token } });
+            const data = await resp.json();
+            renderResultadoValuacion({ valuacion: data.valuacion, detalle: data.detalle, resumen: data.valuacion });
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function eliminarValuacion(id) {
+        if (!confirm('¿Eliminar esta valuación?')) return;
+        await fetch(API_URL + '/api/contable/valuaciones/' + id, {
+            method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token }
+        });
+        cargarHistorialValuaciones();
+    }
+
+    function exportarValuacion() {
+        alert('Función de exportación en desarrollo');
+    }
+
+    // Cargar artículos en el select del simulador
+    async function cargarArticulosSimulador() {
+        try {
+            const resp = await fetch(API_URL + '/api/costeos/ultimo-costo', { headers: { 'Authorization': 'Bearer ' + token } });
+            const data = await resp.json();
+            const sel = document.getElementById('simArticulo');
+            if (!sel) return;
+            const arts = data.articulos || data;
+            sel.innerHTML = '<option value="">Seleccionar...</option>' +
+                arts.map(a => `<option value="${a.codigo_goodies || a.codigo}">${a.codigo_goodies || a.codigo} - ${a.nombre}</option>`).join('');
+        } catch(e) { console.error(e); }
+    }
+
+    // Override mostrarApp to also load simulator data
+    const _mostrarAppOriginal = mostrarApp;
+    function mostrarApp() {
+        document.getElementById('loginContainer').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'block';
+        document.getElementById('userName').textContent = usuario.nombre;
+        cargarCosteos(); cargarUltimosCostos(); cargarHistorialRevaluaciones(); cargarStatsMaestro();
+        // Pre-cargar datos para módulos nuevos
+        setTimeout(() => { cargarArticulosSimulador(); }, 2000);
+    }
 
     </script>
 <!-- Modal Comparativo Consolidado -->
