@@ -1,6 +1,7 @@
 const XLSX = require('xlsx');
 const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios, ConsolidadoProveedor, CatalogoArticulo } = require('../models');
 const { calcularCosteo } = require('./calculosService');
+const { Op } = require('sequelize');
 
 // Función auxiliar para leer valor de celda
 const getCellValue = (sheet, row, col) => {
@@ -60,7 +61,7 @@ const actualizarCatalogo = async (articulos, moneda, proveedor) => {
             if (!codigo || codigo === 'S/COD' || ['MUESTRAS','MUESTRA','POS','PENDIENTE','BBB'].includes(codigo)) continue;
             if (!art.nombre || art.nombre.trim() === '') continue;
 
-            const existente = await CatalogoArticulo.findOne({ where: { codigo_goodies: codigo } });
+            const existente = await CatalogoArticulo.findOne({ where: { codigo_goodies: { [Op.iLike]: codigo } } });
 
             const valorOrigen = parseFloat(art.valor_unitario_origen) || parseFloat(art.valor_origen) || null;
             const valorFabrica = parseFloat(art.valor_fabrica) || parseFloat(art.valor_proveedor_origen) || null;
@@ -138,6 +139,9 @@ const actualizarCatalogo = async (articulos, moneda, proveedor) => {
     } catch (e) {
         console.error('Error actualizando catálogo:', e.message);
     }
+
+    console.log('CATALOGO RESULT:', JSON.stringify({ diferencias: diferencias.length, nuevos: nuevosAgregados.length, completados: completados.length }));
+    if (diferencias.length > 0) console.log('DIFERENCIAS:', JSON.stringify(diferencias));
 
     return { diferencias, nuevosAgregados, completados };
 };
