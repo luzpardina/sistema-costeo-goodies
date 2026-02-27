@@ -94,6 +94,7 @@
         .articulos-tabla input, .gastos-tabla input, .gastos-tabla select { width: 100%; padding: 6px; border: 1px solid #444; border-radius: 4px; background: #1e1e2f; color: #fff; font-size: 12px; }
         .articulos-tabla input:focus, .gastos-tabla input:focus { border-color: #4CAF50; outline: none; }
     </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="login-container" id="loginContainer">
@@ -237,8 +238,9 @@
                         <datalist id="listaProveedoresArticulo"></datalist>
                     </div>
                     <button class="btn btn-secondary" onclick="cargarUltimosCostos()">Actualizar</button>
-                    <button class="btn btn-success" onclick="exportarUltimosCostos()">Exportar Excel</button>
-                    <button class="btn btn-warning" onclick="exportarSeleccionados()" style="display:none;" id="btnExportarSeleccion">Exportar Seleccionados (<span id="countSeleccion">0</span>)</button>
+                    <button class="btn btn-success" onclick="exportarUltimosCostosXLSX()">📥 Exportar Excel</button>
+                    <button class="btn btn-warning" onclick="exportarSeleccionadosXLSX()" style="display:none;" id="btnExportarSeleccion">Exportar Seleccionados (<span id="countSeleccion">0</span>)</button>
+                    <button class="btn" onclick="limpiarFiltrosArticulos()" style="background:#666;">✕ Limpiar Filtros</button>
                 </div>
                 <div class="loading" id="articulosLoading"><div class="spinner"></div><p>Cargando...</p></div>
                 <div class="table-container" style="max-height: 500px; overflow-y: auto;">
@@ -1122,15 +1124,35 @@ async function verDetalleArticulo(codigo) {
                     html += '<table style="width:100%;font-size:13px;border-collapse:collapse;">';
                     html += '<thead><tr style="border-bottom:1px solid #444;"><th style="text-align:left;padding:5px;">Gasto</th><th style="text-align:right;padding:5px;">Último</th><th style="text-align:right;padding:5px;">Anterior</th><th style="text-align:right;padding:5px;">Variación</th></tr></thead><tbody>';
                     
-                    const todosGastos = new Set();
-                    ultimo.gastos.forEach(g => todosGastos.add(g.descripcion));
-                    if (anterior.gastos) anterior.gastos.forEach(g => todosGastos.add(g.descripcion));
+                    // Normalizar nombres de gastos para comparación
+                    const normalizarGasto = (desc) => (desc || '').trim().toUpperCase().replace(/\s+/g, ' ');
                     
-                    todosGastos.forEach(desc => {
-                        const gU = ultimo.gastos.find(g => g.descripcion === desc);
-                        const gA = anterior.gastos ? anterior.gastos.find(g => g.descripcion === desc) : null;
-                        const mU = gU ? gU.monto_ars : 0;
-                        const mA = gA ? gA.monto_ars : 0;
+                    const gastosUMap = {};
+                    ultimo.gastos.forEach(g => {
+                        const key = normalizarGasto(g.descripcion);
+                        gastosUMap[key] = { desc: g.descripcion, monto: (gastosUMap[key] ? gastosUMap[key].monto : 0) + (g.monto_ars || 0) };
+                    });
+                    
+                    const gastosAMap = {};
+                    if (anterior.gastos) {
+                        anterior.gastos.forEach(g => {
+                            const key = normalizarGasto(g.descripcion);
+                            gastosAMap[key] = { desc: g.descripcion, monto: (gastosAMap[key] ? gastosAMap[key].monto : 0) + (g.monto_ars || 0) };
+                        });
+                    }
+                    
+                    const todosKeys = new Set([...Object.keys(gastosUMap), ...Object.keys(gastosAMap)]);
+                    const sortedKeys = [...todosKeys].sort();
+                    
+                    let totalU = 0, totalA = 0;
+                    sortedKeys.forEach(key => {
+                        const gU = gastosUMap[key];
+                        const gA = gastosAMap[key];
+                        const mU = gU ? gU.monto : 0;
+                        const mA = gA ? gA.monto : 0;
+                        totalU += mU;
+                        totalA += mA;
+                        const desc = gU ? gU.desc : gA.desc;
                         let varPct = '';
                         let varColor = '#fff';
                         if (mA > 0 && mU > 0) {
@@ -1138,14 +1160,28 @@ async function verDetalleArticulo(codigo) {
                             varColor = pct > 0 ? '#f44336' : pct < 0 ? '#4CAF50' : '#fff';
                             varPct = (pct > 0 ? '+' : '') + pct + '%';
                         } else if (mU > 0 && mA === 0) {
-                            varPct = 'NUEVO';
-                            varColor = '#ff9800';
+                            varPct = 'NUEVO'; varColor = '#ff9800';
+                        } else if (mU === 0 && mA > 0) {
+                            varPct = 'ELIMINADO'; varColor = '#888';
                         }
                         html += '<tr style="border-bottom:1px solid #333;"><td style="padding:4px 5px;">' + desc + '</td>';
-                        html += '<td style="text-align:right;padding:4px 5px;">' + fmtARS(mU) + '</td>';
+                        html += '<td style="text-align:right;padding:4px 5px;">' + (mU > 0 ? fmtARS(mU) : '-') + '</td>';
                         html += '<td style="text-align:right;padding:4px 5px;">' + (mA > 0 ? fmtARS(mA) : '-') + '</td>';
                         html += '<td style="text-align:right;padding:4px 5px;color:' + varColor + ';font-weight:bold;">' + varPct + '</td></tr>';
                     });
+                    
+                    // Fila total
+                    let varTotal = '';
+                    let varTotalColor = '#fff';
+                    if (totalA > 0 && totalU > 0) {
+                        const pctT = ((totalU - totalA) / totalA * 100).toFixed(2);
+                        varTotalColor = pctT > 0 ? '#f44336' : pctT < 0 ? '#4CAF50' : '#fff';
+                        varTotal = (pctT > 0 ? '+' : '') + pctT + '%';
+                    }
+                    html += '<tr style="border-top:2px solid #666;font-weight:bold;"><td style="padding:5px;">TOTAL</td>';
+                    html += '<td style="text-align:right;padding:5px;">' + fmtARS(totalU) + '</td>';
+                    html += '<td style="text-align:right;padding:5px;">' + fmtARS(totalA) + '</td>';
+                    html += '<td style="text-align:right;padding:5px;color:' + varTotalColor + ';">' + varTotal + '</td></tr>';
                     
                     html += '</tbody></table></div></div>';
                 }
@@ -1159,44 +1195,56 @@ async function verDetalleArticulo(codigo) {
                 alert('Error al cargar detalle del artículo');
             }
         }
-function exportarUltimosCostos() {
-            exportarArticulos(articulosFiltrados, 'Ultimos_Costos');
+function exportarUltimosCostosXLSX() {
+            exportarArticulosXLSX(articulosFiltrados, 'Ultimos_Costos');
         }
 
-        function exportarSeleccionados() {
+        function exportarSeleccionadosXLSX() {
             const seleccionados = document.querySelectorAll('.art-check:checked');
             const codigos = [...seleccionados].map(cb => cb.value);
             const arts = articulosFiltrados.filter(a => codigos.includes(a.codigo_goodies));
             if (arts.length === 0) { alert('No hay artículos seleccionados'); return; }
-            exportarArticulos(arts, 'Seleccion_Costos');
+            exportarArticulosXLSX(arts, 'Seleccion_Costos');
         }
 
-        function exportarArticulos(articulos, prefijo) {
+        function exportarArticulosXLSX(articulos, prefijo) {
             if (articulos.length === 0) { alert('No hay artículos para exportar'); return; }
-            let contenido = 'Codigo\tProveedor\tNombre\tMoneda FOB\tFOB Origen\tCosto Neto\tCosto c/Imp\tCosto Anterior\tDif %\tFecha Despacho\tCosteo\tTC USD\tTC EUR\tTC GBP\n';
-            articulos.forEach(art => {
-                contenido += (art.codigo_goodies || '') + '\t';
-                contenido += (art.proveedor || '') + '\t';
-                contenido += (art.nombre || '') + '\t';
-                contenido += (art.moneda_fob || '') + '\t';
-                contenido += (art.valor_fob ? parseFloat(art.valor_fob).toFixed(4) : '') + '\t';
-                contenido += (art.costo_neto ? parseFloat(art.costo_neto).toFixed(2) : '') + '\t';
-                contenido += (art.costo_con_impuestos ? parseFloat(art.costo_con_impuestos).toFixed(2) : '') + '\t';
-                contenido += (art.costo_anterior ? parseFloat(art.costo_anterior).toFixed(2) : '') + '\t';
-                contenido += (art.diferencia_pct !== null ? art.diferencia_pct.toFixed(2) : '') + '\t';
-                contenido += (art.fecha_despacho ? art.fecha_despacho.split('T')[0] : '') + '\t';
-                contenido += (art.nombre_costeo || '') + '\t';
-                contenido += (art.tc_usd || '') + '\t';
-                contenido += (art.tc_eur || '') + '\t';
-                contenido += (art.tc_gbp || '') + '\n';
-            });
-            const blob = new Blob(['\uFEFF' + contenido], { type: 'text/tab-separated-values;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = prefijo + '_' + new Date().toISOString().split('T')[0] + '.xls';
-            a.click();
-            URL.revokeObjectURL(url);
+            
+            const data = articulos.map(art => ({
+                'Código': art.codigo_goodies || '',
+                'Proveedor': art.proveedor || '',
+                'Nombre': art.nombre || '',
+                'Moneda FOB': art.moneda_fob || '',
+                'FOB Origen': art.valor_fob ? parseFloat(parseFloat(art.valor_fob).toFixed(4)) : '',
+                'Costo Neto $': art.costo_neto ? parseFloat(parseFloat(art.costo_neto).toFixed(2)) : '',
+                'Costo c/Imp $': art.costo_con_impuestos ? parseFloat(parseFloat(art.costo_con_impuestos).toFixed(2)) : '',
+                'Costo Anterior $': art.costo_anterior ? parseFloat(parseFloat(art.costo_anterior).toFixed(2)) : '',
+                'Dif %': art.diferencia_pct !== null ? parseFloat(art.diferencia_pct.toFixed(2)) : '',
+                'Fecha Despacho': art.fecha_despacho ? art.fecha_despacho.split('T')[0] : '',
+                'Costeo': art.nombre_costeo || '',
+                'TC USD': art.tc_usd ? parseFloat(art.tc_usd) : '',
+                'TC EUR': art.tc_eur ? parseFloat(art.tc_eur) : '',
+                'TC GBP': art.tc_gbp ? parseFloat(art.tc_gbp) : ''
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            ws['!cols'] = [
+                { wch: 22 }, { wch: 20 }, { wch: 50 }, { wch: 10 },
+                { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
+                { wch: 8 }, { wch: 14 }, { wch: 30 }, { wch: 12 },
+                { wch: 12 }, { wch: 12 }
+            ];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Últimos Costos');
+            XLSX.writeFile(wb, prefijo + '_' + new Date().toISOString().split('T')[0] + '.xlsx');
+        }
+
+        function limpiarFiltrosArticulos() {
+            document.getElementById('buscarArticulo').value = '';
+            document.getElementById('filtroProveedorArticulo').value = '';
+            document.getElementById('seleccionarTodosArt').checked = false;
+            filtrarArticulos();
+            actualizarSeleccion();
         }
 
         function toggleSeleccionTodos(masterCb) {
