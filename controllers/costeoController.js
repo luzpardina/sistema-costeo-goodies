@@ -724,7 +724,8 @@ fob_parte: datos.fob_parte || 0,
                         prorratear_consolidado: g.prorratear_consolidado || false,
                         metodo_prorrateo: g.metodo_prorrateo || 'por_fob',
                         monto_ars: montoARS,
-                        observaciones: g.observaciones || ''
+                        observaciones: g.observaciones || '',
+                        no_contable: g.no_contable || false
                     });
                 }
             }

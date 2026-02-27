@@ -180,6 +180,10 @@
                         <datalist id="listaProveedores"></datalist>
                     </div>
                     <div class="filtro-grupo">
+                        <label>Marca/Artículo</label>
+                        <input type="text" id="filtroMarca" placeholder="Buscar marca o artículo..." onkeyup="aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 180px;">
+                    </div>
+                    <div class="filtro-grupo">
                         <label>Tipo</label>
                         <select id="filtroTipo" onchange="aplicarFiltros()">
                             <option value="">Todos</option>
@@ -582,6 +586,7 @@
                                 <th>Grupo</th>
                                 <th id="thConsolidado" style="display:none;">Prorrateo</th>
 <th id="thMontoProrrateado" style="display:none;">Imp. Prorrat.</th>
+                                <th title="Excluir de revaluación contable">No Cont.</th>
                                 <th>Observaciones</th>
                                 <th style="width:40px;"></th>
                             </tr>
@@ -713,7 +718,8 @@
                 moneda: g.moneda || 'USD',
                 monto: g.monto || '',
                 recargo: g.recargo || '',
-                observaciones: g.observaciones || ''
+                observaciones: g.observaciones || '',
+                no_contable: g.no_contable || false
             }));
             if (gastosManual.length === 0) agregarGasto();
             renderizarGastos();
@@ -1283,15 +1289,29 @@ async function cargarCosteos() {
         }
 
         function esDefinitivo(costeo) { return costeo.fecha_despacho || costeo.nro_despacho; }
-        function actualizarDropdownProveedores() {
+        async function actualizarDropdownProveedores() {
+            // Proveedores from costeos
+            const provsCosteos = [...new Set(todosLosCosteos.map(c => c.proveedor).filter(p => p))];
+            // Also try to get proveedores from catalogo (unified source)
+            let provsCatalogo = [];
+            try {
+                const res = await fetch(window.location.origin + '/api/maestro/proveedores', { headers: { 'Authorization': 'Bearer ' + token } });
+                if (res.ok) provsCatalogo = await res.json();
+            } catch(e) {}
+            // Merge and deduplicate (case-insensitive)
+            const seen = new Map();
+            [...provsCatalogo, ...provsCosteos].forEach(p => {
+                if (p && !seen.has(p.toUpperCase())) seen.set(p.toUpperCase(), p);
+            });
+            const proveedores = [...seen.values()].sort();
             const datalist = document.getElementById('listaProveedores');
-            const proveedores = [...new Set(todosLosCosteos.map(c => c.proveedor).filter(p => p))].sort();
             datalist.innerHTML = proveedores.map(p => '<option value="' + p + '">').join('');
         }
         function toggleCriterio() { const cb = document.getElementById('filtroUltimo'); document.getElementById('criterioContainer').classList.toggle('show', cb.checked); }
         function limpiarFiltros() {
             document.getElementById('filtroProveedor').value = '';
             document.getElementById('filtroTipo').value = '';
+            document.getElementById('filtroMarca').value = '';
             document.getElementById('filtroUltimo').checked = false;
             document.getElementById('criterioContainer').classList.remove('show');
             seleccionados.clear();
@@ -1301,10 +1321,12 @@ async function cargarCosteos() {
         function aplicarFiltros() {
             const proveedor = document.getElementById('filtroProveedor').value;
             const tipo = document.getElementById('filtroTipo').value;
+            const marca = document.getElementById('filtroMarca').value.toLowerCase();
             const soloUltimo = document.getElementById('filtroUltimo').checked;
             const criterio = document.getElementById('filtroCriterio').value;
             let filtrados = [...todosLosCosteos];
             if (proveedor) filtrados = filtrados.filter(c => c.proveedor && c.proveedor.toLowerCase().includes(proveedor.toLowerCase()));
+            if (marca) filtrados = filtrados.filter(c => c.articulos_nombres && c.articulos_nombres.toLowerCase().includes(marca));
             if (tipo === 'definitivo') filtrados = filtrados.filter(c => esDefinitivo(c));
             else if (tipo === 'presupuesto') filtrados = filtrados.filter(c => !esDefinitivo(c));
             if (soloUltimo) {
@@ -1411,7 +1433,7 @@ async function exportarLegajo(id) {
                         contenido += ((a.impuesto_interno_porcentaje || 0) * 100) + '\n';
                     });
                     contenido += '\nGASTOS\n';
-                    contenido += 'Descripcion\tProveedor\tNro_Comprobante\tMoneda\tMonto\tPct_Recargo\tObservaciones\n';
+                    contenido += 'Descripcion\tProveedor\tNro_Comprobante\tMoneda\tMonto\tPct_Recargo\tObservaciones\tNo_Contable\n';
                     (costeo.gastos_varios || []).forEach(g => {
                         contenido += (g.descripcion || '') + '\t';
                         contenido += (g.proveedor_gasto || '') + '\t';
@@ -1419,7 +1441,8 @@ async function exportarLegajo(id) {
                         contenido += (g.moneda || '') + '\t';
                         contenido += (g.monto || '') + '\t';
                         contenido += (g.recargo || '') + '\t';
-                        contenido += (g.observaciones || '') + '\n';
+                        contenido += (g.observaciones || '') + '\t';
+                        contenido += (g.no_contable ? 'SI' : '') + '\n';
                     });
                     const blob = new Blob([contenido], { type: 'text/tab-separated-values;charset=utf-8' });
                     const url = URL.createObjectURL(blob);
@@ -1471,7 +1494,8 @@ async function duplicarCosteo(id) {
                         monto: g.monto || '',
                         recargo: g.recargo || '',
                         grupo: g.grupo || '',
-                        observaciones: g.observaciones || ''
+                        observaciones: g.observaciones || '',
+                        no_contable: g.no_contable || false
                     }));
                     if (gastosManual.length === 0) agregarGasto();
                     renderizarGastos();
@@ -1536,7 +1560,8 @@ async function editarCosteo(id) {
                         grupo: g.grupo || '',
                         prorratear_consolidado: g.prorratear_consolidado || false,
                         metodo_prorrateo: g.metodo_prorrateo || 'no_prorratear',
-                        observaciones: g.observaciones || ''
+                        observaciones: g.observaciones || '',
+                        no_contable: g.no_contable || false
                     }));
 
                     if (gastosManual.length === 0) agregarGasto();
@@ -1953,7 +1978,7 @@ function recalcularValoresOrigen() {
             alert('Valores Intermediaria calculados con margen ' + margen + '%');
         }
 function agregarGasto() {
-            gastosManual.push({ descripcion: '', proveedor: '', nro_comprobante: '', moneda: 'USD', monto: '', recargo: '', grupo: '', metodo_prorrateo: 'por_fob', prorratear_consolidado: false, observaciones: '' });
+            gastosManual.push({ descripcion: '', proveedor: '', nro_comprobante: '', moneda: 'USD', monto: '', recargo: '', grupo: '', metodo_prorrateo: 'por_fob', prorratear_consolidado: false, observaciones: '', no_contable: false });
             renderizarGastos();
         }
 
@@ -1966,17 +1991,24 @@ function renderizarGastos() {
             const esConsolidado = document.getElementById('cm_esConsolidado')?.checked || false;
             tbody.innerHTML = gastosManual.map((g, idx) => {
                 const metodo = g.metodo_prorrateo || 'por_fob';
-                return '<tr>' +
+                // Fix recargo display: if stored as decimal (< 1 and != 0), convert to percentage
+                let recargoDisplay = g.recargo || '';
+                if (recargoDisplay !== '' && parseFloat(recargoDisplay) !== 0 && Math.abs(parseFloat(recargoDisplay)) < 1) {
+                    recargoDisplay = (parseFloat(recargoDisplay) * 100).toFixed(2);
+                    gastosManual[idx].recargo = recargoDisplay; // fix in memory too
+                }
+                return '<tr' + (g.no_contable ? ' style="opacity:0.6;"' : '') + '>' +
                     '<td>' + (idx + 1) + '</td>' +
                     '<td><input type="text" value="' + (g.descripcion || '') + '" onchange="gastosManual[' + idx + '].descripcion=this.value"></td>' +
                     '<td><input type="text" value="' + (g.proveedor || '') + '" onchange="gastosManual[' + idx + '].proveedor=this.value" style="width:100px;"></td>' +
                     '<td><input type="text" value="' + (g.nro_comprobante || '') + '" onchange="gastosManual[' + idx + '].nro_comprobante=this.value" style="width:100px;"></td>' +
                     '<td><select onchange="gastosManual[' + idx + '].moneda=this.value"><option value="USD" ' + (g.moneda === 'USD' ? 'selected' : '') + '>USD</option><option value="EUR" ' + (g.moneda === 'EUR' ? 'selected' : '') + '>EUR</option><option value="GBP" ' + (g.moneda === 'GBP' ? 'selected' : '') + '>GBP</option><option value="ARS" ' + (g.moneda === 'ARS' ? 'selected' : '') + '>ARS</option></select></td>' +
                     '<td><input type="number" step="0.01" value="' + (g.monto || '') + '" onchange="gastosManual[' + idx + '].monto=this.value" style="width:100px;"></td>' +
-                    '<td><input type="number" step="0.01" value="' + (g.recargo || '') + '" onchange="gastosManual[' + idx + '].recargo=this.value" style="width:60px;"></td>' +
+                    '<td><input type="number" step="0.01" value="' + recargoDisplay + '" onchange="gastosManual[' + idx + '].recargo=this.value" style="width:60px;"></td>' +
                     '<td><input type="text" value="' + (g.grupo || '') + '" onchange="gastosManual[' + idx + '].grupo=this.value" style="width:60px;" placeholder=""></td>' +
                     (esConsolidado ? '<td><select onchange="gastosManual[' + idx + '].metodo_prorrateo=this.value; renderizarGastos();" style="width:100px;"><option value="por_fob" ' + (metodo === 'por_fob' ? 'selected' : '') + '>Por FOB</option><option value="por_volumen" ' + (metodo === 'por_volumen' ? 'selected' : '') + '>Por Volumen</option><option value="por_peso" ' + (metodo === 'por_peso' ? 'selected' : '') + '>Por Peso</option><option value="no_prorratear" ' + (metodo === 'no_prorratear' ? 'selected' : '') + '>No Prorratear</option></select></td>' : '') +
                     (esConsolidado ? '<td style="text-align:right;color:#4CAF50;font-weight:bold;">' + calcularMontoProrrateado(g) + '</td>' : '') +
+                    '<td style="text-align:center;"><input type="checkbox" ' + (g.no_contable ? 'checked' : '') + ' onchange="gastosManual[' + idx + '].no_contable=this.checked; renderizarGastos();" title="Excluir de revaluación contable"></td>' +
                     '<td><input type="text" value="' + (g.observaciones || '') + '" onchange="gastosManual[' + idx + '].observaciones=this.value" style="width:120px;"></td>' +
                     '<td><button class="btn btn-danger btn-sm" onclick="eliminarGasto(' + idx + ')">X</button></td>' +
                     '</tr>';
@@ -2115,8 +2147,8 @@ function descargarTemplateArticulos() {
         }
 
         function descargarTemplateGastos() {
-            const contenido = 'Descripcion\tProveedor\tNro_Comprobante\tMoneda\tMonto\tPct_Recargo\tObservaciones\n' +
-                'Flete Internacional\tTransporte SA\tFC-0001\tUSD\t1500\t3\tEjemplo de gasto\n';
+            const contenido = 'Descripcion\tProveedor\tNro_Comprobante\tMoneda\tMonto\tPct_Recargo\tObservaciones\tNo_Contable\n' +
+                'Flete Internacional\tTransporte SA\tFC-0001\tUSD\t1500\t3\tEjemplo de gasto\t\n';
             const blob = new Blob([contenido], { type: 'text/tab-separated-values' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -2185,7 +2217,8 @@ function descargarTemplateArticulos() {
                                 moneda: cols[3] || 'USD',
                                 monto: cols[4] || '',
                                 recargo: cols[5] || '',
-                                observaciones: cols[6] || ''
+                                observaciones: cols[6] || '',
+                                no_contable: (cols[7] || '').toUpperCase() === 'SI'
                             });
                         }
                     }
@@ -2233,7 +2266,8 @@ function descargarTemplateArticulos() {
                 prorratear_consolidado: g.prorratear_consolidado || false,
 metodo_prorrateo: g.metodo_prorrateo || 'por_fob',
 monto_prorrateado: parseFloat(calcularMontoProrrateado(g)) || 0,
-                observaciones: g.observaciones || ''
+                observaciones: g.observaciones || '',
+                no_contable: g.no_contable || false
             }));
             const esConsolidado = document.getElementById('cm_esConsolidado').checked;
             const datos = {

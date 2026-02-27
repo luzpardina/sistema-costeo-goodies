@@ -51,6 +51,10 @@ const GastosVarios = sequelize.define('GastosVarios', {
     },
     observaciones: {
         type: DataTypes.TEXT
+    },
+    no_contable: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     }
 }, {
     tableName: 'gastos_varios',

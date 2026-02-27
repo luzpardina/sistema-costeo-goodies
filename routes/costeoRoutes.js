@@ -38,7 +38,7 @@ router.get('/listar', auth, async (req, res) => {
         const costeos = await Costeo.findAll({
             order: [['created_at', 'DESC']],
             include: [
-                { model: ArticuloCosteo, as: 'articulos', attributes: ['id'] }
+                { model: ArticuloCosteo, as: 'articulos', attributes: ['id', 'codigo_goodies', 'nombre'] }
             ]
         });
 
@@ -54,7 +54,8 @@ router.get('/listar', auth, async (req, res) => {
             unidades_totales: c.unidades_totales,
             costo_total_ars: c.costo_total_ars,
             es_consolidado: c.es_consolidado,
-            cant_articulos: c.articulos ? c.articulos.length : 0
+            cant_articulos: c.articulos ? c.articulos.length : 0,
+            articulos_nombres: c.articulos ? c.articulos.map(a => (a.codigo_goodies || '') + ' ' + (a.nombre || '')).join('|') : ''
         }));
 
         res.json(lista);
@@ -430,7 +431,8 @@ router.put('/:id/actualizar', auth, async (req, res) => {
                         grupo: g.grupo || '',
                         prorratear_consolidado: g.prorratear_consolidado || false,
                         metodo_prorrateo: g.metodo_prorrateo || 'no_prorratear',
-                        observaciones: g.observaciones || ''
+                        observaciones: g.observaciones || '',
+                        no_contable: g.no_contable || false
                     });
                 }
             }
@@ -564,7 +566,8 @@ router.post('/:id/duplicar', auth, async (req, res) => {
                     grupo: gasto.grupo,
                     prorratear_consolidado: gasto.prorratear_consolidado,
                     metodo_prorrateo: gasto.metodo_prorrateo,
-                    observaciones: gasto.observaciones
+                    observaciones: gasto.observaciones,
+                    no_contable: gasto.no_contable || false
                 });
             }
         }
