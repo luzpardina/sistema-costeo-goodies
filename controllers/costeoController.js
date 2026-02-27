@@ -72,18 +72,13 @@ const actualizarCatalogo = async (articulos, moneda, proveedor) => {
                 const autoUpdates = {};
                 const conflictos = [];
 
-                // Precios: siempre actualizar (es el último valor)
-                if (valorOrigen && valorOrigen > 0) {
-                    autoUpdates.ultimo_valor_origen = valorOrigen;
-                    autoUpdates.fecha_ultimo_precio = new Date();
-                }
-                if (valorFabrica && valorFabrica > 0) autoUpdates.ultimo_valor_fabrica = valorFabrica;
-
                 // Campos que se completan si están vacíos, o detectan conflicto si difieren
                 const checks = [
                     { campo: 'unidades_por_caja', label: 'Und/Caja', nuevo: undCaja, actual: existente.unidades_por_caja ? parseFloat(existente.unidades_por_caja) : null },
                     { campo: 'derechos_porcentaje', label: '% Derechos', nuevo: derechos, actual: existente.derechos_porcentaje ? parseFloat(existente.derechos_porcentaje) : null, esPct: true },
-                    { campo: 'imp_interno_porcentaje', label: '% Imp. Internos', nuevo: impInterno, actual: existente.imp_interno_porcentaje ? parseFloat(existente.imp_interno_porcentaje) : null, esPct: true }
+                    { campo: 'imp_interno_porcentaje', label: '% Imp. Internos', nuevo: impInterno, actual: existente.imp_interno_porcentaje ? parseFloat(existente.imp_interno_porcentaje) : null, esPct: true },
+                    { campo: 'ultimo_valor_origen', label: 'Valor Origen', nuevo: valorOrigen, actual: existente.ultimo_valor_origen ? parseFloat(existente.ultimo_valor_origen) : null },
+                    { campo: 'ultimo_valor_fabrica', label: 'Valor Fábrica', nuevo: valorFabrica, actual: existente.ultimo_valor_fabrica ? parseFloat(existente.ultimo_valor_fabrica) : null }
                 ];
 
                 for (const chk of checks) {
@@ -91,6 +86,9 @@ const actualizarCatalogo = async (articulos, moneda, proveedor) => {
                         if (!chk.actual || chk.actual === 0) {
                             // Campo vacío -> completar automáticamente
                             autoUpdates[chk.campo] = chk.nuevo;
+                            if (chk.campo === 'ultimo_valor_origen' || chk.campo === 'ultimo_valor_fabrica') {
+                                autoUpdates.fecha_ultimo_precio = new Date();
+                            }
                             completados.push({ codigo, campo: chk.label });
                         } else if (Math.abs(chk.actual - chk.nuevo) > 0.0001) {
                             // Campo tiene valor distinto -> conflicto
