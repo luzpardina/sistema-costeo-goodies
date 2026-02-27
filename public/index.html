@@ -3529,9 +3529,9 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
 
     async function cargarArticulosParaMargen() {
         try {
-            const resp = await fetch(API_URL + '/api/costeos/ultimo-costo', { headers: { 'Authorization': 'Bearer ' + token } });
+            const resp = await fetch(API_URL + '/api/costeos/ultimos-costos', { headers: { 'Authorization': 'Bearer ' + token } });
             const data = await resp.json();
-            articulosPvp = (data.articulos || data).map(a => ({
+            articulosPvp = (Array.isArray(data) ? data : []).map(a => ({
                 codigo_goodies: a.codigo_goodies || a.codigo,
                 nombre: a.nombre,
                 costo_neto: parseFloat(a.costo_unitario_neto_ars || a.costo_neto) || 0,
@@ -3760,11 +3760,11 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
     // Cargar artículos en el select del simulador
     async function cargarArticulosSimulador() {
         try {
-            const resp = await fetch(API_URL + '/api/costeos/ultimo-costo', { headers: { 'Authorization': 'Bearer ' + token } });
+            const resp = await fetch(API_URL + '/api/costeos/ultimos-costos', { headers: { 'Authorization': 'Bearer ' + token } });
             const data = await resp.json();
             const sel = document.getElementById('simArticulo');
             if (!sel) return;
-            const arts = data.articulos || data;
+            const arts = Array.isArray(data) ? data : [];
             sel.innerHTML = '<option value="">Seleccionar...</option>' +
                 arts.map(a => `<option value="${a.codigo_goodies || a.codigo}">${a.codigo_goodies || a.codigo} - ${a.nombre}</option>`).join('');
         } catch(e) { console.error(e); }
