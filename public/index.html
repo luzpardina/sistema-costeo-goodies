@@ -371,6 +371,7 @@
                     <label class="btn btn-purple" style="cursor:pointer;">📤 Subir Template PVP<input type="file" id="pvpExcelFile" accept=".xlsx,.xls" onchange="subirTemplatePvp()" style="display:none;"></label>
                     <button class="btn btn-primary" onclick="calcularMargenes()">📊 Calcular Márgenes</button>
                     <button class="btn btn-success" onclick="exportarMargenes()">📥 Exportar Excel</button>
+                    <button class="btn btn-danger" onclick="document.getElementById('resultadoMargenes').innerHTML='';articulosPvp=[];articulosPvpTodos=[];document.getElementById('articulosPvpBody').innerHTML='';">🗑️ Limpiar</button>
                 </div>
                 <div class="table-container" style="max-height:300px;overflow-y:auto;">
                     <table>
