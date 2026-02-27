@@ -10,6 +10,18 @@ const ConsolidadoProveedor = require('./ConsolidadoProveedor');
 const ArticuloMaestro = require('./ArticuloMaestro');
 const CatalogoArticulo = require('./CatalogoArticulo');
 
+// === NUEVOS MODELOS ===
+const ListaPrecio = require('./ListaPrecio');
+const AcuerdoComercial = require('./AcuerdoComercial');
+const PrecioPVP = require('./PrecioPVP');
+const PrecioActual = require('./PrecioActual');
+const ValuacionInventario = require('./ValuacionInventario');
+const ValuacionDetalle = require('./ValuacionDetalle');
+
+// =============================================
+// RELACIONES EXISTENTES (sin cambios)
+// =============================================
+
 // Relaciones Usuario - Empresa
 Empresa.hasMany(Usuario, {
     foreignKey: 'empresa_id',
@@ -97,6 +109,57 @@ ConsolidadoProveedor.belongsTo(Costeo, {
     as: 'costeo'
 });
 
+// =============================================
+// NUEVAS RELACIONES - MÓDULO COMERCIAL
+// =============================================
+
+// ListaPrecio - AcuerdoComercial
+ListaPrecio.hasMany(AcuerdoComercial, {
+    foreignKey: 'lista_id',
+    as: 'acuerdos',
+    onDelete: 'CASCADE'
+});
+AcuerdoComercial.belongsTo(ListaPrecio, {
+    foreignKey: 'lista_id',
+    as: 'lista'
+});
+
+// ListaPrecio - PrecioActual
+ListaPrecio.hasMany(PrecioActual, {
+    foreignKey: 'lista_id',
+    as: 'precios_actuales',
+    onDelete: 'CASCADE'
+});
+PrecioActual.belongsTo(ListaPrecio, {
+    foreignKey: 'lista_id',
+    as: 'lista'
+});
+
+// =============================================
+// NUEVAS RELACIONES - MÓDULO CONTABLE
+// =============================================
+
+// ValuacionInventario - ValuacionDetalle
+ValuacionInventario.hasMany(ValuacionDetalle, {
+    foreignKey: 'valuacion_id',
+    as: 'detalles',
+    onDelete: 'CASCADE'
+});
+ValuacionDetalle.belongsTo(ValuacionInventario, {
+    foreignKey: 'valuacion_id',
+    as: 'valuacion'
+});
+
+// Revaluacion - ValuacionInventario (opcional)
+Revaluacion.hasMany(ValuacionInventario, {
+    foreignKey: 'revaluacion_id',
+    as: 'valuaciones'
+});
+ValuacionInventario.belongsTo(Revaluacion, {
+    foreignKey: 'revaluacion_id',
+    as: 'revaluacion'
+});
+
 module.exports = {
     Usuario,
     Empresa,
@@ -108,5 +171,12 @@ module.exports = {
     RevaluacionArticulo,
     ConsolidadoProveedor,
     ArticuloMaestro,
-    CatalogoArticulo
+    CatalogoArticulo,
+    // Nuevos
+    ListaPrecio,
+    AcuerdoComercial,
+    PrecioPVP,
+    PrecioActual,
+    ValuacionInventario,
+    ValuacionDetalle
 };
