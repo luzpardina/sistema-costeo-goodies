@@ -35,7 +35,9 @@ function parsearExcelCatalogo(buffer) {
             derechos_porcentaje: parsePct(row['% Derechos'] || row['derechos_porcentaje']),
             imp_interno_porcentaje: parsePct(row['% Imp. Internos'] || row['imp_interno_porcentaje']),
             iva_porcentaje: parsePct(row['% IVA'] || row['iva_porcentaje']),
-            estadistica_porcentaje: parsePct(row['% Estadística'] || row['estadistica_porcentaje'])
+            estadistica_porcentaje: parsePct(row['% Estadística'] || row['estadistica_porcentaje']),
+            proveedor_activo: row['Proveedor Activo'] !== undefined ? String(row['Proveedor Activo']).toUpperCase().trim() !== 'NO' : null,
+            habilitado: row['Artículo Activo'] !== undefined ? String(row['Artículo Activo']).toUpperCase().trim() !== 'NO' : null
         };
     }).filter(r => r !== null);
 }
@@ -93,6 +95,13 @@ router.post('/previsualizar', auth, upload.single('archivo'), async (req, res) =
                     }
                 }
             }
+            // Detectar cambios de estado activo
+            if (reg.proveedor_activo !== null && existente.proveedor_activo !== reg.proveedor_activo) {
+                camposModificados.push({ campo: 'Proveedor Activo', antes: existente.proveedor_activo ? 'SI' : 'NO', despues: reg.proveedor_activo ? 'SI' : 'NO', tipo: 'cambio' });
+            }
+            if (reg.habilitado !== null && existente.habilitado !== reg.habilitado) {
+                camposModificados.push({ campo: 'Artículo Activo', antes: existente.habilitado ? 'SI' : 'NO', despues: reg.habilitado ? 'SI' : 'NO', tipo: 'cambio' });
+            }
             if (camposModificados.length > 0) {
                 const tieneReemplazo = camposModificados.some(c => c.tipo === 'cambio');
                 if (tieneReemplazo) {
@@ -136,9 +145,11 @@ router.post('/importar', auth, upload.single('archivo'), async (req, res) => {
                     if (reg.imp_interno_porcentaje !== null) updates.imp_interno_porcentaje = reg.imp_interno_porcentaje;
                     if (reg.iva_porcentaje !== null) updates.iva_porcentaje = reg.iva_porcentaje;
                     if (reg.estadistica_porcentaje !== null) updates.estadistica_porcentaje = reg.estadistica_porcentaje;
+                    if (reg.proveedor_activo !== null) updates.proveedor_activo = reg.proveedor_activo;
+                    if (reg.habilitado !== null) updates.habilitado = reg.habilitado;
                     if (Object.keys(updates).length > 0) { await existente.update(updates); actualizados++; }
                 } else {
-                    await CatalogoArticulo.create({ ...reg, habilitado: true });
+                    await CatalogoArticulo.create({ ...reg, habilitado: reg.habilitado !== null ? reg.habilitado : true, proveedor_activo: reg.proveedor_activo !== null ? reg.proveedor_activo : true });
                     importados++;
                 }
             } catch (e) { errores++; }
@@ -152,7 +163,7 @@ router.post('/importar', auth, upload.single('archivo'), async (req, res) => {
 // Descargar catálogo completo
 router.get('/descargar', auth, async (req, res) => {
     try {
-        const articulos = await CatalogoArticulo.findAll({ where: { habilitado: true }, order: [['codigo_goodies', 'ASC']] });
+        const articulos = await CatalogoArticulo.findAll({ order: [['proveedor', 'ASC'], ['codigo_goodies', 'ASC']] });
         const data = articulos.map(a => ({
             'Cod. Goodies': a.codigo_goodies,
             'Nombre': a.nombre,
@@ -170,11 +181,13 @@ router.get('/descargar', auth, async (req, res) => {
             'País Origen': a.pais_origen || '',
             'Und/Caja': a.unidades_por_caja || '',
             'Último Valor Origen': a.ultimo_valor_origen || '',
-            'Último Valor Fábrica': a.ultimo_valor_fabrica || ''
+            'Último Valor Fábrica': a.ultimo_valor_fabrica || '',
+            'Proveedor Activo': a.proveedor_activo === false ? 'NO' : 'SI',
+            'Artículo Activo': a.habilitado === false ? 'NO' : 'SI'
         }));
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(data);
-        ws['!cols'] = [{ wch: 20 }, { wch: 55 }, { wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 8 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 15 }];
+        ws['!cols'] = [{ wch: 20 }, { wch: 55 }, { wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 8 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 16 }, { wch: 14 }];
         XLSX.utils.book_append_sheet(wb, ws, 'Catálogo Unificado');
         const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
         res.setHeader('Content-Disposition', 'attachment; filename=CATALOGO_GOODIES.xlsx');
@@ -191,7 +204,7 @@ router.get('/buscar', auth, async (req, res) => {
         const { q } = req.query;
         if (!q || q.length < 2) return res.json([]);
         const articulos = await CatalogoArticulo.findAll({
-            where: { habilitado: true, [Op.or]: [{ codigo_goodies: { [Op.iLike]: `%${q}%` } }, { nombre: { [Op.iLike]: `%${q}%` } }] },
+            where: { habilitado: true, proveedor_activo: true, [Op.or]: [{ codigo_goodies: { [Op.iLike]: `%${q}%` } }, { nombre: { [Op.iLike]: `%${q}%` } }] },
             order: [['codigo_goodies', 'ASC']], limit: 20
         });
         res.json(articulos.map(a => ({
@@ -207,7 +220,7 @@ router.get('/por-proveedor', auth, async (req, res) => {
     try {
         const { proveedor } = req.query;
         if (!proveedor) return res.json([]);
-        const articulos = await CatalogoArticulo.findAll({ where: { habilitado: true, proveedor: { [Op.iLike]: `%${proveedor}%` } }, order: [['codigo_goodies', 'ASC']] });
+        const articulos = await CatalogoArticulo.findAll({ where: { habilitado: true, proveedor_activo: true, proveedor: { [Op.iLike]: `%${proveedor}%` } }, order: [['codigo_goodies', 'ASC']] });
         res.json(articulos.map(a => ({ id: a.id, codigo: a.codigo_goodies, nombre: a.nombre, proveedor: a.proveedor, marca: a.marca, categoria: a.rubro })));
     } catch (error) { res.status(500).json({ error: 'Error al buscar' }); }
 });
@@ -216,7 +229,7 @@ router.get('/proveedores', auth, async (req, res) => {
     try {
         const proveedores = await CatalogoArticulo.findAll({
             attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col('proveedor')), 'proveedor']],
-            where: { habilitado: true, proveedor: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } },
+            where: { habilitado: true, proveedor_activo: true, proveedor: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } },
             order: [['proveedor', 'ASC']], raw: true
         });
         res.json(proveedores.map(p => p.proveedor).filter(p => p));
@@ -226,7 +239,7 @@ router.get('/proveedores', auth, async (req, res) => {
 router.get('/marcas', auth, async (req, res) => {
     try {
         const { proveedor } = req.query;
-        const where = { habilitado: true, marca: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } };
+        const where = { habilitado: true, proveedor_activo: true, marca: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } };
         if (proveedor) where.proveedor = { [Op.iLike]: `%${proveedor}%` };
         const marcas = await CatalogoArticulo.findAll({
             attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col('marca')), 'marca']],
@@ -240,7 +253,7 @@ router.get('/por-marca', auth, async (req, res) => {
     try {
         const { marca, proveedor } = req.query;
         if (!marca) return res.json([]);
-        const where = { habilitado: true, marca: { [Op.iLike]: `%${marca}%` } };
+        const where = { habilitado: true, proveedor_activo: true, marca: { [Op.iLike]: `%${marca}%` } };
         if (proveedor) where.proveedor = { [Op.iLike]: `%${proveedor}%` };
         const articulos = await CatalogoArticulo.findAll({ where, order: [['codigo_goodies', 'ASC']] });
         res.json(articulos.map(a => ({ id: a.id, codigo: a.codigo_goodies, nombre: a.nombre, proveedor: a.proveedor, marca: a.marca, categoria: a.rubro })));
@@ -267,7 +280,7 @@ router.post('/validar', auth, async (req, res) => {
 
 router.get('/stats', auth, async (req, res) => {
     try {
-        const total = await CatalogoArticulo.count({ where: { habilitado: true } });
+        const total = await CatalogoArticulo.count({ where: { habilitado: true, proveedor_activo: true } });
         res.json({ total });
     } catch (error) { res.json({ total: 0 }); }
 });
