@@ -359,15 +359,23 @@
             <div class="card" style="grid-column: 1 / -1;">
                 <h3>📊 Cálculo de Márgenes (Multi-Lista)</h3>
                 <p style="color:#aaa;margin-bottom:15px;">Ingresá el PVP de cada artículo y calculá el margen para TODAS las listas simultáneamente.</p>
+                <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+                    <input type="text" id="filtroMargenTexto" placeholder="🔍 Buscar por código o nombre..." oninput="filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px 12px;border-radius:5px;width:250px;">
+                    <select id="filtroMargenProveedor" onchange="filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                        <option value="">Todos los proveedores</option>
+                    </select>
+                </div>
                 <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
                     <button class="btn btn-secondary" onclick="cargarArticulosParaMargen()">📦 Cargar Artículos del Catálogo</button>
+                    <button class="btn btn-warning" onclick="descargarTemplatePvp()">📥 Descargar Template PVP</button>
+                    <label class="btn btn-purple" style="cursor:pointer;">📤 Subir Template PVP<input type="file" id="pvpExcelFile" accept=".xlsx,.xls" onchange="subirTemplatePvp()" style="display:none;"></label>
                     <button class="btn btn-primary" onclick="calcularMargenes()">📊 Calcular Márgenes</button>
                     <button class="btn btn-success" onclick="exportarMargenes()">📥 Exportar Excel</button>
                 </div>
                 <div class="table-container" style="max-height:300px;overflow-y:auto;">
                     <table>
                         <thead><tr>
-                            <th>Código</th><th>Nombre</th><th>Costo Neto</th><th>PVP</th>
+                            <th>Código</th><th>Nombre</th><th>Proveedor</th><th>Costo Neto</th><th>PVP</th>
                         </tr></thead>
                         <tbody id="articulosPvpBody"></tbody>
                     </table>
@@ -425,8 +433,16 @@
                     </div>
                 </div>
                 <div style="margin-bottom:15px;">
-                    <label style="color:#aaa;font-size:13px;">Pegar datos de Centum (Código | Descripción | Cantidad | Costo Unit | Costo Total)</label>
-                    <textarea id="valDatosCentum" rows="8" placeholder="Pegar datos del Excel de Centum aquí (separados por tab)..." style="width:100%;background:#1e1e2f;border:1px solid #444;color:#fff;padding:10px;border-radius:5px;font-family:monospace;font-size:12px;margin-top:5px;"></textarea>
+                    <label style="color:#aaa;font-size:13px;">Subir Excel de Centum (Reporte Stock Inventario Valorizado)</label>
+                    <div style="display:flex;gap:10px;margin-top:5px;align-items:center;">
+                        <input type="file" id="valExcelFile" accept=".xlsx,.xls" style="color:#aaa;">
+                        <button class="btn btn-secondary" onclick="parsearExcelCentum()">📤 Cargar Excel</button>
+                    </div>
+                    <div id="valExcelPreview" style="margin-top:10px;"></div>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="color:#aaa;font-size:13px;">O pegar datos manualmente (Código | Descripción | Cantidad | Costo Unit | Costo Total, separados por tab)</label>
+                    <textarea id="valDatosCentum" rows="5" placeholder="Pegar datos aquí..." style="width:100%;background:#1e1e2f;border:1px solid #444;color:#fff;padding:10px;border-radius:5px;font-family:monospace;font-size:12px;margin-top:5px;"></textarea>
                 </div>
                 <div style="display:flex;gap:10px;">
                     <button class="btn btn-primary" onclick="crearValuacion()">📊 Generar Valuación</button>
@@ -3375,7 +3391,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             }
         });
         // Cargar datos del módulo al entrar
-        if (modulo === 'comercial') { cargarListas(); cargarAcuerdos(); }
+        if (modulo === 'comercial') { cargarListas().then(() => cargarAcuerdos()); }
         if (modulo === 'contable') { cargarHistorialValuaciones(); cargarRevaluacionesDisponibles(); }
     }
 
@@ -3526,33 +3542,99 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
     // MÓDULO COMERCIAL - CÁLCULO MÁRGENES
     // =============================================
     let articulosPvp = [];
+    let articulosPvpTodos = [];
 
     async function cargarArticulosParaMargen() {
         try {
             const resp = await fetch(API_URL + '/api/costeos/ultimos-costos', { headers: { 'Authorization': 'Bearer ' + token } });
             const data = await resp.json();
-            articulosPvp = (Array.isArray(data) ? data : []).map(a => ({
+            articulosPvpTodos = (Array.isArray(data) ? data : []).map(a => ({
                 codigo_goodies: a.codigo_goodies || a.codigo,
                 nombre: a.nombre,
+                proveedor: a.proveedor || '',
                 costo_neto: parseFloat(a.costo_unitario_neto_ars || a.costo_neto) || 0,
                 pvp: 0
             }));
+            const proveedores = [...new Set(articulosPvpTodos.map(a => a.proveedor).filter(p => p))].sort();
+            const sel = document.getElementById('filtroMargenProveedor');
+            if (sel) sel.innerHTML = '<option value="">Todos los proveedores</option>' + proveedores.map(p => '<option value="' + p + '">' + p + '</option>').join('');
+            articulosPvp = [...articulosPvpTodos];
             renderArticulosPvp();
+            alert('✅ ' + articulosPvp.length + ' artículos cargados');
         } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    function filtrarArticulosPvp() {
+        const texto = (document.getElementById('filtroMargenTexto').value || '').toLowerCase();
+        const proveedor = document.getElementById('filtroMargenProveedor').value;
+        articulosPvp = articulosPvpTodos.filter(a => {
+            const matchTexto = !texto || a.codigo_goodies.toLowerCase().includes(texto) || a.nombre.toLowerCase().includes(texto);
+            const matchProv = !proveedor || a.proveedor === proveedor;
+            return matchTexto && matchProv;
+        });
+        renderArticulosPvp();
     }
 
     function renderArticulosPvp() {
         const body = document.getElementById('articulosPvpBody');
         if (!body) return;
-        body.innerHTML = articulosPvp.map((a, i) => `<tr>
-            <td>${a.codigo_goodies}</td><td>${a.nombre}</td>
+        body.innerHTML = articulosPvp.map((a, i) => {
+            const idxAll = articulosPvpTodos.findIndex(t => t.codigo_goodies === a.codigo_goodies);
+            return `<tr>
+            <td>${a.codigo_goodies}</td><td>${a.nombre}</td><td>${a.proveedor}</td>
             <td>$${a.costo_neto.toFixed(2)}</td>
-            <td><input type="number" step="0.01" value="${a.pvp || ''}" onchange="articulosPvp[${i}].pvp=parseFloat(this.value)||0" style="width:100px;background:#1e1e2f;border:1px solid #444;color:#fff;padding:4px;border-radius:3px;"></td>
-        </tr>`).join('');
+            <td><input type="number" step="0.01" value="${a.pvp || ''}" onchange="actualizarPvp('${a.codigo_goodies}', this.value)" style="width:100px;background:#1e1e2f;border:1px solid #444;color:#fff;padding:4px;border-radius:3px;"></td>
+        </tr>`;
+        }).join('');
+    }
+
+    function actualizarPvp(codigo, valor) {
+        const pvp = parseFloat(valor) || 0;
+        const art = articulosPvpTodos.find(a => a.codigo_goodies === codigo);
+        if (art) art.pvp = pvp;
+        const artFilt = articulosPvp.find(a => a.codigo_goodies === codigo);
+        if (artFilt) artFilt.pvp = pvp;
+    }
+
+    function descargarTemplatePvp() {
+        if (articulosPvpTodos.length === 0) { alert('Primero cargá artículos del catálogo'); return; }
+        const wsData = [['Código', 'Nombre', 'Proveedor', 'Costo Neto', 'PVP']];
+        articulosPvpTodos.forEach(a => { wsData.push([a.codigo_goodies, a.nombre, a.proveedor, a.costo_neto, '']); });
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        ws['!cols'] = [{wch:18},{wch:45},{wch:20},{wch:14},{wch:14}];
+        XLSX.utils.book_append_sheet(wb, ws, 'PVP');
+        XLSX.writeFile(wb, 'Template_PVP_Goodies.xlsx');
+    }
+
+    function subirTemplatePvp() {
+        const file = document.getElementById('pvpExcelFile').files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const wb = XLSX.read(e.target.result, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                let cargados = 0;
+                for (let i = 1; i < rows.length; i++) {
+                    const codigo = String(rows[i][0] || '').trim();
+                    const pvp = parseFloat(rows[i][4]) || 0;
+                    if (codigo && pvp > 0) {
+                        const art = articulosPvpTodos.find(a => a.codigo_goodies === codigo);
+                        if (art) { art.pvp = pvp; cargados++; }
+                    }
+                }
+                articulosPvp = [...articulosPvpTodos];
+                filtrarArticulosPvp();
+                alert('✅ ' + cargados + ' PVPs cargados desde Excel');
+            } catch(err) { alert('Error leyendo Excel: ' + err.message); }
+        };
+        reader.readAsArrayBuffer(file);
     }
 
     async function calcularMargenes() {
-        const artConPvp = articulosPvp.filter(a => a.pvp > 0);
+        const artConPvp = articulosPvpTodos.filter(a => a.pvp > 0);
         if (artConPvp.length === 0) { alert('Ingresá al menos un PVP'); return; }
 
         try {
@@ -3649,28 +3731,64 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         } catch(e) { console.error('Error:', e); }
     }
 
+    let articulosCentumCargados = [];
+
+    async function parsearExcelCentum() {
+        const fileInput = document.getElementById('valExcelFile');
+        const file = fileInput.files[0];
+        if (!file) { alert('Seleccioná un archivo Excel'); return; }
+
+        const formData = new FormData();
+        formData.append('archivo', file);
+
+        try {
+            const resp = await fetch(API_URL + '/api/contable/parsear-excel', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                body: formData
+            });
+            const data = await resp.json();
+            if (data.error) { alert('Error: ' + data.error); return; }
+
+            articulosCentumCargados = data.articulos;
+            const preview = document.getElementById('valExcelPreview');
+            preview.innerHTML = '<div style="background:#1a3a1a;border:1px solid #4CAF50;padding:10px;border-radius:5px;">' +
+                '<span style="color:#4CAF50;font-weight:bold;">✅ ' + data.total_articulos + ' artículos cargados desde "' + data.hoja + '"</span>' +
+                '<div style="max-height:200px;overflow-y:auto;margin-top:10px;"><table><thead><tr><th>Código</th><th>Nombre</th><th>Cantidad</th><th>Costo Unit</th><th>Costo Total</th></tr></thead><tbody>' +
+                data.articulos.slice(0, 20).map(a => '<tr><td>' + a.codigo_goodies + '</td><td>' + a.descripcion + '</td><td>' + a.cantidad + '</td><td>$' + a.costo_unit_contable.toFixed(2) + '</td><td>$' + a.costo_total_contable.toFixed(2) + '</td></tr>').join('') +
+                (data.articulos.length > 20 ? '<tr><td colspan="5" style="color:#888;">... y ' + (data.articulos.length - 20) + ' más</td></tr>' : '') +
+                '</tbody></table></div></div>';
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
     async function crearValuacion() {
         const nombre = document.getElementById('valNombre').value;
         if (!nombre) { alert('Ingresá un nombre para la valuación'); return; }
 
         const revaluacion_id = document.getElementById('valRevaluacion').value || null;
-        const texto = document.getElementById('valDatosCentum').value.trim();
-        if (!texto) { alert('Pegá los datos de Centum'); return; }
+        let articulos_centum = [];
 
-        const lineas = texto.split('\n').filter(l => l.trim());
-        const articulos_centum = lineas.map(l => {
-            const cols = l.split('\t');
-            if (cols.length < 4) return null;
-            return {
-                codigo_goodies: cols[0].trim(),
-                descripcion: cols[1] ? cols[1].trim() : '',
-                cantidad: parseFloat((cols[2] || '0').replace(',', '.')) || 0,
-                costo_unit_contable: parseFloat((cols[3] || '0').replace(',', '.')) || 0,
-                costo_total_contable: cols[4] ? parseFloat(cols[4].replace(',', '.')) || 0 : 0
-            };
-        }).filter(a => a && a.codigo_goodies);
+        // Prioridad: datos del Excel cargado, si no, texto pegado
+        if (articulosCentumCargados.length > 0) {
+            articulos_centum = articulosCentumCargados;
+        } else {
+            const texto = document.getElementById('valDatosCentum').value.trim();
+            if (!texto) { alert('Subí un Excel de Centum o pegá los datos manualmente'); return; }
+            const lineas = texto.split('\n').filter(l => l.trim());
+            articulos_centum = lineas.map(l => {
+                const cols = l.split('\t');
+                if (cols.length < 4) return null;
+                return {
+                    codigo_goodies: cols[0].trim(),
+                    descripcion: cols[1] ? cols[1].trim() : '',
+                    cantidad: parseFloat((cols[2] || '0').replace(',', '.')) || 0,
+                    costo_unit_contable: parseFloat((cols[3] || '0').replace(',', '.')) || 0,
+                    costo_total_contable: cols[4] ? parseFloat(cols[4].replace(',', '.')) || 0 : 0
+                };
+            }).filter(a => a && a.codigo_goodies);
+        }
 
-        if (articulos_centum.length === 0) { alert('No se encontraron artículos válidos. Verificá el formato (separado por tabs).'); return; }
+        if (articulos_centum.length === 0) { alert('No se encontraron artículos válidos.'); return; }
 
         try {
             const resp = await fetch(API_URL + '/api/contable/valuaciones', {
@@ -3682,6 +3800,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             if (data.error) { alert('Error: ' + data.error); return; }
             renderResultadoValuacion(data);
             cargarHistorialValuaciones();
+            articulosCentumCargados = [];
         } catch(e) { alert('Error: ' + e.message); }
     }
 
