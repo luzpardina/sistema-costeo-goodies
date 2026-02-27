@@ -2157,7 +2157,24 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    alert(window.costeoEditandoId ? 'Costeo actualizado exitosamente!' : 'Costeo guardado exitosamente!');
+                    let msgBase = window.costeoEditandoId ? 'Costeo actualizado exitosamente!' : 'Costeo guardado exitosamente!';
+                    
+                    // Info sobre catálogo
+                    if (data.catalogo) {
+                        if (data.catalogo.nuevosAgregados && data.catalogo.nuevosAgregados.length > 0) {
+                            msgBase += '\n\n📦 Se agregaron ' + data.catalogo.nuevosAgregados.length + ' artículo(s) nuevos al catálogo.';
+                        }
+                        if (data.catalogo.completados && data.catalogo.completados.length > 0) {
+                            msgBase += '\n✅ Se completaron ' + data.catalogo.completados.length + ' dato(s) vacíos en el catálogo.';
+                        }
+                    }
+                    alert(msgBase);
+
+                    // Mostrar diferencias encontradas y preguntar
+                    if (data.catalogo && data.catalogo.diferencias && data.catalogo.diferencias.length > 0) {
+                        mostrarDiferenciasCatalogo(data.catalogo.diferencias);
+                    }
+
                     window.costeoEditandoId = null;
                     cerrarModal('cargaManualModal');
                     cargarCosteos();
@@ -2225,24 +2242,55 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         async function importarCatalogoMaestro(input) {
             if (!input.files || !input.files[0]) return;
             const file = input.files[0];
-            
-            if (!confirm('¿Actualizar el catálogo unificado con este archivo?')) {
-                input.value = '';
-                return;
-            }
-
             const formData = new FormData();
             formData.append('archivo', file);
 
             try {
-                const res = await fetch(`${window.location.origin}/api/maestro/importar`, {
+                // Paso 1: Previsualizar cambios
+                const resPrev = await fetch(`${window.location.origin}/api/maestro/previsualizar`, {
                     method: 'POST',
                     headers: { 'Authorization': 'Bearer ' + token },
                     body: formData
                 });
+                const preview = await resPrev.json();
+                if (!resPrev.ok) { alert('Error: ' + (preview.error || 'No se pudo analizar')); input.value = ''; return; }
+
+                // Armar resumen
+                let msg = '📋 RESUMEN DE IMPORTACIÓN\n';
+                msg += '━━━━━━━━━━━━━━━━━━━━━━━━\n';
+                msg += 'Total en Excel: ' + preview.total_excel + '\n';
+                msg += '🆕 Artículos nuevos: ' + preview.nuevos.length + '\n';
+                msg += '✅ Datos a completar (vacíos): ' + (preview.completados || 0) + '\n';
+                msg += '⚡ Sin cambios: ' + preview.sin_cambios + '\n';
+
+                if (preview.cambios && preview.cambios.length > 0) {
+                    msg += '\n⚠️ DATOS QUE CAMBIAN (' + preview.cambios.length + ' artículos):\n';
+                    for (const cambio of preview.cambios.slice(0, 10)) {
+                        msg += '\n' + cambio.codigo + ' - ' + cambio.nombre + ':';
+                        for (const c of cambio.campos) {
+                            if (c.tipo === 'cambio') {
+                                msg += '\n  ' + c.campo + ': ' + c.antes + ' → ' + c.despues;
+                            }
+                        }
+                    }
+                    if (preview.cambios.length > 10) msg += '\n... y ' + (preview.cambios.length - 10) + ' más';
+                }
+
+                msg += '\n\n¿Aplicar estos cambios?';
+
+                if (!confirm(msg)) { input.value = ''; return; }
+
+                // Paso 2: Aplicar importación
+                const formData2 = new FormData();
+                formData2.append('archivo', file);
+                const res = await fetch(`${window.location.origin}/api/maestro/importar`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData2
+                });
                 const data = await res.json();
                 if (res.ok) {
-                    alert(`Catálogo actualizado:\n- Nuevos: ${data.importados}\n- Actualizados: ${data.actualizados}\n- Errores: ${data.errores}\n- Total: ${data.total}`);
+                    alert('✅ Catálogo actualizado:\n- Nuevos: ' + data.importados + '\n- Actualizados: ' + data.actualizados + '\n- Errores: ' + data.errores);
                     cargarStatsMaestro();
                 } else {
                     alert('Error: ' + (data.error || 'No se pudo importar'));
@@ -2273,6 +2321,35 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             } catch (e) {
                 alert('Error de conexión');
                 console.error(e);
+            }
+        }
+
+        // Mostrar diferencias entre costeo y catálogo
+        function mostrarDiferenciasCatalogo(diferencias) {
+            let msg = '⚠️ DIFERENCIAS CON EL CATÁLOGO\n';
+            msg += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+            msg += 'Se encontraron datos distintos a los del catálogo.\n';
+            msg += '¿Querés actualizar el catálogo con los valores del costeo?\n\n';
+
+            const actualizaciones = [];
+            for (const dif of diferencias) {
+                msg += dif.codigo + ' - ' + dif.nombre + ':\n';
+                for (const c of dif.conflictos) {
+                    msg += '  ' + c.label + ': catálogo=' + c.valor_catalogo + ' → costeo=' + c.valor_costeo + '\n';
+                    actualizaciones.push({ codigo: dif.codigo, campo: c.campo, valor: c.valor_nuevo_raw });
+                }
+                msg += '\n';
+            }
+
+            if (confirm(msg)) {
+                // Aplicar actualizaciones confirmadas
+                fetch(`${window.location.origin}/api/catalogo/actualizar-confirmado`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ actualizaciones })
+                }).then(r => r.json()).then(data => {
+                    alert('✅ Catálogo actualizado: ' + (data.actualizados || 0) + ' campo(s) modificados.');
+                }).catch(e => console.error('Error actualizando catálogo:', e));
             }
         }
 

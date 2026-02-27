@@ -48,7 +48,12 @@ const convertirFechaExcel = (valor) => {
 };
 
 // Actualizar catálogo unificado con datos del costeo guardado
+// Completa campos vacíos automáticamente, detecta diferencias en campos existentes
 const actualizarCatalogo = async (articulos, moneda, proveedor) => {
+    const diferencias = [];
+    const nuevosAgregados = [];
+    const completados = [];
+
     try {
         for (const art of articulos) {
             const codigo = (art.codigo_goodies || '').trim().toUpperCase();
@@ -64,21 +69,54 @@ const actualizarCatalogo = async (articulos, moneda, proveedor) => {
             const impInterno = parseFloat(art.impuesto_interno_porcentaje) || parseFloat(art.imp_interno) || null;
 
             if (existente) {
-                // Actualizar solo campos que tienen valor nuevo
-                const updates = {};
-                if (valorOrigen && valorOrigen > 0) {
-                    updates.ultimo_valor_origen = valorOrigen;
-                    updates.fecha_ultimo_precio = new Date();
-                }
-                if (valorFabrica && valorFabrica > 0) updates.ultimo_valor_fabrica = valorFabrica;
-                if (undCaja && undCaja > 0 && !existente.unidades_por_caja) updates.unidades_por_caja = undCaja;
-                if (derechos && derechos > 0 && !existente.derechos_porcentaje) updates.derechos_porcentaje = derechos;
-                if (impInterno != null && !existente.imp_interno_porcentaje) updates.imp_interno_porcentaje = impInterno;
-                if (moneda && !existente.moneda) updates.moneda = moneda;
-                if (proveedor && !existente.proveedor) updates.proveedor = proveedor;
+                const autoUpdates = {};
+                const conflictos = [];
 
-                if (Object.keys(updates).length > 0) {
-                    await existente.update(updates);
+                // Precios: siempre actualizar (es el último valor)
+                if (valorOrigen && valorOrigen > 0) {
+                    autoUpdates.ultimo_valor_origen = valorOrigen;
+                    autoUpdates.fecha_ultimo_precio = new Date();
+                }
+                if (valorFabrica && valorFabrica > 0) autoUpdates.ultimo_valor_fabrica = valorFabrica;
+
+                // Campos que se completan si están vacíos, o detectan conflicto si difieren
+                const checks = [
+                    { campo: 'unidades_por_caja', label: 'Und/Caja', nuevo: undCaja, actual: existente.unidades_por_caja ? parseFloat(existente.unidades_por_caja) : null },
+                    { campo: 'derechos_porcentaje', label: '% Derechos', nuevo: derechos, actual: existente.derechos_porcentaje ? parseFloat(existente.derechos_porcentaje) : null, esPct: true },
+                    { campo: 'imp_interno_porcentaje', label: '% Imp. Internos', nuevo: impInterno, actual: existente.imp_interno_porcentaje ? parseFloat(existente.imp_interno_porcentaje) : null, esPct: true }
+                ];
+
+                for (const chk of checks) {
+                    if (chk.nuevo && chk.nuevo > 0) {
+                        if (!chk.actual || chk.actual === 0) {
+                            // Campo vacío -> completar automáticamente
+                            autoUpdates[chk.campo] = chk.nuevo;
+                            completados.push({ codigo, campo: chk.label });
+                        } else if (Math.abs(chk.actual - chk.nuevo) > 0.0001) {
+                            // Campo tiene valor distinto -> conflicto
+                            conflictos.push({
+                                campo: chk.campo,
+                                label: chk.label,
+                                valor_catalogo: chk.esPct ? (chk.actual * 100).toFixed(2) + '%' : chk.actual,
+                                valor_costeo: chk.esPct ? (chk.nuevo * 100).toFixed(2) + '%' : chk.nuevo,
+                                valor_nuevo_raw: chk.nuevo
+                            });
+                        }
+                    }
+                }
+
+                // Moneda y proveedor: solo completar si vacíos
+                if (moneda && !existente.moneda) autoUpdates.moneda = moneda;
+                if (proveedor && !existente.proveedor) autoUpdates.proveedor = proveedor;
+
+                // Aplicar actualizaciones automáticas
+                if (Object.keys(autoUpdates).length > 0) {
+                    await existente.update(autoUpdates);
+                }
+
+                // Guardar conflictos para informar al frontend
+                if (conflictos.length > 0) {
+                    diferencias.push({ codigo, nombre: existente.nombre, conflictos });
                 }
             } else {
                 // Crear nuevo artículo en catálogo
@@ -96,11 +134,14 @@ const actualizarCatalogo = async (articulos, moneda, proveedor) => {
                     fecha_ultimo_precio: (valorOrigen || valorFabrica) ? new Date() : null,
                     habilitado: true
                 });
+                nuevosAgregados.push({ codigo, nombre: art.nombre });
             }
         }
     } catch (e) {
         console.error('Error actualizando catálogo:', e.message);
     }
+
+    return { diferencias, nuevosAgregados, completados };
 };
 
 // Importar Excel
@@ -462,7 +503,7 @@ const importarExcel = async (req, res) => {
         await calcularCosteo(costeo.id, models);
 
         // Actualizar catálogo unificado
-        await actualizarCatalogo(articulos, datosGenerales.moneda_principal, datosGenerales.proveedor);
+        const catalogoResult = await actualizarCatalogo(articulos, datosGenerales.moneda_principal, datosGenerales.proveedor);
 
         // Respuesta exitosa
         res.status(201).json({
@@ -478,7 +519,8 @@ const importarExcel = async (req, res) => {
                 gastos_importados: gastosVarios.length,
                 flete_usd: fleteAduana,
                 seguro_usd: seguroAduana
-            }
+            },
+            catalogo: catalogoResult
         });
 
     } catch (error) {
@@ -687,7 +729,7 @@ fob_parte: datos.fob_parte || 0,
         }
 
         // Actualizar catálogo unificado con datos del costeo
-        await actualizarCatalogo(datos.articulos, datos.moneda_principal, datos.proveedor);
+        const catalogoResult = await actualizarCatalogo(datos.articulos, datos.moneda_principal, datos.proveedor);
 
         res.json({
             mensaje: 'Costeo guardado exitosamente',
@@ -699,7 +741,8 @@ fob_parte: datos.fob_parte || 0,
             estadisticas: {
                 articulos: datos.articulos.length,
                 gastos: datos.gastos ? datos.gastos.filter(g => g.descripcion).length : 0
-            }
+            },
+            catalogo: catalogoResult
         });
 
     } catch (error) {
