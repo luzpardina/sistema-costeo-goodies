@@ -2025,10 +2025,11 @@ async function ejecutarCalculo(id, metodo) {
                     html += '<th style="padding:6px 8px;text-align:left;border-bottom:2px solid #444;">Descripción</th>';
                     html += '<th style="padding:6px 8px;text-align:center;border-bottom:2px solid #444;">Moneda</th>';
                     html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colorA + ';">Elegido</th>';
-                    html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colorA + ';">ARS Elegido</th>';
                     html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colorB + ';">Comparado</th>';
+                    html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;">Var % Divisa</th>';
+                    html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colorA + ';">ARS Elegido</th>';
                     html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colorB + ';">ARS Comparado</th>';
-                    html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;">Var %</th>';
+                    html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;">Var % ARS</th>';
                     html += '</tr></thead><tbody>';
 
                     // Combinar gastos por descripción normalizada
@@ -2050,19 +2051,25 @@ async function ejecutarCalculo(id, metodo) {
                         const montoB = item.b ? (parseFloat(item.b.monto) || 0) : 0;
                         const arsA = item.a ? (parseFloat(item.a.monto_ars) || 0) : 0;
                         const arsB = item.b ? (parseFloat(item.b.monto_ars) || 0) : 0;
-                        totalGvArsA += arsA;
-                        totalGvArsB += arsB;
+                        const esStabz = key.includes('STABZ');
+                        if (!esStabz) {
+                            totalGvArsA += arsA;
+                            totalGvArsB += arsB;
+                        }
                         const varGv = pctDif(arsA, arsB);
                         const soloUno = !item.a || !item.b;
-                        const rowBg = soloUno ? ' style="background:rgba(255,152,0,0.08);"' : '';
+                        const rowBg = esStabz ? ' style="background:rgba(100,100,100,0.15);opacity:0.6;"' : (soloUno ? ' style="background:rgba(255,152,0,0.08);"' : '');
                         const nc = (item.a && item.a.no_contable) || (item.b && item.b.no_contable) ? ' <span style="color:#888;font-size:10px;">(NC)</span>' : '';
+                        const stabzTag = esStabz ? ' <span style="color:#f44336;font-size:10px;">(excl. total)</span>' : '';
 
                         html += '<tr' + rowBg + '>';
-                        html += '<td style="padding:5px 8px;border-bottom:1px solid #333;">' + (item.desc || '-') + nc + '</td>';
+                        html += '<td style="padding:5px 8px;border-bottom:1px solid #333;">' + (item.desc || '-') + nc + stabzTag + '</td>';
                         html += '<td style="padding:5px 8px;text-align:center;border-bottom:1px solid #333;">' + (item.moneda || '-') + '</td>';
                         html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">' + (item.a ? fmtNum(montoA) : '-') + '</td>';
-                        html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">$' + (item.a ? fmtNum(arsA) : '-') + '</td>';
                         html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">' + (item.b ? fmtNum(montoB) : '-') + '</td>';
+                        const varDiv = pctDif(montoA, montoB);
+                        html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varDiv) + ';font-weight:bold;">' + (montoA && montoB ? fmtPct(varDiv) : '-') + '</td>';
+                        html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">$' + (item.a ? fmtNum(arsA) : '-') + '</td>';
                         html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">$' + (item.b ? fmtNum(arsB) : '-') + '</td>';
                         html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varGv) + ';font-weight:bold;">' + (arsA && arsB ? fmtPct(varGv) : '-') + '</td>';
                         html += '</tr>';
@@ -2070,9 +2077,9 @@ async function ejecutarCalculo(id, metodo) {
                     // Total gastos varios
                     const varTotalGv = pctDif(totalGvArsA, totalGvArsB);
                     html += '<tr style="background:#1a1a2e;font-weight:bold;">';
-                    html += '<td colspan="3" style="padding:6px 8px;border-top:2px solid #444;">TOTAL GASTOS VARIOS</td>';
-                    html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">$' + fmtNum(totalGvArsA) + '</td>';
+                    html += '<td colspan="4" style="padding:6px 8px;border-top:2px solid #444;">TOTAL GASTOS VARIOS <span style="font-weight:normal;font-size:11px;color:#888;">(sin STABZ)</span></td>';
                     html += '<td style="padding:6px 8px;border-top:2px solid #444;"></td>';
+                    html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">$' + fmtNum(totalGvArsA) + '</td>';
                     html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">$' + fmtNum(totalGvArsB) + '</td>';
                     html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;color:' + colorPct(varTotalGv) + ';">' + fmtPct(varTotalGv) + '</td>';
                     html += '</tr>';
@@ -2080,6 +2087,97 @@ async function ejecutarCalculo(id, metodo) {
                 }
 
                 html += '</div></div>';
+
+                // ========== SECCIÓN BASE ADUANA ==========
+                html += '<div style="margin-top:25px;">';
+                html += '<h4 style="color:#e91e63;margin-bottom:10px;">📦 Datos para Base Aduana (Puesta FOB + Flete + Seguro)</h4>';
+                html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+                html += '<thead><tr style="background:#2a2a3e;">';
+                html += '<th style="padding:6px 8px;text-align:left;border-bottom:2px solid #444;">Concepto</th>';
+                html += '<th style="padding:6px 8px;text-align:center;border-bottom:2px solid #444;">Moneda</th>';
+                html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colorA + ';">Elegido</th>';
+                html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colorB + ';">Comparado</th>';
+                html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;">Var %</th>';
+                html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colorA + ';">ARS Elegido</th>';
+                html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colorB + ';">ARS Comparado</th>';
+                html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;">Var % ARS</th>';
+                html += '</tr></thead><tbody>';
+
+                // Puesta FOB
+                const fobMontoA = parseFloat(costeoA.es_consolidado ? costeoA.fob_parte : costeoA.fob_monto) || 0;
+                const fobMontoB = parseFloat(costeoB.es_consolidado ? costeoB.fob_parte : costeoB.fob_monto) || 0;
+                const fobMonedaLabel = costeoA.moneda_principal || 'USD';
+                const tcFobA = fobMonedaLabel === 'EUR' ? (parseFloat(costeoA.tc_eur)||0) : fobMonedaLabel === 'GBP' ? (parseFloat(costeoA.tc_gbp)||0) : (parseFloat(costeoA.tc_usd)||0);
+                const tcFobB = fobMonedaLabel === 'EUR' ? (parseFloat(costeoB.tc_eur)||0) : fobMonedaLabel === 'GBP' ? (parseFloat(costeoB.tc_gbp)||0) : (parseFloat(costeoB.tc_usd)||0);
+                const fobArsBA = fobMontoA * tcFobA;
+                const fobArsBB = fobMontoB * tcFobB;
+                const varFobBDiv = pctDif(fobMontoA, fobMontoB);
+                const varFobBArs = pctDif(fobArsBA, fobArsBB);
+                html += '<tr>';
+                html += '<td style="padding:5px 8px;border-bottom:1px solid #333;">Puesta FOB</td>';
+                html += '<td style="padding:5px 8px;text-align:center;border-bottom:1px solid #333;">' + fobMonedaLabel + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">' + fmtNum(fobMontoA) + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">' + fmtNum(fobMontoB) + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varFobBDiv) + ';font-weight:bold;">' + fmtPct(varFobBDiv) + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">$' + fmtNum(fobArsBA) + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">$' + fmtNum(fobArsBB) + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varFobBArs) + ';font-weight:bold;">' + fmtPct(varFobBArs) + '</td>';
+                html += '</tr>';
+
+                // Flete
+                const fleteMontoA = parseFloat(costeoA.es_consolidado ? costeoA.flete_parte : costeoA.flete_monto) || 0;
+                const fleteMontoB = parseFloat(costeoB.es_consolidado ? costeoB.flete_parte : costeoB.flete_monto) || 0;
+                const fleteMoneda = (costeoA.flete_moneda || 'USD').toUpperCase();
+                const tcFleteA = fleteMoneda === 'EUR' ? (parseFloat(costeoA.tc_eur)||0) : fleteMoneda === 'GBP' ? (parseFloat(costeoA.tc_gbp)||0) : (parseFloat(costeoA.tc_usd)||0);
+                const tcFleteB = fleteMoneda === 'EUR' ? (parseFloat(costeoB.tc_eur)||0) : fleteMoneda === 'GBP' ? (parseFloat(costeoB.tc_gbp)||0) : (parseFloat(costeoB.tc_usd)||0);
+                const fleteArsA = fleteMontoA * tcFleteA;
+                const fleteArsB = fleteMontoB * tcFleteB;
+                const varFleteDiv = pctDif(fleteMontoA, fleteMontoB);
+                const varFleteArs = pctDif(fleteArsA, fleteArsB);
+                html += '<tr>';
+                html += '<td style="padding:5px 8px;border-bottom:1px solid #333;">Flete Internacional</td>';
+                html += '<td style="padding:5px 8px;text-align:center;border-bottom:1px solid #333;">' + fleteMoneda + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">' + fmtNum(fleteMontoA) + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">' + fmtNum(fleteMontoB) + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varFleteDiv) + ';font-weight:bold;">' + fmtPct(varFleteDiv) + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">$' + fmtNum(fleteArsA) + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">$' + fmtNum(fleteArsB) + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varFleteArs) + ';font-weight:bold;">' + fmtPct(varFleteArs) + '</td>';
+                html += '</tr>';
+
+                // Seguro
+                const segMontoA = parseFloat(costeoA.es_consolidado ? costeoA.seguro_parte : costeoA.seguro_monto) || 0;
+                const segMontoB = parseFloat(costeoB.es_consolidado ? costeoB.seguro_parte : costeoB.seguro_monto) || 0;
+                const segMoneda = (costeoA.seguro_moneda || 'USD').toUpperCase();
+                const tcSegA = segMoneda === 'EUR' ? (parseFloat(costeoA.tc_eur)||0) : segMoneda === 'GBP' ? (parseFloat(costeoA.tc_gbp)||0) : (parseFloat(costeoA.tc_usd)||0);
+                const tcSegB = segMoneda === 'EUR' ? (parseFloat(costeoB.tc_eur)||0) : segMoneda === 'GBP' ? (parseFloat(costeoB.tc_gbp)||0) : (parseFloat(costeoB.tc_usd)||0);
+                const segArsA = segMontoA * tcSegA;
+                const segArsB = segMontoB * tcSegB;
+                const varSegDiv = pctDif(segMontoA, segMontoB);
+                const varSegArs = pctDif(segArsA, segArsB);
+                html += '<tr>';
+                html += '<td style="padding:5px 8px;border-bottom:1px solid #333;">Seguro</td>';
+                html += '<td style="padding:5px 8px;text-align:center;border-bottom:1px solid #333;">' + segMoneda + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">' + fmtNum(segMontoA) + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">' + fmtNum(segMontoB) + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varSegDiv) + ';font-weight:bold;">' + fmtPct(varSegDiv) + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">$' + fmtNum(segArsA) + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">$' + fmtNum(segArsB) + '</td>';
+                html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varSegArs) + ';font-weight:bold;">' + fmtPct(varSegArs) + '</td>';
+                html += '</tr>';
+
+                // Total Base Aduana
+                const totalBaseA = fobArsBA + fleteArsA + segArsA;
+                const totalBaseB = fobArsBB + fleteArsB + segArsB;
+                const varTotalBase = pctDif(totalBaseA, totalBaseB);
+                html += '<tr style="background:#1a1a2e;font-weight:bold;">';
+                html += '<td colspan="5" style="padding:6px 8px;border-top:2px solid #444;">TOTAL BASE ADUANA (ARS)</td>';
+                html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">$' + fmtNum(totalBaseA) + '</td>';
+                html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">$' + fmtNum(totalBaseB) + '</td>';
+                html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;color:' + colorPct(varTotalBase) + ';">' + fmtPct(varTotalBase) + '</td>';
+                html += '</tr>';
+                html += '</tbody></table>';
+                html += '</div>';
 
                 document.getElementById('compPvsDefBody').innerHTML = html;
                 document.getElementById('compPvsDefTitle').textContent = 'Comparativo: ' + costeoA.nombre_costeo + ' vs ' + costeoB.nombre_costeo;
