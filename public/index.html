@@ -1846,6 +1846,7 @@ async function ejecutarCalculo(id, metodo) {
                     return ((a - b) / Math.abs(b)) * 100;
                 };
                 const fmtNum = (v) => (parseFloat(v) || 0).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                const fmtFob = (v) => (parseFloat(v) || 0).toLocaleString('es-AR', {minimumFractionDigits: 4, maximumFractionDigits: 4});
                 const fmtPct = (v) => { const n = parseFloat(v); return (n > 0 ? '+' : '') + n.toFixed(2) + '%'; };
                 const colorPct = (v) => { const n = parseFloat(v); return n > 0 ? '#f44336' : n < 0 ? '#4CAF50' : '#aaa'; };
 
@@ -1943,8 +1944,8 @@ async function ejecutarCalculo(id, metodo) {
 
                     html += '<tr' + rowStyle + '>';
                     html += '<td style="padding:6px 8px;border-bottom:1px solid #333;">' + codigo + '<br><small style="color:#aaa;">' + nombre + '</small></td>';
-                    html += '<td style="' + tdS + '">' + (artA && fobA ? fmtNum(fobA) : '-') + '</td>';
-                    html += '<td style="' + tdS + '">' + (artB && fobB ? fmtNum(fobB) : '-') + '</td>';
+                    html += '<td style="' + tdS + '">' + (artA && fobA ? fmtFob(fobA) : '-') + '</td>';
+                    html += '<td style="' + tdS + '">' + (artB && fobB ? fmtFob(fobB) : '-') + '</td>';
                     html += '<td style="' + tdS + 'color:' + colorPct(varFob) + ';font-weight:bold;">' + (fobA && fobB ? fmtPct(varFob) : '-') + '</td>';
                     html += '<td style="' + tdS + '">$' + (artA && netoA ? fmtNum(netoA) : '-') + '</td>';
                     html += '<td style="' + tdS + '">$' + (artB && netoB ? fmtNum(netoB) : '-') + '</td>';
@@ -1955,6 +1956,130 @@ async function ejecutarCalculo(id, metodo) {
                     html += '</tr>';
                 }
                 html += '</tbody></table>';
+
+                // ========== SECCIÓN GASTOS COMPARADOS ==========
+                const ga = costeoA.gastos_aduana || {};
+                const gb = costeoB.gastos_aduana || {};
+                const gvA = costeoA.gastos_varios || [];
+                const gvB = costeoB.gastos_varios || [];
+
+                html += '<div style="margin-top:25px;">';
+                html += '<h4 style="color:#2196F3;margin-bottom:10px;cursor:pointer;" onclick="document.getElementById(\'compGastosDetail\').style.display = document.getElementById(\'compGastosDetail\').style.display === \'none\' ? \'block\' : \'none\';">📋 Detalle de Gastos (click para expandir/colapsar)</h4>';
+                html += '<div id="compGastosDetail" style="display:block;">';
+
+                // Tabla Gastos de Aduana
+                html += '<h5 style="color:#aaa;margin:15px 0 8px 0;">Gastos de Aduana (ARS)</h5>';
+                html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+                html += '<thead><tr style="background:#2a2a3e;">';
+                html += '<th style="padding:6px 8px;text-align:left;border-bottom:2px solid #444;">Concepto</th>';
+                html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colorA + ';">Elegido</th>';
+                html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colorB + ';">Comparado</th>';
+                html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;">Var %</th>';
+                html += '</tr></thead><tbody>';
+
+                const gastosAduanaFields = [
+                    {key: 'despachante', label: 'Despachante'},
+                    {key: 'gestion_senasa', label: 'Gestión SENASA'},
+                    {key: 'gestion_anmat', label: 'Gestión ANMAT'},
+                    {key: 'transporte_internacional', label: 'Transporte Internacional'},
+                    {key: 'gastos_origen', label: 'Gastos Origen'},
+                    {key: 'terminal', label: 'Terminal'},
+                    {key: 'maritima_agencia', label: 'Marítima/Agencia'},
+                    {key: 'bancarios', label: 'Bancarios'},
+                    {key: 'gestor', label: 'Gestor'},
+                    {key: 'transporte_nacional', label: 'Transporte Nacional'},
+                    {key: 'custodia', label: 'Custodia'},
+                    {key: 'sim', label: 'SIM'}
+                ];
+
+                let totalGaA = 0, totalGaB = 0;
+                for (const campo of gastosAduanaFields) {
+                    const valA = parseFloat(ga[campo.key]) || 0;
+                    const valB = parseFloat(gb[campo.key]) || 0;
+                    if (valA === 0 && valB === 0) continue;
+                    totalGaA += valA;
+                    totalGaB += valB;
+                    const varG = pctDif(valA, valB);
+                    html += '<tr>';
+                    html += '<td style="padding:5px 8px;border-bottom:1px solid #333;">' + campo.label + '</td>';
+                    html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">$' + fmtNum(valA) + '</td>';
+                    html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">$' + fmtNum(valB) + '</td>';
+                    html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varG) + ';font-weight:bold;">' + (valA && valB ? fmtPct(varG) : '-') + '</td>';
+                    html += '</tr>';
+                }
+                // Total gastos aduana
+                const varTotalGa = pctDif(totalGaA, totalGaB);
+                html += '<tr style="background:#1a1a2e;font-weight:bold;">';
+                html += '<td style="padding:6px 8px;border-top:2px solid #444;">TOTAL GASTOS ADUANA</td>';
+                html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">$' + fmtNum(totalGaA) + '</td>';
+                html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">$' + fmtNum(totalGaB) + '</td>';
+                html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;color:' + colorPct(varTotalGa) + ';">' + fmtPct(varTotalGa) + '</td>';
+                html += '</tr>';
+                html += '</tbody></table>';
+
+                // Tabla Gastos Varios
+                if (gvA.length > 0 || gvB.length > 0) {
+                    html += '<h5 style="color:#aaa;margin:20px 0 8px 0;">Gastos Varios</h5>';
+                    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+                    html += '<thead><tr style="background:#2a2a3e;">';
+                    html += '<th style="padding:6px 8px;text-align:left;border-bottom:2px solid #444;">Descripción</th>';
+                    html += '<th style="padding:6px 8px;text-align:center;border-bottom:2px solid #444;">Moneda</th>';
+                    html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colorA + ';">Elegido</th>';
+                    html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colorA + ';">ARS Elegido</th>';
+                    html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colorB + ';">Comparado</th>';
+                    html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colorB + ';">ARS Comparado</th>';
+                    html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;">Var %</th>';
+                    html += '</tr></thead><tbody>';
+
+                    // Combinar gastos por descripción normalizada
+                    const gastosMap = new Map();
+                    gvA.forEach(g => {
+                        const key = (g.descripcion || '').toUpperCase().trim();
+                        if (!gastosMap.has(key)) gastosMap.set(key, {desc: g.descripcion, moneda: g.moneda, a: null, b: null});
+                        gastosMap.get(key).a = g;
+                    });
+                    gvB.forEach(g => {
+                        const key = (g.descripcion || '').toUpperCase().trim();
+                        if (!gastosMap.has(key)) gastosMap.set(key, {desc: g.descripcion, moneda: g.moneda, a: null, b: null});
+                        gastosMap.get(key).b = g;
+                    });
+
+                    let totalGvArsA = 0, totalGvArsB = 0;
+                    for (const [key, item] of gastosMap) {
+                        const montoA = item.a ? (parseFloat(item.a.monto) || 0) : 0;
+                        const montoB = item.b ? (parseFloat(item.b.monto) || 0) : 0;
+                        const arsA = item.a ? (parseFloat(item.a.monto_ars) || 0) : 0;
+                        const arsB = item.b ? (parseFloat(item.b.monto_ars) || 0) : 0;
+                        totalGvArsA += arsA;
+                        totalGvArsB += arsB;
+                        const varGv = pctDif(arsA, arsB);
+                        const soloUno = !item.a || !item.b;
+                        const rowBg = soloUno ? ' style="background:rgba(255,152,0,0.08);"' : '';
+                        const nc = (item.a && item.a.no_contable) || (item.b && item.b.no_contable) ? ' <span style="color:#888;font-size:10px;">(NC)</span>' : '';
+
+                        html += '<tr' + rowBg + '>';
+                        html += '<td style="padding:5px 8px;border-bottom:1px solid #333;">' + (item.desc || '-') + nc + '</td>';
+                        html += '<td style="padding:5px 8px;text-align:center;border-bottom:1px solid #333;">' + (item.moneda || '-') + '</td>';
+                        html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">' + (item.a ? fmtNum(montoA) : '-') + '</td>';
+                        html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">$' + (item.a ? fmtNum(arsA) : '-') + '</td>';
+                        html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">' + (item.b ? fmtNum(montoB) : '-') + '</td>';
+                        html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">$' + (item.b ? fmtNum(arsB) : '-') + '</td>';
+                        html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varGv) + ';font-weight:bold;">' + (arsA && arsB ? fmtPct(varGv) : '-') + '</td>';
+                        html += '</tr>';
+                    }
+                    // Total gastos varios
+                    const varTotalGv = pctDif(totalGvArsA, totalGvArsB);
+                    html += '<tr style="background:#1a1a2e;font-weight:bold;">';
+                    html += '<td colspan="3" style="padding:6px 8px;border-top:2px solid #444;">TOTAL GASTOS VARIOS</td>';
+                    html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">$' + fmtNum(totalGvArsA) + '</td>';
+                    html += '<td style="padding:6px 8px;border-top:2px solid #444;"></td>';
+                    html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">$' + fmtNum(totalGvArsB) + '</td>';
+                    html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;color:' + colorPct(varTotalGv) + ';">' + fmtPct(varTotalGv) + '</td>';
+                    html += '</tr>';
+                    html += '</tbody></table>';
+                }
+
+                html += '</div></div>';
 
                 document.getElementById('compPvsDefBody').innerHTML = html;
                 document.getElementById('compPvsDefTitle').textContent = 'Comparativo: ' + costeoA.nombre_costeo + ' vs ' + costeoB.nombre_costeo;
