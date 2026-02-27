@@ -238,12 +238,14 @@
                     </div>
                     <button class="btn btn-secondary" onclick="cargarUltimosCostos()">Actualizar</button>
                     <button class="btn btn-success" onclick="exportarUltimosCostos()">Exportar Excel</button>
+                    <button class="btn btn-warning" onclick="exportarSeleccionados()" style="display:none;" id="btnExportarSeleccion">Exportar Seleccionados (<span id="countSeleccion">0</span>)</button>
                 </div>
                 <div class="loading" id="articulosLoading"><div class="spinner"></div><p>Cargando...</p></div>
                 <div class="table-container" style="max-height: 500px; overflow-y: auto;">
                     <table>
                         <thead>
                             <tr>
+                                <th><input type="checkbox" id="seleccionarTodosArt" onchange="toggleSeleccionTodos(this)"></th>
                                 <th>Código</th>
                                 <th>Proveedor</th>
                                 <th>Nombre</th>
@@ -367,7 +369,7 @@
         </div>
     </div>
 <div class="modal" id="detalleArticuloModal">
-        <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-content" style="max-width: 950px;">
             <div class="modal-header">
                 <h3 id="detalleArticuloTitle">Detalle del Artículo</h3>
                 <button class="modal-close" onclick="cerrarModal('detalleArticuloModal')">×</button>
@@ -760,7 +762,7 @@ let todosLosArticulos = [];
         function renderizarArticulosUltimoCosto(articulos) {
             const tbody = document.getElementById('articulosUltimoCostoBody');
             if (articulos.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;">No hay artículos</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;">No hay artículos</td></tr>';
                 return;
             }
             tbody.innerHTML = articulos.map(art => {
@@ -772,6 +774,7 @@ let todosLosArticulos = [];
                 const colorDifCosto = art.diferencia_pct > 0 ? '#f44336' : art.diferencia_pct < 0 ? '#4CAF50' : '#fff';
                 
                 return '<tr>' +
+                    '<td><input type="checkbox" class="art-check" value="' + (art.codigo_goodies || '') + '" onchange="actualizarSeleccion()"></td>' +
                     '<td>' + (art.codigo_goodies || '-') + '</td>' +
                     '<td>' + (art.proveedor || '-') + '</td>' +
                     '<td>' + (art.nombre || '-') + '</td>' +
@@ -1018,12 +1021,12 @@ async function verDetalleArticulo(codigo) {
                 const ultimo = data.ultimo;
                 const anterior = data.anterior;
                 
-               let html = '<div style="display:flex;gap:20px;flex-wrap:wrap;">';
+                let html = '<div style="display:flex;gap:20px;flex-wrap:wrap;">';
                 
-                // Calcular variaciones (si hay anterior)
                 let varTcUsd = null, varTcEur = null, varTcGbp = null;
                 let varFobOrigen = null, varFobInterm = null;
                 let varCostoNeto = null, varCostoImp = null;
+                let varGastos = null;
                 
                 if (anterior) {
                     varTcUsd = ultimo.tc_usd && anterior.tc_usd ? (((ultimo.tc_usd - anterior.tc_usd) / anterior.tc_usd) * 100).toFixed(2) : null;
@@ -1033,13 +1036,17 @@ async function verDetalleArticulo(codigo) {
                     varFobInterm = ultimo.fob_interm && anterior.fob_interm ? (((ultimo.fob_interm - anterior.fob_interm) / anterior.fob_interm) * 100).toFixed(2) : null;
                     varCostoNeto = ultimo.costo_neto && anterior.costo_neto ? (((ultimo.costo_neto - anterior.costo_neto) / anterior.costo_neto) * 100).toFixed(2) : null;
                     varCostoImp = ultimo.costo_con_impuestos && anterior.costo_con_impuestos ? (((ultimo.costo_con_impuestos - anterior.costo_con_impuestos) / anterior.costo_con_impuestos) * 100).toFixed(2) : null;
+                    if (ultimo.total_gastos_ars && anterior.total_gastos_ars && anterior.total_gastos_ars > 0) {
+                        varGastos = (((ultimo.total_gastos_ars - anterior.total_gastos_ars) / anterior.total_gastos_ars) * 100).toFixed(2);
+                    }
                 }
                 
                 const colorVar = (v) => v > 0 ? '#f44336' : v < 0 ? '#4CAF50' : '#fff';
                 const formatVar = (v) => v !== null ? ' <span style="color:' + colorVar(v) + ';">(' + (v > 0 ? '+' : '') + v + '%)</span>' : '';
+                const fmtARS = (v) => v ? '$' + parseFloat(v).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-';
                 
                 // Columna ÚLTIMO
-                html += '<div style="flex:1;min-width:280px;background:#1e1e2f;padding:15px;border-radius:8px;">';
+                html += '<div style="flex:1;min-width:380px;background:#1e1e2f;padding:15px;border-radius:8px;">';
                 html += '<h4 style="color:#4CAF50;margin-top:0;">ÚLTIMO COSTEO</h4>';
                 html += '<p><strong>Costeo:</strong> ' + (ultimo.nombre_costeo || '-') + '</p>';
                 html += '<p><strong>Fecha Despacho:</strong> ' + formatearFecha(ultimo.fecha_despacho) + '</p>';
@@ -1048,16 +1055,29 @@ async function verDetalleArticulo(codigo) {
                 html += '<p><strong>TC EUR:</strong> ' + (ultimo.tc_eur || '-') + formatVar(varTcEur) + '</p>';
                 html += '<p><strong>TC GBP:</strong> ' + (ultimo.tc_gbp || '-') + formatVar(varTcGbp) + '</p>';
                 html += '<hr style="border-color:#444;">';
-                html += '<p><strong>FOB Origen:</strong> ' + (ultimo.fob_origen ? parseFloat(ultimo.fob_origen).toFixed(varFobOrigen && parseFloat(varFobOrigen) !== 0 ? 4 : 2) : '-') + ' ' + (ultimo.moneda || '') + formatVar(varFobOrigen) + '</p>';
+                html += '<p><strong>FOB Origen:</strong> ' + (ultimo.fob_origen ? parseFloat(ultimo.fob_origen).toFixed(4) : '-') + ' ' + (ultimo.moneda || '') + formatVar(varFobOrigen) + '</p>';
                 if (ultimo.fob_interm && parseFloat(ultimo.fob_interm) > 0) {
                     html += '<p><strong>FOB Fábrica:</strong> ' + parseFloat(ultimo.fob_interm).toFixed(4) + ' ' + (ultimo.moneda || '') + formatVar(varFobInterm) + '</p>';
                 }
-                html += '<p><strong>Costo Neto:</strong> $' + (ultimo.costo_neto ? parseFloat(ultimo.costo_neto).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-') + formatVar(varCostoNeto) + '</p>';
-                html += '<p><strong>Costo c/Imp:</strong> $' + (ultimo.costo_con_impuestos ? parseFloat(ultimo.costo_con_impuestos).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-') + formatVar(varCostoImp) + '</p>';
+                html += '<p><strong>Costo Neto:</strong> ' + fmtARS(ultimo.costo_neto) + formatVar(varCostoNeto) + '</p>';
+                html += '<p><strong>Costo c/Imp:</strong> ' + fmtARS(ultimo.costo_con_impuestos) + formatVar(varCostoImp) + '</p>';
+                
+                // Gastos resumen
+                html += '<hr style="border-color:#444;">';
+                html += '<p><strong>Total Gastos:</strong> ' + fmtARS(ultimo.total_gastos_ars) + formatVar(varGastos) + '</p>';
+                if (ultimo.gastos && ultimo.gastos.length > 0) {
+                    html += '<a href="#" onclick="document.getElementById(\'gastosUltimo\').style.display = document.getElementById(\'gastosUltimo\').style.display === \'none\' ? \'block\' : \'none\'; return false;" style="color:#4CAF50;font-size:13px;">▶ Ver detalle gastos (' + ultimo.gastos.length + ')</a>';
+                    html += '<div id="gastosUltimo" style="display:none;margin-top:8px;font-size:12px;background:#16162a;padding:10px;border-radius:5px;max-height:200px;overflow-y:auto;">';
+                    html += '<table style="width:100%;font-size:12px;"><thead><tr><th style="text-align:left;padding:2px 5px;">Gasto</th><th style="text-align:right;padding:2px 5px;">Monto ARS</th></tr></thead><tbody>';
+                    ultimo.gastos.forEach(g => {
+                        html += '<tr><td style="padding:2px 5px;">' + g.descripcion + '</td><td style="text-align:right;padding:2px 5px;">' + fmtARS(g.monto_ars) + '</td></tr>';
+                    });
+                    html += '</tbody></table></div>';
+                }
                 html += '</div>';
                 
                 // Columna ANTERIOR
-                html += '<div style="flex:1;min-width:280px;background:#1e1e2f;padding:15px;border-radius:8px;">';
+                html += '<div style="flex:1;min-width:380px;background:#1e1e2f;padding:15px;border-radius:8px;">';
                 html += '<h4 style="color:#ff9800;margin-top:0;">COSTEO ANTERIOR</h4>';
                 if (anterior) {
                     html += '<p><strong>Costeo:</strong> ' + (anterior.nombre_costeo || '-') + '</p>';
@@ -1067,19 +1087,68 @@ async function verDetalleArticulo(codigo) {
                     html += '<p><strong>TC EUR:</strong> ' + (anterior.tc_eur || '-') + '</p>';
                     html += '<p><strong>TC GBP:</strong> ' + (anterior.tc_gbp || '-') + '</p>';
                     html += '<hr style="border-color:#444;">';
-                    html += '<p><strong>FOB Origen:</strong> ' + (anterior.fob_origen ? parseFloat(anterior.fob_origen).toFixed(varFobOrigen && parseFloat(varFobOrigen) !== 0 ? 4 : 2) : '-') + ' ' + (anterior.moneda || '') + '</p>';
+                    html += '<p><strong>FOB Origen:</strong> ' + (anterior.fob_origen ? parseFloat(anterior.fob_origen).toFixed(4) : '-') + ' ' + (anterior.moneda || '') + '</p>';
                     if (anterior.fob_interm && parseFloat(anterior.fob_interm) > 0) {
                         html += '<p><strong>FOB Fábrica:</strong> ' + parseFloat(anterior.fob_interm).toFixed(4) + ' ' + (anterior.moneda || '') + '</p>';
                     }
                     html += '<hr style="border-color:#444;">';
-                    html += '<p><strong>Costo Neto:</strong> $' + (anterior.costo_neto ? parseFloat(anterior.costo_neto).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-') + '</p>';
-                    html += '<p><strong>Costo c/Imp:</strong> $' + (anterior.costo_con_impuestos ? parseFloat(anterior.costo_con_impuestos).toLocaleString('es-AR', {minimumFractionDigits: 2}) : '-') + '</p>';
+                    html += '<p><strong>Costo Neto:</strong> ' + fmtARS(anterior.costo_neto) + '</p>';
+                    html += '<p><strong>Costo c/Imp:</strong> ' + fmtARS(anterior.costo_con_impuestos) + '</p>';
+                    
+                    // Gastos anterior
+                    html += '<hr style="border-color:#444;">';
+                    html += '<p><strong>Total Gastos:</strong> ' + fmtARS(anterior.total_gastos_ars) + '</p>';
+                    if (anterior.gastos && anterior.gastos.length > 0) {
+                        html += '<a href="#" onclick="document.getElementById(\'gastosAnterior\').style.display = document.getElementById(\'gastosAnterior\').style.display === \'none\' ? \'block\' : \'none\'; return false;" style="color:#ff9800;font-size:13px;">▶ Ver detalle gastos (' + anterior.gastos.length + ')</a>';
+                        html += '<div id="gastosAnterior" style="display:none;margin-top:8px;font-size:12px;background:#16162a;padding:10px;border-radius:5px;max-height:200px;overflow-y:auto;">';
+                        html += '<table style="width:100%;font-size:12px;"><thead><tr><th style="text-align:left;padding:2px 5px;">Gasto</th><th style="text-align:right;padding:2px 5px;">Monto ARS</th></tr></thead><tbody>';
+                        anterior.gastos.forEach(g => {
+                            html += '<tr><td style="padding:2px 5px;">' + g.descripcion + '</td><td style="text-align:right;padding:2px 5px;">' + fmtARS(g.monto_ars) + '</td></tr>';
+                        });
+                        html += '</tbody></table></div>';
+                    }
                 } else {
                     html += '<p style="color:#888;">No hay costeo anterior para comparar</p>';
                 }
                 html += '</div>';
                 
                 html += '</div>';
+
+                // Comparativo de gastos línea por línea
+                if (anterior && ultimo.gastos && ultimo.gastos.length > 0) {
+                    html += '<div style="margin-top:15px;">';
+                    html += '<a href="#" onclick="document.getElementById(\'comparativoGastos\').style.display = document.getElementById(\'comparativoGastos\').style.display === \'none\' ? \'block\' : \'none\'; return false;" style="color:#64b5f6;font-size:14px;font-weight:bold;">📊 Ver comparativo de gastos línea por línea</a>';
+                    html += '<div id="comparativoGastos" style="display:none;margin-top:10px;background:#1e1e2f;padding:15px;border-radius:8px;">';
+                    html += '<table style="width:100%;font-size:13px;border-collapse:collapse;">';
+                    html += '<thead><tr style="border-bottom:1px solid #444;"><th style="text-align:left;padding:5px;">Gasto</th><th style="text-align:right;padding:5px;">Último</th><th style="text-align:right;padding:5px;">Anterior</th><th style="text-align:right;padding:5px;">Variación</th></tr></thead><tbody>';
+                    
+                    const todosGastos = new Set();
+                    ultimo.gastos.forEach(g => todosGastos.add(g.descripcion));
+                    if (anterior.gastos) anterior.gastos.forEach(g => todosGastos.add(g.descripcion));
+                    
+                    todosGastos.forEach(desc => {
+                        const gU = ultimo.gastos.find(g => g.descripcion === desc);
+                        const gA = anterior.gastos ? anterior.gastos.find(g => g.descripcion === desc) : null;
+                        const mU = gU ? gU.monto_ars : 0;
+                        const mA = gA ? gA.monto_ars : 0;
+                        let varPct = '';
+                        let varColor = '#fff';
+                        if (mA > 0 && mU > 0) {
+                            const pct = ((mU - mA) / mA * 100).toFixed(2);
+                            varColor = pct > 0 ? '#f44336' : pct < 0 ? '#4CAF50' : '#fff';
+                            varPct = (pct > 0 ? '+' : '') + pct + '%';
+                        } else if (mU > 0 && mA === 0) {
+                            varPct = 'NUEVO';
+                            varColor = '#ff9800';
+                        }
+                        html += '<tr style="border-bottom:1px solid #333;"><td style="padding:4px 5px;">' + desc + '</td>';
+                        html += '<td style="text-align:right;padding:4px 5px;">' + fmtARS(mU) + '</td>';
+                        html += '<td style="text-align:right;padding:4px 5px;">' + (mA > 0 ? fmtARS(mA) : '-') + '</td>';
+                        html += '<td style="text-align:right;padding:4px 5px;color:' + varColor + ';font-weight:bold;">' + varPct + '</td></tr>';
+                    });
+                    
+                    html += '</tbody></table></div></div>';
+                }
                 
                 document.getElementById('detalleArticuloBody').innerHTML = html;
                 document.getElementById('detalleArticuloTitle').textContent = 'Detalle: ' + codigo + ' - ' + (ultimo.nombre || '');
@@ -1091,29 +1160,29 @@ async function verDetalleArticulo(codigo) {
             }
         }
 function exportarUltimosCostos() {
-            if (articulosFiltrados.length === 0) {
-                alert('No hay artículos para exportar');
-                return;
-            }
-            let contenido = 'Codigo\tProveedor\tNombre\tMoneda FOB\tFOB Origen\tFOB Orig.Ant\tVar%Orig\tFOB Interm\tFOB Int.Ant\tVar%Int\tCosto Neto\tCosto c/Imp\tCosto Anterior\tDif %\tFecha Despacho\tCosteo\tTC USD\tTC EUR\tTC GBP\n';
-            articulosFiltrados.forEach(art => {
-                contenido += (art.codigo_goodies || '') + '\t';
-                contenido += (art.proveedor || '') + '\t';
-                contenido += (art.nombre || '') + '\t';
-                articulosFiltrados.forEach(art => {
+            exportarArticulos(articulosFiltrados, 'Ultimos_Costos');
+        }
+
+        function exportarSeleccionados() {
+            const seleccionados = document.querySelectorAll('.art-check:checked');
+            const codigos = [...seleccionados].map(cb => cb.value);
+            const arts = articulosFiltrados.filter(a => codigos.includes(a.codigo_goodies));
+            if (arts.length === 0) { alert('No hay artículos seleccionados'); return; }
+            exportarArticulos(arts, 'Seleccion_Costos');
+        }
+
+        function exportarArticulos(articulos, prefijo) {
+            if (articulos.length === 0) { alert('No hay artículos para exportar'); return; }
+            let contenido = 'Codigo\tProveedor\tNombre\tMoneda FOB\tFOB Origen\tCosto Neto\tCosto c/Imp\tCosto Anterior\tDif %\tFecha Despacho\tCosteo\tTC USD\tTC EUR\tTC GBP\n';
+            articulos.forEach(art => {
                 contenido += (art.codigo_goodies || '') + '\t';
                 contenido += (art.proveedor || '') + '\t';
                 contenido += (art.nombre || '') + '\t';
                 contenido += (art.moneda_fob || '') + '\t';
-                contenido += (art.fob_origen_actual || '') + '\t';
-                contenido += (art.fob_origen_anterior || '') + '\t';
-                contenido += (art.var_fob_origen_pct !== null ? art.var_fob_origen_pct.toFixed(2) : '') + '\t';
-                contenido += (art.fob_interm_actual || '') + '\t';
-                contenido += (art.fob_interm_anterior || '') + '\t';
-                contenido += (art.var_fob_interm_pct !== null ? art.var_fob_interm_pct.toFixed(2) : '') + '\t';
-                contenido += (art.costo_neto || '') + '\t';
-                contenido += (art.costo_con_impuestos || '') + '\t';
-                contenido += (art.costo_anterior || '') + '\t';
+                contenido += (art.valor_fob ? parseFloat(art.valor_fob).toFixed(4) : '') + '\t';
+                contenido += (art.costo_neto ? parseFloat(art.costo_neto).toFixed(2) : '') + '\t';
+                contenido += (art.costo_con_impuestos ? parseFloat(art.costo_con_impuestos).toFixed(2) : '') + '\t';
+                contenido += (art.costo_anterior ? parseFloat(art.costo_anterior).toFixed(2) : '') + '\t';
                 contenido += (art.diferencia_pct !== null ? art.diferencia_pct.toFixed(2) : '') + '\t';
                 contenido += (art.fecha_despacho ? art.fecha_despacho.split('T')[0] : '') + '\t';
                 contenido += (art.nombre_costeo || '') + '\t';
@@ -1121,22 +1190,30 @@ function exportarUltimosCostos() {
                 contenido += (art.tc_eur || '') + '\t';
                 contenido += (art.tc_gbp || '') + '\n';
             });
-                contenido += (art.costo_con_impuestos || '') + '\t';
-                contenido += (art.fecha_despacho ? art.fecha_despacho.split('T')[0] : '') + '\t';
-                contenido += (art.nombre_costeo || '') + '\t';
-                contenido += (art.costo_anterior || '') + '\t';
-                contenido += (art.diferencia_pct !== null ? art.diferencia_pct.toFixed(2) : '') + '\t';
-                contenido += (art.tc_usd || '') + '\t';
-                contenido += (art.tc_eur || '') + '\t';
-                contenido += (art.tc_gbp || '') + '\n';
-            });
-            const blob = new Blob([contenido], { type: 'text/tab-separated-values;charset=utf-8' });
+            const blob = new Blob(['\uFEFF' + contenido], { type: 'text/tab-separated-values;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'Ultimos_Costos_' + new Date().toISOString().split('T')[0] + '.xls';
+            a.download = prefijo + '_' + new Date().toISOString().split('T')[0] + '.xls';
             a.click();
             URL.revokeObjectURL(url);
+        }
+
+        function toggleSeleccionTodos(masterCb) {
+            document.querySelectorAll('.art-check').forEach(cb => cb.checked = masterCb.checked);
+            actualizarSeleccion();
+        }
+
+        function actualizarSeleccion() {
+            const seleccionados = document.querySelectorAll('.art-check:checked').length;
+            const btn = document.getElementById('btnExportarSeleccion');
+            const count = document.getElementById('countSeleccion');
+            if (seleccionados > 0) {
+                btn.style.display = 'inline-block';
+                count.textContent = seleccionados;
+            } else {
+                btn.style.display = 'none';
+            }
         }
 async function cargarCosteos() {
             const loading = document.getElementById('tableLoading');
