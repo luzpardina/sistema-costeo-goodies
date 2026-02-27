@@ -392,6 +392,15 @@
             <div id="modalBody"></div>
         </div>
     </div>
+    <div class="modal" id="compPvsDefModal">
+        <div class="modal-content modal-fullsize" style="max-width: 1400px;">
+            <div class="modal-header">
+                <h3 id="compPvsDefTitle">Comparativo Presupuesto vs Definitivo</h3>
+                <button class="modal-close" onclick="cerrarModal('compPvsDefModal')">×</button>
+            </div>
+            <div id="compPvsDefBody" style="padding: 20px; overflow-x: auto;"></div>
+        </div>
+    </div>
     <div class="modal" id="recalcularModal">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
@@ -1388,6 +1397,7 @@ async function cargarCosteos() {
                     '<button class="btn btn-warning btn-sm" onclick="calcularCosteo(\'' + costeo.id + '\')">Calc</button>' +
                     '<button class="btn btn-primary btn-sm" onclick="editarCosteo(\'' + costeo.id + '\')">Edit</button>' +
                     '<button class="btn btn-purple btn-sm" onclick="duplicarCosteo(\'' + costeo.id + '\')" title="Duplicar">Dup</button>' +
+                    '<button class="btn btn-sm" style="background:#00bcd4;color:#fff;" onclick="iniciarComparativo(\'' + costeo.id + '\',\'' + (costeo.proveedor || '').replace(/'/g, "\\'") + '\')" title="Comparar con otro costeo">Comp</button>' +
                     '<button class="btn btn-secondary btn-sm" onclick="exportarLegajo(\'' + costeo.id + '\')" title="Exportar Legajo">Leg</button>' +
                     '<button class="btn btn-secondary btn-sm" onclick="verDetalle(\'' + costeo.id + '\')">Ver</button>' +
                     '<button class="btn btn-success btn-sm" onclick="exportarCosteo(\'' + costeo.id + '\')">Excel</button>' +
@@ -1777,7 +1787,152 @@ async function ejecutarCalculo(id, metodo) {
                 modal.style.display = '';
             }
         }
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { cerrarModal('detalleModal'); cerrarModal('recalcularModal'); cerrarModal('cargaManualModal'); } });
+        // ========== COMPARATIVO PRESUPUESTO VS DEFINITIVO ==========
+        async function iniciarComparativo(costeoId, proveedor) {
+            // Buscar costeos del mismo proveedor
+            const mismoProveedor = todosLosCosteos.filter(c => 
+                c.proveedor && c.proveedor.toUpperCase().trim() === proveedor.toUpperCase().trim() && c.id !== costeoId
+            );
+            if (mismoProveedor.length === 0) {
+                alert('No hay otros costeos del proveedor "' + proveedor + '" para comparar.');
+                return;
+            }
+            const costeoBase = todosLosCosteos.find(c => c.id === costeoId);
+            let opciones = mismoProveedor.map(c => {
+                const def = c.fecha_despacho ? 'DEF' : 'PRES';
+                const fecha = c.fecha_despacho ? formatearFecha(c.fecha_despacho) : formatearFecha(c.fecha_factura);
+                return c.nombre_costeo + ' [' + def + '] ' + fecha;
+            });
+            let msg = 'Comparar "' + (costeoBase ? costeoBase.nombre_costeo : '') + '" con:\n\n';
+            mismoProveedor.forEach((c, i) => {
+                const def = c.fecha_despacho ? 'DEF' : 'PRES';
+                const fecha = c.fecha_despacho ? formatearFecha(c.fecha_despacho) : formatearFecha(c.fecha_factura);
+                msg += (i + 1) + '. ' + c.nombre_costeo + ' [' + def + '] ' + fecha + '\n';
+            });
+            msg += '\nIngrese el número:';
+            const seleccion = prompt(msg);
+            if (!seleccion) return;
+            const idx = parseInt(seleccion) - 1;
+            if (isNaN(idx) || idx < 0 || idx >= mismoProveedor.length) { alert('Selección inválida'); return; }
+            await mostrarComparativo(costeoId, mismoProveedor[idx].id);
+        }
+
+        async function mostrarComparativo(idA, idB) {
+            try {
+                const [resA, resB] = await Promise.all([
+                    fetch(API_URL + '/api/costeos/' + idA, { headers: { 'Authorization': 'Bearer ' + token } }),
+                    fetch(API_URL + '/api/costeos/' + idB, { headers: { 'Authorization': 'Bearer ' + token } })
+                ]);
+                const costeoA = await resA.json();
+                const costeoB = await resB.json();
+                if (!resA.ok || !resB.ok) { alert('Error al cargar costeos'); return; }
+
+                const defA = !!costeoA.fecha_despacho;
+                const defB = !!costeoB.fecha_despacho;
+                const labelA = defA ? '✅ DEFINITIVO' : '📋 PRESUPUESTO';
+                const labelB = defB ? '✅ DEFINITIVO' : '📋 PRESUPUESTO';
+                const colorA = defA ? '#4CAF50' : '#ff9800';
+                const colorB = defB ? '#4CAF50' : '#ff9800';
+
+                const pctDif = (a, b) => {
+                    a = parseFloat(a) || 0; b = parseFloat(b) || 0;
+                    if (b === 0) return a === 0 ? 0 : 100;
+                    return ((a - b) / Math.abs(b)) * 100;
+                };
+                const fmtNum = (v) => (parseFloat(v) || 0).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                const fmtPct = (v) => { const n = parseFloat(v); return (n > 0 ? '+' : '') + n.toFixed(2) + '%'; };
+                const colorPct = (v) => { const n = parseFloat(v); return n > 0 ? '#f44336' : n < 0 ? '#4CAF50' : '#aaa'; };
+
+                // Header con datos generales
+                let html = '<div style="display:flex;gap:15px;margin-bottom:20px;">';
+                html += '<div style="flex:1;background:#1e1e2f;padding:12px;border-radius:8px;border-left:4px solid ' + colorA + ';">';
+                html += '<h4 style="color:' + colorA + ';margin:0 0 8px 0;">' + labelA + '</h4>';
+                html += '<p style="margin:3px 0;"><strong>' + (costeoA.nombre_costeo || '-') + '</strong></p>';
+                html += '<p style="margin:3px 0;">Fecha: ' + (defA ? formatearFecha(costeoA.fecha_despacho) : formatearFecha(costeoA.fecha_factura)) + '</p>';
+                html += '<p style="margin:3px 0;">TC USD: ' + fmtNum(costeoA.tc_usd) + ' | EUR: ' + fmtNum(costeoA.tc_eur) + ' | GBP: ' + fmtNum(costeoA.tc_gbp) + '</p>';
+                html += '<p style="margin:3px 0;">Gastos totales: $' + fmtNum(costeoA.total_gastos_ars) + '</p>';
+                html += '</div>';
+                html += '<div style="flex:1;background:#1e1e2f;padding:12px;border-radius:8px;border-left:4px solid ' + colorB + ';">';
+                html += '<h4 style="color:' + colorB + ';margin:0 0 8px 0;">' + labelB + '</h4>';
+                html += '<p style="margin:3px 0;"><strong>' + (costeoB.nombre_costeo || '-') + '</strong></p>';
+                html += '<p style="margin:3px 0;">Fecha: ' + (defB ? formatearFecha(costeoB.fecha_despacho) : formatearFecha(costeoB.fecha_factura)) + '</p>';
+                html += '<p style="margin:3px 0;">TC USD: ' + fmtNum(costeoB.tc_usd) + ' | EUR: ' + fmtNum(costeoB.tc_eur) + ' | GBP: ' + fmtNum(costeoB.tc_gbp) + '</p>';
+                html += '<p style="margin:3px 0;">Gastos totales: $' + fmtNum(costeoB.total_gastos_ars) + '</p>';
+                html += '</div></div>';
+
+                // Variación general TC
+                const varTcUsd = pctDif(costeoA.tc_usd, costeoB.tc_usd);
+                const varTcEur = pctDif(costeoA.tc_eur, costeoB.tc_eur);
+                const varGastos = pctDif(costeoA.total_gastos_ars, costeoB.total_gastos_ars);
+                html += '<div style="background:#1e1e2f;padding:10px;border-radius:8px;margin-bottom:15px;display:flex;gap:20px;justify-content:center;">';
+                html += '<span>Var TC USD: <strong style="color:' + colorPct(varTcUsd) + '">' + fmtPct(varTcUsd) + '</strong></span>';
+                html += '<span>Var TC EUR: <strong style="color:' + colorPct(varTcEur) + '">' + fmtPct(varTcEur) + '</strong></span>';
+                html += '<span>Var Gastos: <strong style="color:' + colorPct(varGastos) + '">' + fmtPct(varGastos) + '</strong></span>';
+                html += '</div>';
+
+                // Tabla artículos
+                const artsA = costeoA.articulos || [];
+                const artsB = costeoB.articulos || [];
+                const codigos = new Set();
+                artsA.forEach(a => codigos.add(a.codigo_goodies));
+                artsB.forEach(a => codigos.add(a.codigo_goodies));
+
+                html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+                html += '<thead><tr style="background:#2a2a3e;">';
+                html += '<th style="padding:8px;text-align:left;border-bottom:2px solid #444;">Artículo</th>';
+                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">FOB A</th>';
+                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">FOB B</th>';
+                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">Var FOB</th>';
+                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">Costo Neto A</th>';
+                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">Costo Neto B</th>';
+                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">Var Costo</th>';
+                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">Costo Final A</th>';
+                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">Costo Final B</th>';
+                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">Var Final</th>';
+                html += '</tr></thead><tbody>';
+
+                for (const codigo of codigos) {
+                    const artA = artsA.find(a => a.codigo_goodies === codigo);
+                    const artB = artsB.find(a => a.codigo_goodies === codigo);
+                    const nombre = (artA || artB).nombre || '';
+                    const fobA = parseFloat((artA || {}).fob_unitario_usd) || 0;
+                    const fobB = parseFloat((artB || {}).fob_unitario_usd) || 0;
+                    const netoA = parseFloat((artA || {}).costo_unitario_neto_ars) || 0;
+                    const netoB = parseFloat((artB || {}).costo_unitario_neto_ars) || 0;
+                    const finalA = parseFloat((artA || {}).costo_unitario_ars) || 0;
+                    const finalB = parseFloat((artB || {}).costo_unitario_ars) || 0;
+                    const varFob = pctDif(fobA, fobB);
+                    const varNeto = pctDif(netoA, netoB);
+                    const varFinal = pctDif(finalA, finalB);
+                    const soloEnA = !artB ? ' style="background:rgba(76,175,80,0.1);"' : '';
+                    const soloEnB = !artA ? ' style="background:rgba(255,152,0,0.1);"' : '';
+                    const rowStyle = soloEnA || soloEnB;
+
+                    html += '<tr' + rowStyle + '>';
+                    html += '<td style="padding:6px 8px;border-bottom:1px solid #333;">' + codigo + '<br><small style="color:#aaa;">' + nombre + '</small></td>';
+                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;">' + (artA ? fmtNum(fobA) : '-') + '</td>';
+                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;">' + (artB ? fmtNum(fobB) : '-') + '</td>';
+                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varFob) + ';font-weight:bold;">' + (artA && artB ? fmtPct(varFob) : '-') + '</td>';
+                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;">$' + (artA ? fmtNum(netoA) : '-') + '</td>';
+                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;">$' + (artB ? fmtNum(netoB) : '-') + '</td>';
+                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varNeto) + ';font-weight:bold;">' + (artA && artB ? fmtPct(varNeto) : '-') + '</td>';
+                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;">$' + (artA ? fmtNum(finalA) : '-') + '</td>';
+                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;">$' + (artB ? fmtNum(finalB) : '-') + '</td>';
+                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varFinal) + ';font-weight:bold;">' + (artA && artB ? fmtPct(varFinal) : '-') + '</td>';
+                    html += '</tr>';
+                }
+                html += '</tbody></table>';
+
+                document.getElementById('compPvsDefBody').innerHTML = html;
+                document.getElementById('compPvsDefTitle').textContent = 'Comparativo: ' + costeoA.nombre_costeo + ' vs ' + costeoB.nombre_costeo;
+                document.getElementById('compPvsDefModal').classList.add('show');
+            } catch (err) {
+                console.error(err);
+                alert('Error al generar comparativo');
+            }
+        }
+
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { cerrarModal('detalleModal'); cerrarModal('recalcularModal'); cerrarModal('cargaManualModal'); cerrarModal('compPvsDefModal'); } });
 function abrirCargaManual() {
             window.costeoEditandoId = null;
             articulosManual = [];
@@ -2103,7 +2258,7 @@ function calcularMontoProrrateado(g) {
             });
             html += '</table></div>';
             document.getElementById('comparativoModalBody').innerHTML = html;
-            document.getElementById('comparativoModal').style.display = 'flex';
+            document.getElementById('consolidadoCompModal').style.display = 'flex';
         }
 function refrescarDatosGenerales() {
             recalcularValoresOrigen();
@@ -2828,11 +2983,11 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
     </div>
 </div>
 <!-- Modal Comparativo Participaciones -->
-<div id="comparativoModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:3000; justify-content:center; align-items:center;">
+<div id="consolidadoCompModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:3000; justify-content:center; align-items:center;">
     <div style="background:#1e1e2f; padding:25px; border-radius:10px; max-width:600px; width:90%; border:1px solid #4CAF50;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <h3 style="margin:0; color:#4CAF50;">📊 Comparativo de Participaciones</h3>
-            <button onclick="document.getElementById('comparativoModal').style.display='none'" style="background:none; border:none; color:#fff; font-size:24px; cursor:pointer;">&times;</button>
+            <button onclick="document.getElementById('consolidadoCompModal').style.display='none'" style="background:none; border:none; color:#fff; font-size:24px; cursor:pointer;">&times;</button>
         </div>
         <div id="comparativoModalBody"></div>
     </div>
