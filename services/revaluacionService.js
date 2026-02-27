@@ -148,6 +148,9 @@ class RevaluacionService {
             // Gastos varios prorrateados con nuevos TC
             let totalGastosVarNuevoPesos = 0;
             for (const g of gastosVarios) {
+                // Si es Revaluación Contable, excluir gastos no contables
+                if (motivo === 'Revaluación Contable' && g.no_contable) continue;
+                
                 const montoOrig = parseFloat(g.monto) || 0;
                 const monedaG = (g.moneda || 'USD').toUpperCase();
                 const recargoG = parseFloat(g.recargo) || 0;
