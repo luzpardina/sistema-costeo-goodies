@@ -1827,10 +1827,16 @@ async function ejecutarCalculo(id, metodo) {
                 const costeoB = await resB.json();
                 if (!resA.ok || !resB.ok) { alert('Error al cargar costeos'); return; }
 
+                // Nombres cortos para headers de tabla
+                const nombreCortoA = (costeoA.nombre_costeo || 'Costeo 1').substring(0, 20);
+                const nombreCortoB = (costeoB.nombre_costeo || 'Costeo 2').substring(0, 20);
+
                 const defA = !!costeoA.fecha_despacho;
                 const defB = !!costeoB.fecha_despacho;
-                const labelA = defA ? '✅ DEFINITIVO' : '📋 PRESUPUESTO';
-                const labelB = defB ? '✅ DEFINITIVO' : '📋 PRESUPUESTO';
+                const tipoA = defA ? 'DEFINITIVO' : 'PRESUPUESTO';
+                const tipoB = defB ? 'DEFINITIVO' : 'PRESUPUESTO';
+                const labelA = (defA ? '✅ ' : '📋 ') + tipoA + ' (ELEGIDO)';
+                const labelB = (defB ? '✅ ' : '📋 ') + tipoB + ' (COMPARADO)';
                 const colorA = defA ? '#4CAF50' : '#ff9800';
                 const colorB = defB ? '#4CAF50' : '#ff9800';
 
@@ -1843,14 +1849,32 @@ async function ejecutarCalculo(id, metodo) {
                 const fmtPct = (v) => { const n = parseFloat(v); return (n > 0 ? '+' : '') + n.toFixed(2) + '%'; };
                 const colorPct = (v) => { const n = parseFloat(v); return n > 0 ? '#f44336' : n < 0 ? '#4CAF50' : '#aaa'; };
 
+                // Verificar si los costeos tienen datos calculados
+                const artsA = costeoA.articulos || [];
+                const artsB = costeoB.articulos || [];
+                const tieneCalculosA = artsA.some(a => parseFloat(a.costo_unitario_neto_ars) > 0 || parseFloat(a.fob_unitario_usd) > 0);
+                const tieneCalculosB = artsB.some(a => parseFloat(a.costo_unitario_neto_ars) > 0 || parseFloat(a.fob_unitario_usd) > 0);
+
+                let html = '';
+
+                // Alerta si algún costeo no tiene cálculos
+                if (!tieneCalculosA || !tieneCalculosB) {
+                    html += '<div style="background:#332200;border:1px solid #ff9800;padding:10px;border-radius:6px;margin-bottom:15px;color:#ff9800;">';
+                    html += '⚠️ <strong>Atención:</strong> ';
+                    if (!tieneCalculosA) html += '"' + costeoA.nombre_costeo + '" no tiene datos calculados (estado: ' + (costeoA.estado || 'borrador') + '). ';
+                    if (!tieneCalculosB) html += '"' + costeoB.nombre_costeo + '" no tiene datos calculados (estado: ' + (costeoB.estado || 'borrador') + '). ';
+                    html += 'Calculá el costeo primero para ver los valores.</div>';
+                }
+
                 // Header con datos generales
-                let html = '<div style="display:flex;gap:15px;margin-bottom:20px;">';
+                html += '<div style="display:flex;gap:15px;margin-bottom:20px;">';
                 html += '<div style="flex:1;background:#1e1e2f;padding:12px;border-radius:8px;border-left:4px solid ' + colorA + ';">';
                 html += '<h4 style="color:' + colorA + ';margin:0 0 8px 0;">' + labelA + '</h4>';
                 html += '<p style="margin:3px 0;"><strong>' + (costeoA.nombre_costeo || '-') + '</strong></p>';
                 html += '<p style="margin:3px 0;">Fecha: ' + (defA ? formatearFecha(costeoA.fecha_despacho) : formatearFecha(costeoA.fecha_factura)) + '</p>';
                 html += '<p style="margin:3px 0;">TC USD: ' + fmtNum(costeoA.tc_usd) + ' | EUR: ' + fmtNum(costeoA.tc_eur) + ' | GBP: ' + fmtNum(costeoA.tc_gbp) + '</p>';
                 html += '<p style="margin:3px 0;">Gastos totales: $' + fmtNum(costeoA.total_gastos_ars) + '</p>';
+                html += '<p style="margin:3px 0;color:#888;">Estado: ' + (costeoA.estado || '-') + ' | Arts: ' + artsA.length + '</p>';
                 html += '</div>';
                 html += '<div style="flex:1;background:#1e1e2f;padding:12px;border-radius:8px;border-left:4px solid ' + colorB + ';">';
                 html += '<h4 style="color:' + colorB + ';margin:0 0 8px 0;">' + labelB + '</h4>';
@@ -1858,6 +1882,7 @@ async function ejecutarCalculo(id, metodo) {
                 html += '<p style="margin:3px 0;">Fecha: ' + (defB ? formatearFecha(costeoB.fecha_despacho) : formatearFecha(costeoB.fecha_factura)) + '</p>';
                 html += '<p style="margin:3px 0;">TC USD: ' + fmtNum(costeoB.tc_usd) + ' | EUR: ' + fmtNum(costeoB.tc_eur) + ' | GBP: ' + fmtNum(costeoB.tc_gbp) + '</p>';
                 html += '<p style="margin:3px 0;">Gastos totales: $' + fmtNum(costeoB.total_gastos_ars) + '</p>';
+                html += '<p style="margin:3px 0;color:#888;">Estado: ' + (costeoB.estado || '-') + ' | Arts: ' + artsB.length + '</p>';
                 html += '</div></div>';
 
                 // Variación general TC
@@ -1870,25 +1895,32 @@ async function ejecutarCalculo(id, metodo) {
                 html += '<span>Var Gastos: <strong style="color:' + colorPct(varGastos) + '">' + fmtPct(varGastos) + '</strong></span>';
                 html += '</div>';
 
-                // Tabla artículos
-                const artsA = costeoA.articulos || [];
-                const artsB = costeoB.articulos || [];
+                // Tabla artículos con nombres reales en headers
                 const codigos = new Set();
                 artsA.forEach(a => codigos.add(a.codigo_goodies));
                 artsB.forEach(a => codigos.add(a.codigo_goodies));
 
+                const thStyle = 'padding:8px;text-align:right;border-bottom:2px solid #444;font-size:11px;';
                 html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
-                html += '<thead><tr style="background:#2a2a3e;">';
+                html += '<thead>';
+                // Fila de grupo: nombre de cada costeo
+                html += '<tr style="background:#1a1a2e;">';
+                html += '<th style="padding:4px 8px;border-bottom:1px solid #333;"></th>';
+                html += '<th colspan="3" style="padding:4px 8px;text-align:center;border-bottom:1px solid #333;color:' + colorA + ';font-size:11px;">FOB en Divisa</th>';
+                html += '<th colspan="3" style="padding:4px 8px;text-align:center;border-bottom:1px solid #333;color:#2196F3;font-size:11px;">Costo Neto ARS</th>';
+                html += '<th colspan="3" style="padding:4px 8px;text-align:center;border-bottom:1px solid #333;color:#9C27B0;font-size:11px;">Costo Final ARS</th>';
+                html += '</tr>';
+                html += '<tr style="background:#2a2a3e;">';
                 html += '<th style="padding:8px;text-align:left;border-bottom:2px solid #444;">Artículo</th>';
-                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">FOB A</th>';
-                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">FOB B</th>';
-                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">Var FOB</th>';
-                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">Costo Neto A</th>';
-                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">Costo Neto B</th>';
-                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">Var Costo</th>';
-                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">Costo Final A</th>';
-                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">Costo Final B</th>';
-                html += '<th style="padding:8px;text-align:right;border-bottom:2px solid #444;">Var Final</th>';
+                html += '<th style="' + thStyle + 'color:' + colorA + ';">Elegido</th>';
+                html += '<th style="' + thStyle + 'color:' + colorB + ';">Comparado</th>';
+                html += '<th style="' + thStyle + '">Var %</th>';
+                html += '<th style="' + thStyle + 'color:' + colorA + ';">Elegido</th>';
+                html += '<th style="' + thStyle + 'color:' + colorB + ';">Comparado</th>';
+                html += '<th style="' + thStyle + '">Var %</th>';
+                html += '<th style="' + thStyle + 'color:' + colorA + ';">Elegido</th>';
+                html += '<th style="' + thStyle + 'color:' + colorB + ';">Comparado</th>';
+                html += '<th style="' + thStyle + '">Var %</th>';
                 html += '</tr></thead><tbody>';
 
                 for (const codigo of codigos) {
@@ -1907,18 +1939,19 @@ async function ejecutarCalculo(id, metodo) {
                     const soloEnA = !artB ? ' style="background:rgba(76,175,80,0.1);"' : '';
                     const soloEnB = !artA ? ' style="background:rgba(255,152,0,0.1);"' : '';
                     const rowStyle = soloEnA || soloEnB;
+                    const tdS = 'padding:6px 8px;text-align:right;border-bottom:1px solid #333;';
 
                     html += '<tr' + rowStyle + '>';
                     html += '<td style="padding:6px 8px;border-bottom:1px solid #333;">' + codigo + '<br><small style="color:#aaa;">' + nombre + '</small></td>';
-                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;">' + (artA ? fmtNum(fobA) : '-') + '</td>';
-                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;">' + (artB ? fmtNum(fobB) : '-') + '</td>';
-                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varFob) + ';font-weight:bold;">' + (artA && artB ? fmtPct(varFob) : '-') + '</td>';
-                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;">$' + (artA ? fmtNum(netoA) : '-') + '</td>';
-                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;">$' + (artB ? fmtNum(netoB) : '-') + '</td>';
-                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varNeto) + ';font-weight:bold;">' + (artA && artB ? fmtPct(varNeto) : '-') + '</td>';
-                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;">$' + (artA ? fmtNum(finalA) : '-') + '</td>';
-                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;">$' + (artB ? fmtNum(finalB) : '-') + '</td>';
-                    html += '<td style="padding:6px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(varFinal) + ';font-weight:bold;">' + (artA && artB ? fmtPct(varFinal) : '-') + '</td>';
+                    html += '<td style="' + tdS + '">' + (artA && fobA ? fmtNum(fobA) : '-') + '</td>';
+                    html += '<td style="' + tdS + '">' + (artB && fobB ? fmtNum(fobB) : '-') + '</td>';
+                    html += '<td style="' + tdS + 'color:' + colorPct(varFob) + ';font-weight:bold;">' + (fobA && fobB ? fmtPct(varFob) : '-') + '</td>';
+                    html += '<td style="' + tdS + '">$' + (artA && netoA ? fmtNum(netoA) : '-') + '</td>';
+                    html += '<td style="' + tdS + '">$' + (artB && netoB ? fmtNum(netoB) : '-') + '</td>';
+                    html += '<td style="' + tdS + 'color:' + colorPct(varNeto) + ';font-weight:bold;">' + (netoA && netoB ? fmtPct(varNeto) : '-') + '</td>';
+                    html += '<td style="' + tdS + '">$' + (artA && finalA ? fmtNum(finalA) : '-') + '</td>';
+                    html += '<td style="' + tdS + '">$' + (artB && finalB ? fmtNum(finalB) : '-') + '</td>';
+                    html += '<td style="' + tdS + 'color:' + colorPct(varFinal) + ';font-weight:bold;">' + (finalA && finalB ? fmtPct(varFinal) : '-') + '</td>';
                     html += '</tr>';
                 }
                 html += '</tbody></table>';
