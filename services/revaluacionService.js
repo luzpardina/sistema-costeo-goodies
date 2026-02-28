@@ -6,7 +6,11 @@ class RevaluacionService {
     static async generarRevaluacion(usuarioId, costeoIds, tcNuevoUSD, tcNuevoEUR, tcNuevoGBP, motivo) {
         
         // 1. Obtener artículos a revaluar
-        let whereCondition = { usuario_id: usuarioId };
+        // NO filtrar por usuario_id para incluir costeos de todo el equipo
+        let whereCondition = { 
+            estado: 'calculado',
+            fecha_despacho: { [Op.ne]: null }
+        };
         
         // Si hay costeos seleccionados, filtrar por ellos
         if (costeoIds && costeoIds.length > 0) {
