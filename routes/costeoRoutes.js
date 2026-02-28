@@ -116,7 +116,9 @@ router.get('/ultimos-costos', auth, async (req, res) => {
             }
         }
 
-        const resultado = Object.values(ultimosCostos).map(art => {
+        const resultado = Object.values(ultimosCostos)
+            .filter(art => art.costo_neto && parseFloat(art.costo_neto) > 0)
+            .map(art => {
             const anterior = anteriores[art.codigo_goodies] || null;
             let diferenciaPct = null;
             if (anterior && anterior.costo_neto && art.costo_neto) {
