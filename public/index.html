@@ -3726,12 +3726,17 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
     async function cargarRevaluacionesDisponibles() {
         try {
             const resp = await fetch(API_URL + '/api/contable/revaluaciones-disponibles', { headers: { 'Authorization': 'Bearer ' + token } });
+            if (!resp.ok) {
+                console.error('Error cargando revaluaciones:', resp.status, resp.statusText);
+                return;
+            }
             const revs = await resp.json();
             const sel = document.getElementById('valRevaluacion');
             if (!sel) return;
+            const arr = Array.isArray(revs) ? revs : [];
             sel.innerHTML = '<option value="">Último costo original</option>' +
-                revs.map(r => `<option value="${r.id}">${r.motivo} (${new Date(r.fecha_revaluacion).toLocaleDateString()}) - TC USD: ${r.tc_usd_nuevo}</option>`).join('');
-        } catch(e) { console.error('Error:', e); }
+                arr.map(r => '<option value="' + r.id + '">' + (r.motivo || 'Sin motivo') + ' (' + new Date(r.fecha_revaluacion).toLocaleDateString('es-AR') + ') - TC USD: ' + r.tc_usd_nuevo + '</option>').join('');
+        } catch(e) { console.error('Error cargando revaluaciones:', e); }
     }
 
     let articulosCentumCargados = [];
