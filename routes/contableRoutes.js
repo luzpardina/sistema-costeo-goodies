@@ -93,9 +93,12 @@ router.post('/parsear-excel', auth, upload.single('archivo'), async (req, res) =
 // Solo costeos calculados con fecha_despacho
 // =============================================
 async function buscarUltimoCostoDefinitivo(codigo, descripcion) {
-    // 1) Buscar por código exacto
+    // 1) Buscar por código exacto - solo artículos con costo real > 0
     let ultimoArt = await ArticuloCosteo.findOne({
-        where: { codigo_goodies: codigo },
+        where: { 
+            codigo_goodies: codigo,
+            costo_unitario_neto_ars: { [Op.gt]: 0 }
+        },
         include: [{
             model: Costeo, as: 'costeo',
             where: { estado: 'calculado', fecha_despacho: { [Op.ne]: null } }
@@ -108,7 +111,7 @@ async function buscarUltimoCostoDefinitivo(codigo, descripcion) {
     // 2) Si no encontró por código, buscar por nombre
     if (!ultimoArt && descripcion && descripcion.length > 5) {
         ultimoArt = await ArticuloCosteo.findOne({
-            where: { nombre: { [Op.iLike]: '%' + descripcion.toUpperCase().trim() + '%' } },
+            where: { nombre: { [Op.iLike]: '%' + descripcion.toUpperCase().trim() + '%' }, costo_unitario_neto_ars: { [Op.gt]: 0 } },
             include: [{
                 model: Costeo, as: 'costeo',
                 where: { estado: 'calculado', fecha_despacho: { [Op.ne]: null } }
