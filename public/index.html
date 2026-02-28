@@ -3975,13 +3975,15 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         if (noEncData.length > 3) { var ws1 = XLSX.utils.aoa_to_sheet(noEncData); ws1['!cols']=[{wch:18},{wch:45},{wch:10},{wch:16},{wch:18}]; XLSX.utils.book_append_sheet(wb, ws1, 'No Encontrados'); }
         if (sinSistData.length > 3) { var ws2 = XLSX.utils.aoa_to_sheet(sinSistData); ws2['!cols']=[{wch:18},{wch:45},{wch:10},{wch:16},{wch:18},{wch:25},{wch:14}]; XLSX.utils.book_append_sheet(wb, ws2, 'Sin Costo Sistema'); }
         if (sinContData.length > 3) { var ws3 = XLSX.utils.aoa_to_sheet(sinContData); ws3['!cols']=[{wch:18},{wch:45},{wch:10},{wch:16},{wch:18},{wch:25},{wch:14}]; XLSX.utils.book_append_sheet(wb, ws3, 'Sin Costo Contable'); }
+        var okData = [['ARTICULOS CON COSTO CONTABLE Y COSTO EN SISTEMA (OK)'],[],
+            ['Codigo','Descripcion','Cantidad','Costo Unit Contable','Costo Total Contable','Costo Unit Sistema','Costo Total Sistema','Dif Unitaria','Dif Total','Dif %','Legajo','Fecha Despacho']];
+        detalle.filter(function(d){var e=d.estado||'';return e==='OK'||e.indexOf('MATCH NOMBRE')>=0;}).forEach(function(d){
+            var fd = d.fecha_despacho_origen ? new Date(d.fecha_despacho_origen).toLocaleDateString('es-AR') : '';
+            okData.push([d.codigo_goodies, d.descripcion, parseFloat(d.cantidad)||0, parseFloat(d.costo_unit_contable)||0, parseFloat(d.costo_total_contable)||0, parseFloat(d.costo_unit_revaluado)||0, parseFloat(d.costo_total_revaluado)||0, parseFloat(d.diferencia_unit)||0, parseFloat(d.diferencia_total)||0, parseFloat(d.diferencia_pct)||0, d.nombre_costeo_origen||'', fd]);
+        });
+        if (okData.length > 3) { var ws4 = XLSX.utils.aoa_to_sheet(okData); ws4['!cols']=[{wch:18},{wch:45},{wch:10},{wch:16},{wch:18},{wch:16},{wch:18},{wch:12},{wch:14},{wch:8},{wch:25},{wch:14}]; XLSX.utils.book_append_sheet(wb, ws4, 'OK Comparados'); }
 
         var nombreArchivo = 'Valuacion_' + (res.nombre || 'inventario').replace(/[^a-zA-Z0-9]/g, '_') + '.xlsx';
-        XLSX.writeFile(wb, nombreArchivo);
-    }
-
-
-        const nombreArchivo = 'Valuacion_' + (res.nombre || 'inventario').replace(/[^a-zA-Z0-9]/g, '_') + '.xlsx';
         XLSX.writeFile(wb, nombreArchivo);
     }
 
