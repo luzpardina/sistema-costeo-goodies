@@ -13,123 +13,7 @@ const { ArticuloCosteo, Costeo, Revaluacion, RevaluacionArticulo } = require('..
 const storage = multer.memoryStorage();
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
-// =============================================
-// HELPER: Buscar último costo definitivo de un artículo
-// Busca por código primero, si no encuentra busca por nombre
-// Solo toma costeos con estado 'calculado' y fecha_despacho (= definitivos)
-// =============================================
-async function buscarUltimoCosto(codigo, nombre) {
-    // 1) Buscar por código exacto
-    if (codigo) {
-        const porCodigo = await ArticuloCosteo.findOne({
-            where: { codigo_goodies: codigo },
-            include: [{
-                model: Costeo, as: 'costeo',
-                where: {
-                    estado: 'calculado',
-                    [Op.or]: [
-                        { fecha_despacho: { [Op.ne]: null } },
-                        { nro_despacho: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] } }
-                    ]
-                }
-            }],
-            order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'DESC']]
-        });
-        if (porCodigo) {
-            return {
-                encontrado: true,
-                match_tipo: 'codigo',
-                costo_unitario_neto: parseFloat(porCodigo.costo_unitario_neto_ars) || 0,
-                nombre_costeo: porCodigo.costeo.nombre_costeo,
-                fecha_despacho: porCodigo.costeo.fecha_despacho,
-                proveedor: porCodigo.costeo.proveedor,
-                codigo_encontrado: porCodigo.codigo_goodies,
-                nombre_encontrado: porCodigo.nombre
-            };
-        }
-    }
-
-    // 2) Si no encontró por código, buscar por nombre (coincidencia parcial)
-    if (nombre && nombre.length > 3) {
-        const nombreLimpio = nombre.trim();
-        const porNombre = await ArticuloCosteo.findOne({
-            where: {
-                nombre: { [Op.iLike]: '%' + nombreLimpio + '%' }
-            },
-            include: [{
-                model: Costeo, as: 'costeo',
-                where: {
-                    estado: 'calculado',
-                    [Op.or]: [
-                        { fecha_despacho: { [Op.ne]: null } },
-                        { nro_despacho: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] } }
-                    ]
-                }
-            }],
-            order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'DESC']]
-        });
-        if (porNombre) {
-            return {
-                encontrado: true,
-                match_tipo: 'nombre',
-                costo_unitario_neto: parseFloat(porNombre.costo_unitario_neto_ars) || 0,
-                nombre_costeo: porNombre.costeo.nombre_costeo,
-                fecha_despacho: porNombre.costeo.fecha_despacho,
-                proveedor: porNombre.costeo.proveedor,
-                codigo_encontrado: porNombre.codigo_goodies,
-                nombre_encontrado: porNombre.nombre
-            };
-        }
-    }
-
-    // 3) No encontrado
-    return { encontrado: false, match_tipo: 'sin_costeo', costo_unitario_neto: 0 };
-}
-
-// =============================================
-// HELPER: Buscar en revaluación
-// =============================================
-async function buscarEnRevaluacion(revaluacion_id, codigo, nombre) {
-    if (codigo) {
-        const porCodigo = await RevaluacionArticulo.findOne({
-            where: { revaluacion_id, codigo_goodies: codigo }
-        });
-        if (porCodigo) {
-            return {
-                encontrado: true,
-                match_tipo: 'codigo',
-                costo_unitario_neto: parseFloat(porCodigo.costo_neto_revaluado) || 0,
-                nombre_costeo: porCodigo.nombre_costeo_origen || 'Revaluación',
-                fecha_despacho: porCodigo.fecha_despacho,
-                proveedor: porCodigo.proveedor || '',
-                codigo_encontrado: porCodigo.codigo_goodies,
-                nombre_encontrado: porCodigo.nombre
-            };
-        }
-    }
-    if (nombre && nombre.length > 3) {
-        const porNombre = await RevaluacionArticulo.findOne({
-            where: { revaluacion_id, nombre: { [Op.iLike]: '%' + nombre.trim() + '%' } }
-        });
-        if (porNombre) {
-            return {
-                encontrado: true,
-                match_tipo: 'nombre',
-                costo_unitario_neto: parseFloat(porNombre.costo_neto_revaluado) || 0,
-                nombre_costeo: porNombre.nombre_costeo_origen || 'Revaluación',
-                fecha_despacho: porNombre.fecha_despacho,
-                proveedor: porNombre.proveedor || '',
-                codigo_encontrado: porNombre.codigo_goodies,
-                nombre_encontrado: porNombre.nombre
-            };
-        }
-    }
-    return { encontrado: false, match_tipo: 'sin_costeo', costo_unitario_neto: 0 };
-}
-
-// =============================================
 // Listar valuaciones
-// =============================================
 router.get('/valuaciones', auth, async (req, res) => {
     try {
         const valuaciones = await ValuacionInventario.findAll({ order: [['created_at', 'DESC']] });
@@ -137,7 +21,7 @@ router.get('/valuaciones', auth, async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Detalle de una valuación
+// Detalle de una valuación (lee desde DB con todos los campos)
 router.get('/valuaciones/:id', auth, async (req, res) => {
     try {
         const valuacion = await ValuacionInventario.findByPk(req.params.id);
@@ -149,9 +33,7 @@ router.get('/valuaciones/:id', auth, async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// =============================================
 // Parsear Excel de Centum
-// =============================================
 router.post('/parsear-excel', auth, upload.single('archivo'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: 'No se recibió archivo' });
@@ -207,13 +89,95 @@ router.post('/parsear-excel', auth, upload.single('archivo'), async (req, res) =
 });
 
 // =============================================
-// Crear valuación (mejorada)
+// Buscar último costo definitivo por código y/o nombre
+// Solo costeos calculados con fecha_despacho
+// =============================================
+async function buscarUltimoCostoDefinitivo(codigo, descripcion) {
+    // 1) Buscar por código exacto
+    let ultimoArt = await ArticuloCosteo.findOne({
+        where: { codigo_goodies: codigo },
+        include: [{
+            model: Costeo, as: 'costeo',
+            where: { estado: 'calculado', fecha_despacho: { [Op.ne]: null } }
+        }],
+        order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'DESC']]
+    });
+
+    let matchPor = 'codigo';
+
+    // 2) Si no encontró por código, buscar por nombre
+    if (!ultimoArt && descripcion && descripcion.length > 5) {
+        ultimoArt = await ArticuloCosteo.findOne({
+            where: { nombre: { [Op.iLike]: '%' + descripcion.toUpperCase().trim() + '%' } },
+            include: [{
+                model: Costeo, as: 'costeo',
+                where: { estado: 'calculado', fecha_despacho: { [Op.ne]: null } }
+            }],
+            order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'DESC']]
+        });
+        if (ultimoArt) matchPor = 'nombre';
+    }
+
+    if (ultimoArt) {
+        return {
+            encontrado: true,
+            match_por: matchPor,
+            codigo_sistema: ultimoArt.codigo_goodies,
+            nombre_sistema: ultimoArt.nombre,
+            costo_unitario_neto: parseFloat(ultimoArt.costo_unitario_neto_ars) || 0,
+            nombre_costeo: ultimoArt.costeo.nombre_costeo || '',
+            fecha_despacho: ultimoArt.costeo.fecha_despacho,
+            nro_despacho: ultimoArt.costeo.nro_despacho || '',
+            proveedor: ultimoArt.costeo.proveedor || ''
+        };
+    }
+
+    return { encontrado: false };
+}
+
+// Buscar en revaluación específica
+async function buscarEnRevaluacion(revaluacionId, codigo, descripcion) {
+    let artRev = await RevaluacionArticulo.findOne({
+        where: { revaluacion_id: revaluacionId, codigo_goodies: codigo }
+    });
+    let matchPor = 'codigo';
+
+    if (!artRev && descripcion && descripcion.length > 5) {
+        artRev = await RevaluacionArticulo.findOne({
+            where: {
+                revaluacion_id: revaluacionId,
+                nombre: { [Op.iLike]: '%' + descripcion.toUpperCase().trim() + '%' }
+            }
+        });
+        if (artRev) matchPor = 'nombre';
+    }
+
+    if (artRev) {
+        return {
+            encontrado: true,
+            match_por: matchPor,
+            codigo_sistema: artRev.codigo_goodies,
+            nombre_sistema: artRev.nombre,
+            costo_unitario_neto: parseFloat(artRev.costo_neto_revaluado) || 0,
+            nombre_costeo: 'Revaluación',
+            fecha_despacho: null,
+            nro_despacho: '',
+            proveedor: ''
+        };
+    }
+
+    return { encontrado: false };
+}
+
+// =============================================
+// Crear valuación con 3 estados claros
 // =============================================
 router.post('/valuaciones', auth, async (req, res) => {
     try {
         const { nombre, revaluacion_id, articulos_centum } = req.body;
-        let totalContable = 0, totalRevaluado = 0, artDifPositiva = 0, artDifNegativa = 0;
-        let artSinCosteo = 0;
+        let totalContable = 0, totalRevaluado = 0;
+        let artDifPositiva = 0, artDifNegativa = 0;
+        let artNoEncontrado = 0, artSinCostoSistema = 0, artSinCostoContable = 0;
         const detalles = [];
 
         for (const artCentum of articulos_centum) {
@@ -223,15 +187,15 @@ router.post('/valuaciones', auth, async (req, res) => {
             const costoUnitContable = parseFloat(artCentum.costo_unit_contable) || 0;
             const costoTotalContable = parseFloat(artCentum.costo_total_contable) || (costoUnitContable * cantidad);
 
-            // Buscar costo según fuente seleccionada
+            // Buscar costo en sistema
             let resultado;
             if (revaluacion_id) {
                 resultado = await buscarEnRevaluacion(revaluacion_id, codigo, descripcion);
             } else {
-                resultado = await buscarUltimoCosto(codigo, descripcion);
+                resultado = await buscarUltimoCostoDefinitivo(codigo, descripcion);
             }
 
-            const costoUnitRevaluado = resultado.costo_unitario_neto;
+            const costoUnitRevaluado = resultado.encontrado ? resultado.costo_unitario_neto : 0;
             const costoTotalRevaluado = costoUnitRevaluado * cantidad;
             const difUnit = costoUnitRevaluado - costoUnitContable;
             const difTotal = costoTotalRevaluado - costoTotalContable;
@@ -239,11 +203,27 @@ router.post('/valuaciones', auth, async (req, res) => {
 
             totalContable += costoTotalContable;
             totalRevaluado += costoTotalRevaluado;
-            if (resultado.encontrado) {
+
+            // Determinar estado
+            let estado = 'OK';
+
+            if (!resultado.encontrado) {
+                // Artículo está en inventario pero NO se encontró en el sistema de costos
+                estado = 'NO ENCONTRADO';
+                artNoEncontrado++;
+            } else if (costoUnitRevaluado === 0) {
+                // Se encontró pero el costo en sistema es $0
+                estado = 'SIN COSTO SISTEMA';
+                artSinCostoSistema++;
+            } else if (costoUnitContable === 0 || costoTotalContable === 0) {
+                // Tiene costo en sistema pero el contable (Centum) es $0
+                estado = 'SIN COSTO CONTABLE';
+                artSinCostoContable++;
+            } else {
+                // Ambos costos presentes
+                if (resultado.match_por === 'nombre') estado = 'OK (MATCH NOMBRE)';
                 if (difTotal > 0) artDifPositiva++;
                 if (difTotal < 0) artDifNegativa++;
-            } else {
-                artSinCosteo++;
             }
 
             detalles.push({
@@ -257,13 +237,13 @@ router.post('/valuaciones', auth, async (req, res) => {
                 diferencia_unit: Math.round(difUnit * 100) / 100,
                 diferencia_total: Math.round(difTotal * 100) / 100,
                 diferencia_pct: Math.round(difPct * 100) / 100,
-                // Campos nuevos
-                match_tipo: resultado.match_tipo,
-                nombre_costeo_origen: resultado.nombre_costeo || '',
-                fecha_despacho_origen: resultado.fecha_despacho || null,
-                proveedor_origen: resultado.proveedor || '',
-                codigo_encontrado: resultado.codigo_encontrado || '',
-                nombre_encontrado: resultado.nombre_encontrado || ''
+                estado: estado,
+                nombre_costeo_origen: resultado.encontrado ? resultado.nombre_costeo : '',
+                fecha_despacho_origen: resultado.encontrado ? resultado.fecha_despacho : null,
+                nro_despacho_origen: resultado.encontrado ? resultado.nro_despacho : '',
+                proveedor_origen: resultado.encontrado ? resultado.proveedor : '',
+                codigo_sistema: resultado.encontrado ? resultado.codigo_sistema : '',
+                nombre_sistema: resultado.encontrado ? resultado.nombre_sistema : ''
             });
         }
 
@@ -276,20 +256,11 @@ router.post('/valuaciones', auth, async (req, res) => {
             art_dif_negativa: artDifNegativa, usuario_id: req.user?.id || null
         });
 
-        // Guardar detalles (sin los campos extra que no están en el modelo)
+        // Guardar detalles con TODOS los campos
         for (const det of detalles) {
             await ValuacionDetalle.create({
                 valuacion_id: valuacion.id,
-                codigo_goodies: det.codigo_goodies,
-                descripcion: det.descripcion,
-                cantidad: det.cantidad,
-                costo_unit_contable: det.costo_unit_contable,
-                costo_total_contable: det.costo_total_contable,
-                costo_unit_revaluado: det.costo_unit_revaluado,
-                costo_total_revaluado: det.costo_total_revaluado,
-                diferencia_unit: det.diferencia_unit,
-                diferencia_total: det.diferencia_total,
-                diferencia_pct: det.diferencia_pct
+                ...det
             });
         }
 
@@ -301,7 +272,9 @@ router.post('/valuaciones', auth, async (req, res) => {
                 diferencia: Math.round((totalRevaluado - totalContable) * 100) / 100,
                 art_dif_positiva: artDifPositiva,
                 art_dif_negativa: artDifNegativa,
-                art_sin_costeo: artSinCosteo
+                art_no_encontrado: artNoEncontrado,
+                art_sin_costo_sistema: artSinCostoSistema,
+                art_sin_costo_contable: artSinCostoContable
             }
         });
     } catch (error) {
