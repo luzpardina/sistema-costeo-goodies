@@ -24,7 +24,8 @@ function parsearExcelCatalogo(buffer) {
         if (!codigo || !nombre) return null;
         return {
             codigo_goodies: codigo, nombre,
-            proveedor: String(row['RazonSocialProveedor'] || row['proveedor'] || row['Proveedor'] || '').trim() || null,
+            proveedor: String(row['RazonSocialProveedor'] || row['proveedor'] || row['Proveedor'] || row['Proveedor de Origen *'] || '').trim() || null,
+            empresa_fabrica: String(row['Nombre Empresa Fábrica'] || row['empresa_fabrica'] || row['Empresa Fábrica'] || '').trim() || null,
             marca: String(row['NombreMarcaArticulo'] || row['marca'] || row['Marca'] || '').trim() || null,
             rubro: String(row['NombreArticuloCategoria'] || row['categoria'] || row['Rubro'] || '').trim() || null,
             subrubro: String(row['SubRubro'] || row['subrubro'] || '').trim() || null,
@@ -37,7 +38,10 @@ function parsearExcelCatalogo(buffer) {
             iva_porcentaje: parsePct(row['% IVA'] || row['iva_porcentaje']),
             estadistica_porcentaje: parsePct(row['% Estadística'] || row['estadistica_porcentaje']),
             proveedor_activo: row['Proveedor Activo'] !== undefined ? String(row['Proveedor Activo']).toUpperCase().trim() !== 'NO' : null,
-            habilitado: row['Artículo Activo'] !== undefined ? String(row['Artículo Activo']).toUpperCase().trim() !== 'NO' : null
+            habilitado: row['Artículo Activo'] !== undefined ? String(row['Artículo Activo']).toUpperCase().trim() !== 'NO' : null,
+            unidades_por_caja: row['Und/Caja'] !== undefined ? parseFloat(row['Und/Caja']) || null : null,
+            ultimo_valor_origen: row['Último Valor Origen'] !== undefined ? parseFloat(row['Último Valor Origen']) || null : null,
+            ultimo_valor_fabrica: row['Último Valor Fábrica'] !== undefined ? parseFloat(row['Último Valor Fábrica']) || null : null
         };
     }).filter(r => r !== null);
 }
@@ -64,6 +68,7 @@ router.post('/previsualizar', auth, upload.single('archivo'), async (req, res) =
             const textos = [
                 { label: 'Nombre', nuevo: reg.nombre, actual: existente.nombre },
                 { label: 'Proveedor', nuevo: reg.proveedor, actual: existente.proveedor },
+                { label: 'Empresa Fábrica', nuevo: reg.empresa_fabrica, actual: existente.empresa_fabrica },
                 { label: 'Marca', nuevo: reg.marca, actual: existente.marca },
                 { label: 'Rubro', nuevo: reg.rubro, actual: existente.rubro },
                 { label: 'Cod. Elaborador', nuevo: reg.codigo_elaborador, actual: existente.codigo_elaborador },
@@ -167,7 +172,8 @@ router.get('/descargar', auth, async (req, res) => {
         const data = articulos.map(a => ({
             'Cod. Goodies': a.codigo_goodies,
             'Nombre': a.nombre,
-            'Proveedor': a.proveedor || '',
+            'Proveedor de Origen *': a.proveedor || '',
+            'Nombre Empresa Fábrica': a.empresa_fabrica || a.proveedor || '',
             'Marca': a.marca || '',
             'Rubro': a.rubro || '',
             'SubRubro': a.subrubro || '',
@@ -187,7 +193,7 @@ router.get('/descargar', auth, async (req, res) => {
         }));
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(data);
-        ws['!cols'] = [{ wch: 20 }, { wch: 55 }, { wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 8 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 16 }, { wch: 14 }];
+        ws['!cols'] = [{ wch: 20 }, { wch: 55 }, { wch: 40 }, { wch: 40 }, { wch: 20 }, { wch: 15 }, { wch: 20 }, { wch: 18 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 8 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 16 }, { wch: 14 }];
         XLSX.utils.book_append_sheet(wb, ws, 'Catálogo Unificado');
         const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
         res.setHeader('Content-Disposition', 'attachment; filename=CATALOGO_GOODIES.xlsx');
@@ -208,7 +214,7 @@ router.get('/buscar', auth, async (req, res) => {
             order: [['codigo_goodies', 'ASC']], limit: 20
         });
         res.json(articulos.map(a => ({
-            id: a.id, codigo: a.codigo_goodies, nombre: a.nombre, proveedor: a.proveedor, marca: a.marca, categoria: a.rubro,
+            id: a.id, codigo: a.codigo_goodies, nombre: a.nombre, proveedor: a.proveedor, empresa_fabrica: a.empresa_fabrica, marca: a.marca, categoria: a.rubro,
             derechos_porcentaje: a.derechos_porcentaje, imp_interno_porcentaje: a.imp_interno_porcentaje,
             unidades_por_caja: a.unidades_por_caja, ultimo_valor_origen: a.ultimo_valor_origen, ultimo_valor_fabrica: a.ultimo_valor_fabrica, moneda: a.moneda
         })));
@@ -246,6 +252,17 @@ router.get('/marcas', auth, async (req, res) => {
             where, order: [['marca', 'ASC']], raw: true
         });
         res.json(marcas.map(m => m.marca).filter(m => m));
+    } catch (error) { res.status(500).json({ error: 'Error' }); }
+});
+
+router.get('/fabricantes', auth, async (req, res) => {
+    try {
+        const fabricantes = await CatalogoArticulo.findAll({
+            attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col('empresa_fabrica')), 'empresa_fabrica']],
+            where: { habilitado: true, proveedor_activo: true, empresa_fabrica: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } },
+            order: [['empresa_fabrica', 'ASC']], raw: true
+        });
+        res.json(fabricantes.map(f => f.empresa_fabrica).filter(f => f));
     } catch (error) { res.status(500).json({ error: 'Error' }); }
 });
 

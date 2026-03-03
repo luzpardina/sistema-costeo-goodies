@@ -17,6 +17,7 @@ const CatalogoArticulo = sequelize.define('CatalogoArticulo', {
         allowNull: false
     },
     proveedor: DataTypes.STRING(255),
+    empresa_fabrica: DataTypes.STRING(255),
     marca: DataTypes.STRING(100),
     rubro: DataTypes.STRING(100),
     subrubro: DataTypes.STRING(100),

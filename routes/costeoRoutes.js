@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const auth = require('../middleware/auth');
 const costeoController = require('../controllers/costeoController');
-const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios, ConsolidadoProveedor } = require('../models');
+const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios, ConsolidadoProveedor, CatalogoArticulo } = require('../models');
 const CalculosService = require('../services/calculosService');
 
 // Configurar multer para subida de archivos
@@ -35,6 +35,7 @@ router.post('/manual', auth, costeoController.cargaManual);
 // Listar costeos
 router.get('/listar', auth, async (req, res) => {
     try {
+        const { Op } = require('sequelize');
         const costeos = await Costeo.findAll({
             order: [['created_at', 'DESC']],
             include: [
@@ -42,21 +43,37 @@ router.get('/listar', auth, async (req, res) => {
             ]
         });
 
-        const lista = costeos.map(c => ({
-            id: c.id,
-            nombre_costeo: c.nombre_costeo,
-            proveedor: c.proveedor,
-            moneda_principal: c.moneda_principal,
-            fecha_factura: c.fecha_factura,
-            fecha_despacho: c.fecha_despacho,
-            nro_despacho: c.nro_despacho,
-            estado: c.estado,
-            unidades_totales: c.unidades_totales,
-            costo_total_ars: c.costo_total_ars,
-            es_consolidado: c.es_consolidado,
-            cant_articulos: c.articulos ? c.articulos.length : 0,
-            articulos_nombres: c.articulos ? c.articulos.map(a => (a.codigo_goodies || '') + ' ' + (a.nombre || '')).join('|') : ''
-        }));
+        // Buscar marcas del catálogo para todos los códigos de artículos
+        const todosCodigos = [...new Set(costeos.flatMap(c => (c.articulos || []).map(a => a.codigo_goodies).filter(Boolean)))];
+        const catalogoItems = todosCodigos.length > 0 ? await CatalogoArticulo.findAll({
+            where: { codigo_goodies: { [Op.in]: todosCodigos } },
+            attributes: ['codigo_goodies', 'marca'],
+            raw: true
+        }) : [];
+        const marcaPorCodigo = {};
+        catalogoItems.forEach(ci => { if (ci.marca) marcaPorCodigo[ci.codigo_goodies] = ci.marca; });
+
+        const lista = costeos.map(c => {
+            const marcasSet = new Set();
+            (c.articulos || []).forEach(a => { if (marcaPorCodigo[a.codigo_goodies]) marcasSet.add(marcaPorCodigo[a.codigo_goodies]); });
+            return {
+                id: c.id,
+                nombre_costeo: c.nombre_costeo,
+                proveedor: c.proveedor,
+                empresa_fabrica: c.empresa_intermediaria || '',
+                marcas: [...marcasSet].join(', '),
+                moneda_principal: c.moneda_principal,
+                fecha_factura: c.fecha_factura,
+                fecha_despacho: c.fecha_despacho,
+                nro_despacho: c.nro_despacho,
+                estado: c.estado,
+                unidades_totales: c.unidades_totales,
+                costo_total_ars: c.costo_total_ars,
+                es_consolidado: c.es_consolidado,
+                cant_articulos: c.articulos ? c.articulos.length : 0,
+                articulos_nombres: c.articulos ? c.articulos.map(a => (a.codigo_goodies || '') + ' ' + (a.nombre || '')).join('|') : ''
+            };
+        });
 
         res.json(lista);
     } catch (error) {
@@ -133,6 +150,21 @@ router.get('/ultimos-costos', auth, async (req, res) => {
                 anterior_fecha_despacho: anterior ? anterior.fecha_despacho : null,
                 diferencia_pct: diferenciaPct
             };
+        });
+
+        // Enriquecer con marca y empresa_fabrica del catálogo
+        const codigos = resultado.map(r => r.codigo_goodies);
+        const catItems = codigos.length > 0 ? await CatalogoArticulo.findAll({
+            where: { codigo_goodies: { [Op.in]: codigos } },
+            attributes: ['codigo_goodies', 'marca', 'empresa_fabrica'],
+            raw: true
+        }) : [];
+        const catMap = {};
+        catItems.forEach(ci => { catMap[ci.codigo_goodies] = ci; });
+        resultado.forEach(r => {
+            const cat = catMap[r.codigo_goodies];
+            r.marca = cat ? (cat.marca || '') : '';
+            r.empresa_fabrica = cat ? (cat.empresa_fabrica || '') : '';
         });
 
         res.json(resultado);

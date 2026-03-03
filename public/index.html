@@ -185,13 +185,19 @@
                 <h3>Listado de Costeos</h3>
                 <div class="filtros">
                     <div class="filtro-grupo">
-                        <label>Proveedor</label>
+                        <label>Proveedor de Origen</label>
                         <input type="text" id="filtroProveedor" list="listaProveedores" placeholder="Escribí para buscar..." onkeyup="aplicarFiltros()" onchange="aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
                         <datalist id="listaProveedores"></datalist>
                     </div>
                     <div class="filtro-grupo">
-                        <label>Marca/Artículo</label>
-                        <input type="text" id="filtroMarca" placeholder="Buscar marca o artículo..." onkeyup="aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 180px;">
+                        <label>Empresa Fábrica</label>
+                        <input type="text" id="filtroFabricante" list="listaFabricantes" placeholder="Escribí para buscar..." onkeyup="aplicarFiltros()" onchange="aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
+                        <datalist id="listaFabricantes"></datalist>
+                    </div>
+                    <div class="filtro-grupo">
+                        <label>Marca</label>
+                        <input type="text" id="filtroMarca" list="listaMarcas" placeholder="Escribí para buscar..." onkeyup="aplicarFiltros()" onchange="aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 180px;">
+                        <datalist id="listaMarcas"></datalist>
                     </div>
                     <div class="filtro-grupo">
                         <label>Tipo</label>
@@ -247,9 +253,19 @@
                         <input type="text" id="buscarArticulo" placeholder="Código o nombre..." onkeyup="filtrarArticulos()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 250px;">
                     </div>
                     <div class="filtro-grupo">
-                        <label>Proveedor</label>
+                        <label>Proveedor de Origen</label>
                         <input type="text" id="filtroProveedorArticulo" list="listaProveedoresArticulo" placeholder="Escribí para buscar..." onkeyup="filtrarArticulos()" onchange="filtrarArticulos()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
                         <datalist id="listaProveedoresArticulo"></datalist>
+                    </div>
+                    <div class="filtro-grupo">
+                        <label>Empresa Fábrica</label>
+                        <input type="text" id="filtroFabricanteArticulo" list="listaFabricantesArticulo" placeholder="Escribí para buscar..." onkeyup="filtrarArticulos()" onchange="filtrarArticulos()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
+                        <datalist id="listaFabricantesArticulo"></datalist>
+                    </div>
+                    <div class="filtro-grupo">
+                        <label>Marca</label>
+                        <input type="text" id="filtroMarcaArticulo" list="listaMarcasArticulo" placeholder="Escribí para buscar..." onkeyup="filtrarArticulos()" onchange="filtrarArticulos()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 150px;">
+                        <datalist id="listaMarcasArticulo"></datalist>
                     </div>
                     <button class="btn btn-secondary" onclick="cargarUltimosCostos()">Actualizar</button>
                     <button class="btn btn-success" onclick="exportarUltimosCostosXLSX()">📥 Exportar Excel</button>
@@ -364,6 +380,12 @@
                     <select id="filtroMargenProveedor" onchange="filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
                         <option value="">Todos los proveedores</option>
                     </select>
+                    <select id="filtroMargenFabricante" onchange="filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                        <option value="">Todas las fábricas</option>
+                    </select>
+                    <select id="filtroMargenMarca" onchange="filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                        <option value="">Todas las marcas</option>
+                    </select>
                 </div>
                 <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
                     <button class="btn btn-secondary" onclick="cargarArticulosParaMargen()">📦 Cargar Artículos del Catálogo</button>
@@ -387,6 +409,17 @@
             <div class="card" style="grid-column: 1 / -1;">
                 <h3>🎯 Simulador de Descuento (Break-Even)</h3>
                 <p style="color:#aaa;margin-bottom:15px;">Calculá el descuento máximo que podés ofrecer según diferentes aumentos de volumen.</p>
+                <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+                    <select id="filtroSimProveedor" onchange="filtrarArticulosSim()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                        <option value="">Todos los proveedores</option>
+                    </select>
+                    <select id="filtroSimFabricante" onchange="filtrarArticulosSim()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                        <option value="">Todas las fábricas</option>
+                    </select>
+                    <select id="filtroSimMarca" onchange="filtrarArticulosSim()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                        <option value="">Todas las marcas</option>
+                    </select>
+                </div>
                 <div class="form-row" style="margin-bottom:15px;">
                     <div class="form-group">
                         <label>Artículo</label>
@@ -972,13 +1005,17 @@ let todosLosArticulos = [];
         function filtrarArticulos() {
             const busqueda = document.getElementById('buscarArticulo').value.toLowerCase();
             const proveedor = document.getElementById('filtroProveedorArticulo').value;
+            const fabricante = document.getElementById('filtroFabricanteArticulo').value;
+            const marca = document.getElementById('filtroMarcaArticulo').value;
             
             articulosFiltrados = todosLosArticulos.filter(a => {
                 const coincideBusqueda = !busqueda || 
                     (a.codigo_goodies || '').toLowerCase().includes(busqueda) ||
                     (a.nombre || '').toLowerCase().includes(busqueda);
                 const coincideProveedor = !proveedor || (a.proveedor && a.proveedor.toLowerCase().includes(proveedor.toLowerCase()));
-                return coincideBusqueda && coincideProveedor;
+                const coincideFabricante = !fabricante || (a.empresa_fabrica && a.empresa_fabrica.toLowerCase().includes(fabricante.toLowerCase()));
+                const coincideMarca = !marca || (a.marca && a.marca.toLowerCase().includes(marca.toLowerCase()));
+                return coincideBusqueda && coincideProveedor && coincideFabricante && coincideMarca;
             });
             
             renderizarArticulosUltimoCosto(articulosFiltrados);
@@ -1467,6 +1504,8 @@ function exportarUltimosCostosXLSX() {
         function limpiarFiltrosArticulos() {
             document.getElementById('buscarArticulo').value = '';
             document.getElementById('filtroProveedorArticulo').value = '';
+            document.getElementById('filtroFabricanteArticulo').value = '';
+            document.getElementById('filtroMarcaArticulo').value = '';
             document.getElementById('seleccionarTodosArt').checked = false;
             filtrarArticulos();
             actualizarSeleccion();
@@ -1511,22 +1550,44 @@ async function cargarCosteos() {
             const provsCosteos = [...new Set(todosLosCosteos.map(c => c.proveedor).filter(p => p))];
             // Also try to get proveedores from catalogo (unified source)
             let provsCatalogo = [];
+            let fabricantes = [];
+            let marcas = [];
             try {
                 const res = await fetch(window.location.origin + '/api/maestro/proveedores', { headers: { 'Authorization': 'Bearer ' + token } });
                 if (res.ok) provsCatalogo = await res.json();
             } catch(e) {}
-            // Merge and deduplicate (case-insensitive)
+            try {
+                const res = await fetch(window.location.origin + '/api/maestro/fabricantes', { headers: { 'Authorization': 'Bearer ' + token } });
+                if (res.ok) fabricantes = await res.json();
+            } catch(e) {}
+            try {
+                const res = await fetch(window.location.origin + '/api/maestro/marcas', { headers: { 'Authorization': 'Bearer ' + token } });
+                if (res.ok) marcas = await res.json();
+            } catch(e) {}
+            // Merge and deduplicate proveedores (case-insensitive)
             const seen = new Map();
             [...provsCatalogo, ...provsCosteos].forEach(p => {
                 if (p && !seen.has(p.toUpperCase())) seen.set(p.toUpperCase(), p);
             });
             const proveedores = [...seen.values()].sort();
-            const datalist = document.getElementById('listaProveedores');
-            datalist.innerHTML = proveedores.map(p => '<option value="' + p + '">').join('');
+            // Poblar datalists de COMEX
+            document.getElementById('listaProveedores').innerHTML = proveedores.map(p => '<option value="' + p + '">').join('');
+            var dlFab = document.getElementById('listaFabricantes');
+            if (dlFab) dlFab.innerHTML = fabricantes.map(f => '<option value="' + f + '">').join('');
+            var dlMar = document.getElementById('listaMarcas');
+            if (dlMar) dlMar.innerHTML = marcas.map(m => '<option value="' + m + '">').join('');
+            // Poblar datalists de Último Costo
+            var dlProvArt = document.getElementById('listaProveedoresArticulo');
+            if (dlProvArt) dlProvArt.innerHTML = proveedores.map(p => '<option value="' + p + '">').join('');
+            var dlFabArt = document.getElementById('listaFabricantesArticulo');
+            if (dlFabArt) dlFabArt.innerHTML = fabricantes.map(f => '<option value="' + f + '">').join('');
+            var dlMarArt = document.getElementById('listaMarcasArticulo');
+            if (dlMarArt) dlMarArt.innerHTML = marcas.map(m => '<option value="' + m + '">').join('');
         }
         function toggleCriterio() { const cb = document.getElementById('filtroUltimo'); document.getElementById('criterioContainer').classList.toggle('show', cb.checked); }
         function limpiarFiltros() {
             document.getElementById('filtroProveedor').value = '';
+            document.getElementById('filtroFabricante').value = '';
             document.getElementById('filtroTipo').value = '';
             document.getElementById('filtroMarca').value = '';
             document.getElementById('filtroUltimo').checked = false;
@@ -1537,13 +1598,15 @@ async function cargarCosteos() {
 
         function aplicarFiltros() {
             const proveedor = document.getElementById('filtroProveedor').value;
-            const tipo = document.getElementById('filtroTipo').value;
+            const fabricante = document.getElementById('filtroFabricante').value;
             const marca = document.getElementById('filtroMarca').value.toLowerCase();
+            const tipo = document.getElementById('filtroTipo').value;
             const soloUltimo = document.getElementById('filtroUltimo').checked;
             const criterio = document.getElementById('filtroCriterio').value;
             let filtrados = [...todosLosCosteos];
             if (proveedor) filtrados = filtrados.filter(c => c.proveedor && c.proveedor.toLowerCase().includes(proveedor.toLowerCase()));
-            if (marca) filtrados = filtrados.filter(c => c.articulos_nombres && c.articulos_nombres.toLowerCase().includes(marca));
+            if (fabricante) filtrados = filtrados.filter(c => (c.empresa_fabrica && c.empresa_fabrica.toLowerCase().includes(fabricante.toLowerCase())) || (c.proveedor && c.proveedor.toLowerCase().includes(fabricante.toLowerCase())));
+            if (marca) filtrados = filtrados.filter(c => (c.marcas && c.marcas.toLowerCase().includes(marca)) || (c.articulos_nombres && c.articulos_nombres.toLowerCase().includes(marca)));
             if (tipo === 'definitivo') filtrados = filtrados.filter(c => esDefinitivo(c));
             else if (tipo === 'presupuesto') filtrados = filtrados.filter(c => !esDefinitivo(c));
             if (soloUltimo) {
@@ -3552,12 +3615,29 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 codigo_goodies: a.codigo_goodies || a.codigo,
                 nombre: a.nombre,
                 proveedor: a.proveedor || '',
+                empresa_fabrica: a.empresa_fabrica || '',
+                marca: a.marca || '',
                 costo_neto: parseFloat(a.costo_unitario_neto_ars || a.costo_neto) || 0,
                 pvp: 0
             }));
             const proveedores = [...new Set(articulosPvpTodos.map(a => a.proveedor).filter(p => p))].sort();
-            const sel = document.getElementById('filtroMargenProveedor');
+            const fabricantes = [...new Set(articulosPvpTodos.map(a => a.empresa_fabrica).filter(f => f))].sort();
+            const marcas = [...new Set(articulosPvpTodos.map(a => a.marca).filter(m => m))].sort();
+            var sel = document.getElementById('filtroMargenProveedor');
             if (sel) sel.innerHTML = '<option value="">Todos los proveedores</option>' + proveedores.map(p => '<option value="' + p + '">' + p + '</option>').join('');
+            sel = document.getElementById('filtroMargenFabricante');
+            if (sel) sel.innerHTML = '<option value="">Todas las fábricas</option>' + fabricantes.map(f => '<option value="' + f + '">' + f + '</option>').join('');
+            sel = document.getElementById('filtroMargenMarca');
+            if (sel) sel.innerHTML = '<option value="">Todas las marcas</option>' + marcas.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+            // También poblar filtros del simulador
+            sel = document.getElementById('filtroSimProveedor');
+            if (sel) sel.innerHTML = '<option value="">Todos los proveedores</option>' + proveedores.map(p => '<option value="' + p + '">' + p + '</option>').join('');
+            sel = document.getElementById('filtroSimFabricante');
+            if (sel) sel.innerHTML = '<option value="">Todas las fábricas</option>' + fabricantes.map(f => '<option value="' + f + '">' + f + '</option>').join('');
+            sel = document.getElementById('filtroSimMarca');
+            if (sel) sel.innerHTML = '<option value="">Todas las marcas</option>' + marcas.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+            // Poblar dropdown de artículos del simulador
+            poblarSimArticulos(articulosPvpTodos);
             articulosPvp = [...articulosPvpTodos];
             renderArticulosPvp();
             alert('✅ ' + articulosPvp.length + ' artículos cargados');
@@ -3567,10 +3647,14 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
     function filtrarArticulosPvp() {
         const texto = (document.getElementById('filtroMargenTexto').value || '').toLowerCase();
         const proveedor = document.getElementById('filtroMargenProveedor').value;
+        const fabricante = document.getElementById('filtroMargenFabricante').value;
+        const marca = document.getElementById('filtroMargenMarca').value;
         articulosPvp = articulosPvpTodos.filter(a => {
             const matchTexto = !texto || a.codigo_goodies.toLowerCase().includes(texto) || a.nombre.toLowerCase().includes(texto);
             const matchProv = !proveedor || a.proveedor === proveedor;
-            return matchTexto && matchProv;
+            const matchFab = !fabricante || a.empresa_fabrica === fabricante;
+            const matchMarca = !marca || a.marca === marca;
+            return matchTexto && matchProv && matchFab && matchMarca;
         });
         renderArticulosPvp();
     }
@@ -3976,16 +4060,44 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
     }
 
     // Cargar artículos en el select del simulador
+    let articulosSimTodos = [];
     async function cargarArticulosSimulador() {
         try {
             const resp = await fetch(API_URL + '/api/costeos/ultimos-costos', { headers: { 'Authorization': 'Bearer ' + token } });
             const data = await resp.json();
-            const sel = document.getElementById('simArticulo');
-            if (!sel) return;
-            const arts = Array.isArray(data) ? data : [];
-            sel.innerHTML = '<option value="">Seleccionar...</option>' +
-                arts.map(a => `<option value="${a.codigo_goodies || a.codigo}">${a.codigo_goodies || a.codigo} - ${a.nombre}</option>`).join('');
+            articulosSimTodos = Array.isArray(data) ? data : [];
+            // Poblar filtros si no están ya poblados
+            const proveedores = [...new Set(articulosSimTodos.map(a => a.proveedor).filter(p => p))].sort();
+            const fabricantes = [...new Set(articulosSimTodos.map(a => a.empresa_fabrica).filter(f => f))].sort();
+            const marcas = [...new Set(articulosSimTodos.map(a => a.marca).filter(m => m))].sort();
+            var sel = document.getElementById('filtroSimProveedor');
+            if (sel && sel.options.length <= 1) sel.innerHTML = '<option value="">Todos los proveedores</option>' + proveedores.map(p => '<option value="' + p + '">' + p + '</option>').join('');
+            sel = document.getElementById('filtroSimFabricante');
+            if (sel && sel.options.length <= 1) sel.innerHTML = '<option value="">Todas las fábricas</option>' + fabricantes.map(f => '<option value="' + f + '">' + f + '</option>').join('');
+            sel = document.getElementById('filtroSimMarca');
+            if (sel && sel.options.length <= 1) sel.innerHTML = '<option value="">Todas las marcas</option>' + marcas.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+            poblarSimArticulos(articulosSimTodos);
         } catch(e) { console.error(e); }
+    }
+
+    function poblarSimArticulos(arts) {
+        const sel = document.getElementById('simArticulo');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Seleccionar...</option>' +
+            arts.map(a => '<option value="' + (a.codigo_goodies || a.codigo) + '">' + (a.codigo_goodies || a.codigo) + ' - ' + a.nombre + '</option>').join('');
+    }
+
+    function filtrarArticulosSim() {
+        const proveedor = document.getElementById('filtroSimProveedor').value;
+        const fabricante = document.getElementById('filtroSimFabricante').value;
+        const marca = document.getElementById('filtroSimMarca').value;
+        const filtrados = articulosSimTodos.filter(a => {
+            const matchProv = !proveedor || a.proveedor === proveedor;
+            const matchFab = !fabricante || a.empresa_fabrica === fabricante;
+            const matchMarca = !marca || a.marca === marca;
+            return matchProv && matchFab && matchMarca;
+        });
+        poblarSimArticulos(filtrados);
     }
 
     // Override mostrarApp to also load simulator data
