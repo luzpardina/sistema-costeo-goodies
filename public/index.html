@@ -2894,11 +2894,13 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                     const fecha = new Date(data.ultima_actualizacion);
                     let info = '📅 Última actualización: ' + fecha.toLocaleDateString('es-AR') + ' ' + fecha.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
                     if (data.proveedores_activos !== undefined) {
-                        info += ' | Proveedores activos: ' + data.proveedores_activos;
-                        if (data.proveedores_inactivos > 0) info += ' | Inactivos: ' + data.proveedores_inactivos;
+                        info += '<br>Proveedores activos: <strong>' + data.proveedores_activos + '</strong>';
+                        if (data.proveedores_inactivos > 0) info += ' | Inactivos: <strong style="color:#f44336;">' + data.proveedores_inactivos + '</strong>';
                         else info += ' <span style="color:#ff9800;">(ningún proveedor marcado como inactivo)</span>';
                     }
-                    if (data.totalInactivos > 0) info += ' | Arts. inactivos: ' + data.totalInactivos;
+                    info += '<br>Artículos activos: <strong style="color:#4CAF50;">' + (data.total || 0) + '</strong>';
+                    if (data.totalInactivos > 0) info += ' | Inactivos: <strong style="color:#f44336;">' + data.totalInactivos + '</strong>';
+                    info += ' | Total: ' + (data.totalGeneral || 0);
                     document.getElementById('catalogoFechaActualizacion').innerHTML = info;
                 }
                 cargarProveedoresMaestro();
