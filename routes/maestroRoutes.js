@@ -139,6 +139,7 @@ router.post('/importar', auth, upload.single('archivo'), async (req, res) => {
                     const updates = {};
                     if (reg.nombre) updates.nombre = reg.nombre;
                     if (reg.proveedor) updates.proveedor = reg.proveedor;
+                    if (reg.empresa_fabrica) updates.empresa_fabrica = reg.empresa_fabrica;
                     if (reg.marca) updates.marca = reg.marca;
                     if (reg.rubro) updates.rubro = reg.rubro;
                     if (reg.subrubro) updates.subrubro = reg.subrubro;
@@ -150,6 +151,9 @@ router.post('/importar', auth, upload.single('archivo'), async (req, res) => {
                     if (reg.imp_interno_porcentaje !== null) updates.imp_interno_porcentaje = reg.imp_interno_porcentaje;
                     if (reg.iva_porcentaje !== null) updates.iva_porcentaje = reg.iva_porcentaje;
                     if (reg.estadistica_porcentaje !== null) updates.estadistica_porcentaje = reg.estadistica_porcentaje;
+                    if (reg.unidades_por_caja !== null) updates.unidades_por_caja = reg.unidades_por_caja;
+                    if (reg.ultimo_valor_origen !== null) updates.ultimo_valor_origen = reg.ultimo_valor_origen;
+                    if (reg.ultimo_valor_fabrica !== null) updates.ultimo_valor_fabrica = reg.ultimo_valor_fabrica;
                     if (reg.proveedor_activo !== null) updates.proveedor_activo = reg.proveedor_activo;
                     if (reg.habilitado !== null) updates.habilitado = reg.habilitado;
                     if (Object.keys(updates).length > 0) { await existente.update(updates); actualizados++; }
