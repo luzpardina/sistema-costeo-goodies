@@ -302,8 +302,9 @@ router.post('/validar', auth, async (req, res) => {
 router.get('/stats', auth, async (req, res) => {
     try {
         const total = await CatalogoArticulo.count({ where: { habilitado: true, proveedor_activo: true } });
-        res.json({ total });
-    } catch (error) { res.json({ total: 0 }); }
+        const ultimoArt = await CatalogoArticulo.findOne({ order: [['updated_at', 'DESC']], attributes: ['updated_at'], raw: true });
+        res.json({ total, ultima_actualizacion: ultimoArt ? ultimoArt.updated_at : null });
+    } catch (error) { res.json({ total: 0, ultima_actualizacion: null }); }
 });
 
 module.exports = router;
