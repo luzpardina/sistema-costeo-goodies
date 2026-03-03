@@ -172,38 +172,87 @@ router.post('/importar', auth, upload.single('archivo'), async (req, res) => {
 // Descargar catálogo completo
 router.get('/descargar', auth, async (req, res) => {
     try {
+        const ExcelJS = require('exceljs');
         const articulos = await CatalogoArticulo.findAll({ order: [['proveedor', 'ASC'], ['codigo_goodies', 'ASC']] });
-        const data = articulos.map(a => ({
-            'Cod. Goodies': a.codigo_goodies,
-            'Nombre': a.nombre,
-            'Proveedor de Origen *': a.proveedor || '',
-            'Nombre Empresa Fábrica': a.empresa_fabrica || a.proveedor || '',
-            'Marca': a.marca || '',
-            'Rubro': a.rubro || '',
-            'SubRubro': a.subrubro || '',
-            'Cod. Elaborador': a.codigo_elaborador || '',
-            'Pos. Arancelaria': a.pos_arancelaria || '',
-            '% Derechos': a.derechos_porcentaje ? (parseFloat(a.derechos_porcentaje) * 100).toFixed(2) : '',
-            '% Imp. Internos': a.imp_interno_porcentaje ? (parseFloat(a.imp_interno_porcentaje) * 100).toFixed(2) : '',
-            '% IVA': a.iva_porcentaje ? (parseFloat(a.iva_porcentaje) * 100).toFixed(2) : '',
-            '% Estadística': a.estadistica_porcentaje ? (parseFloat(a.estadistica_porcentaje) * 100).toFixed(2) : '',
-            'Moneda': a.moneda || '',
-            'País Origen': a.pais_origen || '',
-            'Und/Caja': a.unidades_por_caja || '',
-            'Último Valor Origen': a.ultimo_valor_origen || '',
-            'Último Valor Fábrica': a.ultimo_valor_fabrica || '',
-            'Proveedor Activo': a.proveedor_activo === false ? 'NO' : 'SI',
-            'Artículo Activo': a.habilitado === false ? 'NO' : 'SI'
-        }));
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.json_to_sheet(data);
-        ws['!cols'] = [{ wch: 20 }, { wch: 55 }, { wch: 40 }, { wch: 40 }, { wch: 20 }, { wch: 15 }, { wch: 20 }, { wch: 18 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 8 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 16 }, { wch: 14 }];
-        XLSX.utils.book_append_sheet(wb, ws, 'Catálogo Unificado');
-        const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Catálogo Unificado');
+
+        // Headers
+        const headers = [
+            'Cod. Goodies', 'Nombre', 'Proveedor de Origen *', 'Nombre Empresa Fábrica', 'Marca',
+            'Rubro', 'SubRubro', 'Cod. Elaborador', 'Pos. Arancelaria',
+            '% Derechos', '% Imp. Internos', '% IVA', '% Estadística',
+            'Moneda', 'País Origen', 'Und/Caja', 'Último Valor Origen', 'Último Valor Fábrica',
+            'Proveedor Activo', 'Artículo Activo'
+        ];
+        const colWidths = [18.6, 57.5, 23.6, 26.5, 19.8, 30.8, 26.8, 15.4, 15.3, 10.8, 8, 5.9, 9.9, 8, 15.4, 8.9, 8.4, 7.4, 9.9, 7.8];
+
+        // Set column widths
+        ws.columns = headers.map((h, i) => ({ header: h, width: colWidths[i] || 12 }));
+
+        // Format header row
+        const headerRow = ws.getRow(1);
+        headerRow.height = 54;
+        headerRow.eachCell((cell) => {
+            cell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF333333' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8DB4E2' } };
+            cell.alignment = { horizontal: 'center', vertical: 'top', wrapText: true };
+            cell.border = {
+                bottom: { style: 'thin', color: { argb: 'FF666666' } }
+            };
+        });
+
+        // Add data rows
+        for (const a of articulos) {
+            const isProvInactive = a.proveedor_activo === false;
+            const isArtInactive = a.habilitado === false;
+            const inactive = isProvInactive || isArtInactive;
+
+            const row = ws.addRow([
+                a.codigo_goodies,
+                a.nombre,
+                a.proveedor || '',
+                a.empresa_fabrica || a.proveedor || '',
+                a.marca || '',
+                a.rubro || '',
+                a.subrubro || '',
+                a.codigo_elaborador || '',
+                a.pos_arancelaria || '',
+                a.derechos_porcentaje ? (parseFloat(a.derechos_porcentaje) * 100).toFixed(2) : '',
+                a.imp_interno_porcentaje ? (parseFloat(a.imp_interno_porcentaje) * 100).toFixed(2) : '',
+                a.iva_porcentaje ? (parseFloat(a.iva_porcentaje) * 100).toFixed(2) : '',
+                a.estadistica_porcentaje ? (parseFloat(a.estadistica_porcentaje) * 100).toFixed(2) : '',
+                a.moneda || '',
+                a.pais_origen || '',
+                a.unidades_por_caja || '',
+                a.ultimo_valor_origen || '',
+                a.ultimo_valor_fabrica || '',
+                isProvInactive ? 'NO' : 'SI',
+                isArtInactive ? 'NO' : 'SI'
+            ]);
+
+            // Gray out inactive rows
+            if (inactive) {
+                row.eachCell((cell) => {
+                    cell.font = { name: 'Calibri', size: 11, color: { argb: 'FF999999' } };
+                });
+            }
+        }
+
+        // Auto filter on all columns
+        ws.autoFilter = { from: 'A1', to: `T${articulos.length + 1}` };
+
+        // Freeze first row
+        ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+        // Write to buffer and send
+        const buffer = await wb.xlsx.writeBuffer();
         res.setHeader('Content-Disposition', 'attachment; filename=CATALOGO_GOODIES.xlsx');
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.send(buffer);
+        res.send(Buffer.from(buffer));
     } catch (error) {
+        console.error('Error descargando catálogo:', error);
         res.status(500).json({ error: 'Error al descargar' });
     }
 });
