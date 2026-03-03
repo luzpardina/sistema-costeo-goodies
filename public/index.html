@@ -996,10 +996,24 @@ let todosLosArticulos = [];
             finally { loading.classList.remove('show'); }
         }
 
-        function actualizarDropdownProveedorArticulo() {
-            const datalist = document.getElementById('listaProveedoresArticulo');
-            const proveedores = [...new Set(todosLosArticulos.map(a => a.proveedor).filter(p => p))].sort();
-            datalist.innerHTML = proveedores.map(p => '<option value="' + p + '">').join('');
+        async function actualizarDropdownProveedorArticulo() {
+            // Usar catálogo activo para dropdowns de Último Costo también
+            try {
+                const [resProv, resFab, resMar] = await Promise.all([
+                    fetch(window.location.origin + '/api/maestro/proveedores', { headers: { 'Authorization': 'Bearer ' + token } }),
+                    fetch(window.location.origin + '/api/maestro/fabricantes', { headers: { 'Authorization': 'Bearer ' + token } }),
+                    fetch(window.location.origin + '/api/maestro/marcas', { headers: { 'Authorization': 'Bearer ' + token } })
+                ]);
+                const provs = resProv.ok ? await resProv.json() : [];
+                const fabs = resFab.ok ? await resFab.json() : [];
+                const mars = resMar.ok ? await resMar.json() : [];
+                const dlProv = document.getElementById('listaProveedoresArticulo');
+                if (dlProv) dlProv.innerHTML = [...new Set(provs)].sort().map(p => '<option value="' + p + '">').join('');
+                const dlFab = document.getElementById('listaFabricantesArticulo');
+                if (dlFab) dlFab.innerHTML = [...new Set(fabs)].sort().map(f => '<option value="' + f + '">').join('');
+                const dlMar = document.getElementById('listaMarcasArticulo');
+                if (dlMar) dlMar.innerHTML = [...new Set(mars)].sort().map(m => '<option value="' + m + '">').join('');
+            } catch(e) { console.error('Error cargando dropdowns artículos:', e); }
         }
 
         function filtrarArticulos() {
@@ -2878,7 +2892,14 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 document.getElementById('totalMaestro').textContent = data.total || 0;
                 if (data.ultima_actualizacion) {
                     const fecha = new Date(data.ultima_actualizacion);
-                    document.getElementById('catalogoFechaActualizacion').textContent = '📅 Última actualización: ' + fecha.toLocaleDateString('es-AR') + ' ' + fecha.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+                    let info = '📅 Última actualización: ' + fecha.toLocaleDateString('es-AR') + ' ' + fecha.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+                    if (data.proveedores_activos !== undefined) {
+                        info += ' | Proveedores activos: ' + data.proveedores_activos;
+                        if (data.proveedores_inactivos > 0) info += ' | Inactivos: ' + data.proveedores_inactivos;
+                        else info += ' <span style="color:#ff9800;">(ningún proveedor marcado como inactivo)</span>';
+                    }
+                    if (data.totalInactivos > 0) info += ' | Arts. inactivos: ' + data.totalInactivos;
+                    document.getElementById('catalogoFechaActualizacion').innerHTML = info;
                 }
                 cargarProveedoresMaestro();
             } catch (e) {

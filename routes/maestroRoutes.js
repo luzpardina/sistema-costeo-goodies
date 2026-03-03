@@ -302,8 +302,28 @@ router.post('/validar', auth, async (req, res) => {
 router.get('/stats', auth, async (req, res) => {
     try {
         const total = await CatalogoArticulo.count({ where: { habilitado: true, proveedor_activo: true } });
+        const totalInactivos = await CatalogoArticulo.count({ where: { [Op.or]: [{ habilitado: false }, { proveedor_activo: false }] } });
+        const totalGeneral = await CatalogoArticulo.count();
         const ultimoArt = await CatalogoArticulo.findOne({ order: [['updated_at', 'DESC']], attributes: ['updated_at'], raw: true });
-        res.json({ total, ultima_actualizacion: ultimoArt ? ultimoArt.updated_at : null });
+        
+        // Contar proveedores únicos activos vs inactivos
+        const provsActivos = await CatalogoArticulo.findAll({
+            attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col('proveedor')), 'proveedor']],
+            where: { habilitado: true, proveedor_activo: true, proveedor: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } },
+            raw: true
+        });
+        const provsInactivos = await CatalogoArticulo.findAll({
+            attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col('proveedor')), 'proveedor']],
+            where: { proveedor_activo: false, proveedor: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } },
+            raw: true
+        });
+        
+        res.json({ 
+            total, totalInactivos, totalGeneral,
+            proveedores_activos: provsActivos.length,
+            proveedores_inactivos: provsInactivos.length,
+            ultima_actualizacion: ultimoArt ? ultimoArt.updated_at : null 
+        });
     } catch (error) { res.json({ total: 0, ultima_actualizacion: null }); }
 });
 
