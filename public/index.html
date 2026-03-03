@@ -137,16 +137,6 @@
                     <div class="message" id="importMessage"></div>
                     <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                         <button class="btn btn-primary" onclick="abrirCargaManual()" style="flex:1;">+ Carga Manual</button>
-                        <button class="btn btn-secondary" onclick="toggleImportExcel()" style="flex:1;">Importar Excel</button>
-                    </div>
-                    <div id="importExcelArea" style="display:none;">
-                        <div class="upload-area" id="uploadArea">
-                            <div style="font-size: 48px;">📁</div>
-                            <p>Arrastra tu archivo Excel aqui</p>
-                            <p class="file-name" id="fileName"></p>
-                            <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;">
-                        </div>
-                        <button class="btn btn-primary" id="importBtn" onclick="importarExcel()" disabled style="width: 100%;">Importar</button>
                     </div>
                     <div class="loading" id="importLoading"><div class="spinner"></div><p>Procesando...</p></div>
                 </div>
@@ -156,6 +146,10 @@
                         <div class="detail-item">
                             <div class="detail-label">Total Costeos</div>
                             <div class="detail-value highlight" id="totalCosteos">0</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Definitivos</div>
+                            <div class="detail-value" id="costeosDefinitivos" style="color:#4CAF50;">0</div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Presupuestos</div>
@@ -172,6 +166,7 @@
                             <div class="detail-value highlight" id="totalMaestro">0</div>
                         </div>
                     </div>
+                    <div id="catalogoImportStats" style="display:none;margin-top:10px;padding:10px;background:#1e1e2f;border-radius:5px;font-size:13px;"></div>
                     <div style="display:flex; gap:8px; margin-top:15px;">
                         <button class="btn btn-success" style="flex:1;" onclick="descargarCatalogo()">📥 Descargar Catálogo</button>
                         <label class="btn btn-primary" style="flex:1; cursor:pointer; text-align:center; margin:0;">
@@ -881,22 +876,24 @@
 
         function mostrarApp() { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'block'; document.getElementById('userName').textContent = usuario.nombre; cargarCosteos(); cargarUltimosCostos(); cargarHistorialRevaluaciones(); cargarStatsMaestro(); }
         function logout() { token = null; usuario = null; localStorage.removeItem('token'); localStorage.removeItem('usuario'); document.getElementById('loginContainer').style.display = 'block'; document.getElementById('appContainer').style.display = 'none'; }
-        function toggleImportExcel() { const area = document.getElementById('importExcelArea'); area.style.display = area.style.display === 'none' ? 'block' : 'none'; }
+        function toggleImportExcel() { const area = document.getElementById('importExcelArea'); if (area) area.style.display = area.style.display === 'none' ? 'block' : 'none'; }
 
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
-        uploadArea.addEventListener('click', () => fileInput.click());
-        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
-        uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('dragover'); });
-        uploadArea.addEventListener('drop', (e) => { e.preventDefault(); uploadArea.classList.remove('dragover'); const file = e.dataTransfer.files[0]; if (file) seleccionarArchivo(file); });
-        fileInput.addEventListener('change', (e) => { if (e.target.files[0]) seleccionarArchivo(e.target.files[0]); });
+        if (uploadArea && fileInput) {
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+            uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('dragover'); });
+            uploadArea.addEventListener('drop', (e) => { e.preventDefault(); uploadArea.classList.remove('dragover'); const file = e.dataTransfer.files[0]; if (file) seleccionarArchivo(file); });
+            fileInput.addEventListener('change', (e) => { if (e.target.files[0]) seleccionarArchivo(e.target.files[0]); });
+        }
 
-        function seleccionarArchivo(file) { if (!file.name.match(/\.xlsx?$/i)) { alert('Solo se permiten archivos Excel'); return; } selectedFile = file; document.getElementById('fileName').textContent = file.name; document.getElementById('importBtn').disabled = false; }
+        function seleccionarArchivo(file) { if (!file.name.match(/\.xlsx?$/i)) { alert('Solo se permiten archivos Excel'); return; } selectedFile = file; var fn = document.getElementById('fileName'); if (fn) fn.textContent = file.name; var ib = document.getElementById('importBtn'); if (ib) ib.disabled = false; }
 
         async function importarExcel() {
             if (!selectedFile) return;
             const msgEl = document.getElementById('importMessage'); const loading = document.getElementById('importLoading'); const btn = document.getElementById('importBtn');
-            btn.disabled = true; loading.classList.add('show'); msgEl.className = 'message';
+            if (btn) btn.disabled = true; loading.classList.add('show'); msgEl.className = 'message';
             const formData = new FormData(); formData.append('archivo', selectedFile);
             try {
                 const res = await fetch(API_URL + '/api/costeos/precargar', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: formData });
@@ -905,13 +902,13 @@
                     msgEl.className = 'message success'; 
                     msgEl.textContent = 'Excel leido - Revisá los datos y guardá';
                     selectedFile = null; 
-                    document.getElementById('fileName').textContent = '';
-                    document.getElementById('importExcelArea').style.display = 'none';
+                    var fn = document.getElementById('fileName'); if (fn) fn.textContent = '';
+                    var iea = document.getElementById('importExcelArea'); if (iea) iea.style.display = 'none';
                     precargarDatosEnFormulario(data);
                 }
                 else { msgEl.className = 'message error'; msgEl.textContent = data.error || 'Error al leer Excel'; }
             } catch (err) { msgEl.className = 'message error'; msgEl.textContent = 'Error de conexion'; }
-            finally { loading.classList.remove('show'); btn.disabled = !selectedFile; }
+            finally { loading.classList.remove('show'); if (btn) btn.disabled = !selectedFile; }
         }
 
         function precargarDatosEnFormulario(data) {
@@ -1538,6 +1535,7 @@ async function cargarCosteos() {
                     actualizarDropdownProveedores();
                     aplicarFiltros();
                     document.getElementById('totalCosteos').textContent = data.length;
+                    document.getElementById('costeosDefinitivos').textContent = data.filter(c => esDefinitivo(c)).length;
                     document.getElementById('costeosPresupuestos').textContent = data.filter(c => !esDefinitivo(c)).length;
                 }
             } catch (err) { console.error(err); }
@@ -1663,14 +1661,13 @@ async function cargarCosteos() {
                     '<td>' + (costeo.unidades_totales || 0) + '</td>' +
                     '<td>' + formatearFecha(costeo.fecha_factura) + '</td>' +
                     '<td>' + formatearFecha(costeo.fecha_despacho) + '</td>' +
-                    '<td><span class="status-badge ' + (def ? 'status-definitivo' : 'status-presupuesto') + '">' + (def ? 'Definitivo' : 'Presupuesto') + '</span></td>' +
+                    '<td><span class="status-badge ' + (def ? 'status-definitivo' : 'status-presupuesto') + '">' + (def ? 'Definitivo' : 'Presupuesto') + '</span>' +
+                    ' <span style="font-size:11px;' + (costeo.estado === 'calculado' ? 'color:#4CAF50;' : 'color:#ff9800;') + '" title="' + (costeo.estado === 'calculado' ? 'Calculado' : 'Sin calcular') + '">' + (costeo.estado === 'calculado' ? '✔' : '⚠') + '</span></td>' +
                     '<td class="actions">' +
                     '<button class="btn btn-warning btn-sm" onclick="calcularCosteo(\'' + costeo.id + '\')">Calc</button>' +
                     '<button class="btn btn-primary btn-sm" onclick="editarCosteo(\'' + costeo.id + '\')">Edit</button>' +
                     '<button class="btn btn-purple btn-sm" onclick="duplicarCosteo(\'' + costeo.id + '\')" title="Duplicar">Dup</button>' +
                     '<button class="btn btn-sm" style="background:#00bcd4;color:#fff;" onclick="iniciarComparativo(\'' + costeo.id + '\',\'' + (costeo.proveedor || '').replace(/'/g, "\\'") + '\')" title="Comparar con otro costeo">Comp</button>' +
-                    '<button class="btn btn-secondary btn-sm" onclick="exportarLegajo(\'' + costeo.id + '\')" title="Exportar Legajo">Leg</button>' +
-                    '<button class="btn btn-secondary btn-sm" onclick="verDetalle(\'' + costeo.id + '\')">Ver</button>' +
                     '<button class="btn btn-success btn-sm" onclick="exportarCosteo(\'' + costeo.id + '\')">Excel</button>' +
                     '<button class="btn btn-danger btn-sm" onclick="eliminarCosteo(\'' + costeo.id + '\')">X</button>' +
                     '</td></tr>';
@@ -3135,6 +3132,19 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 if (res.ok) {
                     alert('✅ Catálogo actualizado:\n- Nuevos: ' + data.importados + '\n- Actualizados: ' + data.actualizados + '\n- Errores: ' + data.errores);
                     cargarStatsMaestro();
+                    // Mostrar resumen en la tarjeta
+                    const statsDiv = document.getElementById('catalogoImportStats');
+                    if (statsDiv) {
+                        statsDiv.style.display = 'block';
+                        statsDiv.innerHTML = '<div style="color:#4CAF50;font-weight:bold;margin-bottom:5px;">📋 Última importación</div>' +
+                            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">' +
+                            '<span style="color:#aaa;">Total en Excel:</span><span style="color:#fff;">' + preview.total_excel + '</span>' +
+                            '<span style="color:#aaa;">🆕 Nuevos:</span><span style="color:#4CAF50;">' + data.importados + '</span>' +
+                            '<span style="color:#aaa;">✏️ Con cambios:</span><span style="color:#ff9800;">' + data.actualizados + '</span>' +
+                            '<span style="color:#aaa;">⚡ Sin cambios:</span><span style="color:#888;">' + (preview.sin_cambios || 0) + '</span>' +
+                            '<span style="color:#aaa;">❌ Errores:</span><span style="color:' + (data.errores > 0 ? '#f44336' : '#888') + ';">' + data.errores + '</span>' +
+                            '</div>';
+                    }
                 } else {
                     alert('Error: ' + (data.error || 'No se pudo importar'));
                 }
