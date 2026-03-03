@@ -162,10 +162,10 @@ async function buscarEnRevaluacion(revaluacionId, codigo, descripcion) {
             codigo_sistema: artRev.codigo_goodies,
             nombre_sistema: artRev.nombre,
             costo_unitario_neto: parseFloat(artRev.costo_neto_revaluado) || 0,
-            nombre_costeo: 'Revaluación',
-            fecha_despacho: null,
+            nombre_costeo: artRev.nombre_costeo_origen || '',
+            fecha_despacho: artRev.fecha_despacho || null,
             nro_despacho: '',
-            proveedor: ''
+            proveedor: artRev.proveedor || ''
         };
     }
 
