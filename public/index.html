@@ -441,10 +441,7 @@
                     </div>
                     <div id="valExcelPreview" style="margin-top:10px;"></div>
                 </div>
-                <div style="margin-bottom:15px;">
-                    <label style="color:#aaa;font-size:13px;">O pegar datos manualmente (Código | Descripción | Cantidad | Costo Unit | Costo Total, separados por tab)</label>
-                    <textarea id="valDatosCentum" rows="5" placeholder="Pegar datos aquí..." style="width:100%;background:#1e1e2f;border:1px solid #444;color:#fff;padding:10px;border-radius:5px;font-family:monospace;font-size:12px;margin-top:5px;"></textarea>
-                </div>
+
                 <div style="display:flex;gap:10px;">
                     <button class="btn btn-primary" onclick="crearValuacion()">📊 Generar Valuación</button>
                     <button class="btn btn-secondary" onclick="cargarRevaluacionesDisponibles()">🔄 Actualizar Revaluaciones</button>
@@ -462,7 +459,7 @@
                             <th>Costo Unit Contable</th><th>Costo Total Contable</th>
                             <th>Costo Unit Sistema</th><th>Costo Total Sistema</th>
                             <th>Dif Unit</th><th>Dif Total</th><th>Dif %</th>
-                            <th>Legajo Origen</th><th>Fecha Despacho</th><th>Match</th>
+                            <th>Legajo Origen</th><th>Fecha Despacho</th>
                         </tr></thead>
                         <tbody id="valuacionDetalleBody"></tbody>
                     </table>
@@ -3776,24 +3773,10 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         const revaluacion_id = document.getElementById('valRevaluacion').value || null;
         let articulos_centum = [];
 
-        // Prioridad: datos del Excel cargado, si no, texto pegado
         if (articulosCentumCargados.length > 0) {
             articulos_centum = articulosCentumCargados;
         } else {
-            const texto = document.getElementById('valDatosCentum').value.trim();
-            if (!texto) { alert('Subí un Excel de Centum o pegá los datos manualmente'); return; }
-            const lineas = texto.split('\n').filter(l => l.trim());
-            articulos_centum = lineas.map(l => {
-                const cols = l.split('\t');
-                if (cols.length < 4) return null;
-                return {
-                    codigo_goodies: cols[0].trim(),
-                    descripcion: cols[1] ? cols[1].trim() : '',
-                    cantidad: parseFloat((cols[2] || '0').replace(',', '.')) || 0,
-                    costo_unit_contable: parseFloat((cols[3] || '0').replace(',', '.')) || 0,
-                    costo_total_contable: cols[4] ? parseFloat(cols[4].replace(',', '.')) || 0 : 0
-                };
-            }).filter(a => a && a.codigo_goodies);
+            alert('Subí un archivo Excel de Centum primero'); return;
         }
 
         if (articulos_centum.length === 0) { alert('No se encontraron artículos válidos.'); return; }
