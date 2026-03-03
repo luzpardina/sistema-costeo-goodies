@@ -2061,6 +2061,7 @@ async function ejecutarCalculo(id, metodo) {
         async function compararSeleccionados() {
             const ids = [...seleccionados];
             if (ids.length < 2) { alert('Seleccioná al menos 2 costeos para comparar'); return; }
+            if (ids.length > 5) { alert('Máximo 5 costeos para comparar. Tenés ' + ids.length + ' seleccionados.'); return; }
             await mostrarComparativo(ids);
         }
 
@@ -2079,19 +2080,47 @@ async function ejecutarCalculo(id, metodo) {
 
         async function mostrarComparativo(ids) {
             try {
-                // Cargar datos completos de cada costeo
                 const promesas = ids.map(id => fetch(API_URL + '/api/costeos/' + id, { headers: { 'Authorization': 'Bearer ' + token } }).then(r => r.json()));
                 const costeos = await Promise.all(promesas);
-
                 const N = costeos.length;
+
                 const pctDif = (a, b) => { a = parseFloat(a)||0; b = parseFloat(b)||0; if (b === 0) return a === 0 ? 0 : 100; return ((a - b) / Math.abs(b)) * 100; };
                 const fmtNum = (v) => (parseFloat(v)||0).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
                 const fmtFob = (v) => (parseFloat(v)||0).toLocaleString('es-AR', {minimumFractionDigits:4, maximumFractionDigits:4});
                 const fmtPct = (v) => { const n = parseFloat(v); return (n > 0 ? '+' : '') + n.toFixed(2) + '%'; };
                 const colorPct = (v) => { const n = parseFloat(v); return n > 2 ? '#f44336' : n < -2 ? '#4CAF50' : n !== 0 ? '#ff9800' : '#aaa'; };
                 const colores = ['#4CAF50','#ff9800','#2196F3','#9C27B0','#00bcd4','#e91e63'];
+                const tdSt = 'padding:5px 8px;text-align:right;border-bottom:1px solid #333;';
+
+                // Helper: celda con valor + dif% inline vs base (index 0)
+                function valCelda(val, baseVal, formatter, prefix) {
+                    prefix = prefix || '';
+                    const v = parseFloat(val)||0;
+                    const b = parseFloat(baseVal)||0;
+                    let out = prefix + (v ? formatter(v) : '-');
+                    if (b > 0 && v > 0 && v !== b) {
+                        const dif = pctDif(v, b);
+                        out += '<br><small style="color:' + colorPct(dif) + ';font-weight:bold;">' + fmtPct(dif) + '</small>';
+                    }
+                    return out;
+                }
+
+                // Helper: headers de costeos
+                function thCosteos(short) {
+                    let h = '';
+                    costeos.forEach((c, i) => {
+                        const lbl = (c.nombre_costeo || '').substring(0, short || 15);
+                        h += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colores[i%colores.length] + ';font-size:11px;">' + lbl + (i === 0 ? ' (BASE)' : '') + '</th>';
+                    });
+                    return h;
+                }
 
                 let html = '';
+
+                // ===== NOTA BASE =====
+                html += '<div style="background:#1a1a2e;padding:8px 12px;border-radius:6px;margin-bottom:15px;font-size:12px;color:#aaa;">';
+                html += '📌 El <strong style="color:#4CAF50;">primer costeo</strong> es la BASE de referencia. Los porcentajes de diferencia en cada celda se calculan respecto a esa base.';
+                html += '</div>';
 
                 // ===== 1. ENCABEZADO: tarjetas por costeo =====
                 html += '<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">';
@@ -2100,24 +2129,21 @@ async function ejecutarCalculo(id, metodo) {
                     const tipo = def ? 'DEFINITIVO' : 'PRESUPUESTO';
                     const fecha = def ? formatearFecha(c.fecha_despacho) : formatearFecha(c.fecha_factura || c.created_at);
                     const color = colores[i % colores.length];
-                    html += '<div style="flex:1;min-width:200px;background:#1e1e2f;padding:12px;border-radius:8px;border-left:4px solid ' + color + ';">';
-                    html += '<h4 style="color:' + color + ';margin:0 0 8px 0;">' + (def ? '✅' : '📋') + ' ' + tipo + '</h4>';
-                    html += '<p style="margin:3px 0;font-weight:bold;">' + (c.nombre_costeo || '-') + '</p>';
+                    html += '<div style="flex:1;min-width:180px;background:#1e1e2f;padding:12px;border-radius:8px;border-left:4px solid ' + color + ';">';
+                    html += '<h4 style="color:' + color + ';margin:0 0 6px 0;font-size:13px;">' + (i === 0 ? '🎯 BASE — ' : '') + (def ? '✅' : '📋') + ' ' + tipo + '</h4>';
+                    html += '<p style="margin:3px 0;font-weight:bold;font-size:13px;">' + (c.nombre_costeo || '-') + '</p>';
                     html += '<p style="margin:3px 0;font-size:12px;color:#aaa;">Fecha: ' + fecha + '</p>';
-                    html += '<p style="margin:3px 0;font-size:12px;">Estado: <span style="color:' + (c.estado === 'calculado' ? '#4CAF50' : '#ff9800') + ';">' + (c.estado || 'borrador') + '</span></p>';
+                    html += '<p style="margin:3px 0;font-size:12px;">Estado: <span style="color:' + (c.estado === 'calculado' ? '#4CAF50' : '#ff9800') + ';">' + (c.estado || 'borrador') + '</span> | Arts: ' + (c.articulos||[]).length + '</p>';
                     html += '</div>';
                 });
                 html += '</div>';
 
-                // ===== 2. TIPOS DE CAMBIO con % diferencia =====
+                // ===== 2. TIPOS DE CAMBIO =====
                 html += '<h4 style="color:#2196F3;margin:15px 0 8px 0;">💱 Tipos de Cambio</h4>';
                 html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
                 html += '<thead><tr style="background:#2a2a3e;">';
                 html += '<th style="padding:6px 8px;text-align:left;border-bottom:2px solid #444;">Moneda</th>';
-                costeos.forEach((c, i) => {
-                    html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colores[i%colores.length] + ';">' + (c.nombre_costeo || '').substring(0,20) + '</th>';
-                });
-                if (N === 2) html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;">Dif %</th>';
+                html += thCosteos();
                 html += '</tr></thead><tbody>';
                 ['USD','EUR','GBP'].forEach(mon => {
                     const key = 'tc_' + mon.toLowerCase();
@@ -2125,70 +2151,45 @@ async function ejecutarCalculo(id, metodo) {
                     if (vals.every(v => v === 0)) return;
                     html += '<tr>';
                     html += '<td style="padding:5px 8px;border-bottom:1px solid #333;font-weight:bold;">' + mon + '</td>';
-                    vals.forEach(v => { html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">' + fmtNum(v) + '</td>'; });
-                    if (N === 2) {
-                        const dif = pctDif(vals[0], vals[1]);
-                        html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(dif) + ';font-weight:bold;">' + fmtPct(dif) + '</td>';
-                    }
+                    vals.forEach((v, i) => {
+                        html += '<td style="' + tdSt + '">' + valCelda(v, vals[0], fmtNum, '') + '</td>';
+                    });
                     html += '</tr>';
                 });
                 html += '</tbody></table>';
 
-                // ===== 3. GASTOS DEL LEGAJO EN DIVISA =====
+                // ===== 3. BASE ADUANA EN DIVISA =====
                 html += '<h4 style="color:#e91e63;margin:20px 0 8px 0;">📦 Base Aduana (FOB + Flete + Seguro) en Divisa</h4>';
                 html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
                 html += '<thead><tr style="background:#2a2a3e;">';
                 html += '<th style="padding:6px 8px;text-align:left;border-bottom:2px solid #444;">Concepto</th>';
-                html += '<th style="padding:6px 8px;text-align:center;border-bottom:2px solid #444;">Moneda</th>';
-                costeos.forEach((c, i) => {
-                    html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colores[i%colores.length] + ';">' + (c.nombre_costeo || '').substring(0,15) + '</th>';
-                });
-                if (N === 2) html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;">Dif %</th>';
+                html += '<th style="padding:6px 8px;text-align:center;border-bottom:2px solid #444;">Mon.</th>';
+                html += thCosteos();
                 html += '</tr></thead><tbody>';
 
-                // FOB
-                const fobMontos = costeos.map(c => parseFloat(c.es_consolidado ? c.fob_parte : c.fob_monto)||0);
-                const fobMon = costeos[0].moneda_principal || 'USD';
-                html += '<tr>';
-                html += '<td style="padding:5px 8px;border-bottom:1px solid #333;">Puesta FOB</td>';
-                html += '<td style="padding:5px 8px;text-align:center;border-bottom:1px solid #333;">' + fobMon + '</td>';
-                fobMontos.forEach(v => { html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">' + fmtNum(v) + '</td>'; });
-                if (N === 2) { const d = pctDif(fobMontos[0], fobMontos[1]); html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(d) + ';font-weight:bold;">' + fmtPct(d) + '</td>'; }
-                html += '</tr>';
-
-                // Flete
-                const fleteMontos = costeos.map(c => parseFloat(c.es_consolidado ? c.flete_parte : c.flete_monto)||0);
-                const fleteMon = (costeos[0].flete_moneda || 'USD').toUpperCase();
-                html += '<tr>';
-                html += '<td style="padding:5px 8px;border-bottom:1px solid #333;">Flete Internacional</td>';
-                html += '<td style="padding:5px 8px;text-align:center;border-bottom:1px solid #333;">' + fleteMon + '</td>';
-                fleteMontos.forEach(v => { html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">' + fmtNum(v) + '</td>'; });
-                if (N === 2) { const d = pctDif(fleteMontos[0], fleteMontos[1]); html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(d) + ';font-weight:bold;">' + fmtPct(d) + '</td>'; }
-                html += '</tr>';
-
-                // Seguro
-                const segMontos = costeos.map(c => parseFloat(c.es_consolidado ? c.seguro_parte : c.seguro_monto)||0);
-                const segMon = (costeos[0].seguro_moneda || 'USD').toUpperCase();
-                html += '<tr>';
-                html += '<td style="padding:5px 8px;border-bottom:1px solid #333;">Seguro</td>';
-                html += '<td style="padding:5px 8px;text-align:center;border-bottom:1px solid #333;">' + segMon + '</td>';
-                segMontos.forEach(v => { html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">' + fmtNum(v) + '</td>'; });
-                if (N === 2) { const d = pctDif(segMontos[0], segMontos[1]); html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(d) + ';font-weight:bold;">' + fmtPct(d) + '</td>'; }
-                html += '</tr>';
+                const baseRows = [
+                    { label: 'Puesta FOB', monKey: 'moneda_principal', valFn: c => parseFloat(c.es_consolidado ? c.fob_parte : c.fob_monto)||0 },
+                    { label: 'Flete Internacional', monKey: 'flete_moneda', valFn: c => parseFloat(c.es_consolidado ? c.flete_parte : c.flete_monto)||0 },
+                    { label: 'Seguro', monKey: 'seguro_moneda', valFn: c => parseFloat(c.es_consolidado ? c.seguro_parte : c.seguro_monto)||0 }
+                ];
+                for (const row of baseRows) {
+                    const mon = (costeos[0][row.monKey] || 'USD').toUpperCase();
+                    const vals = costeos.map(c => row.valFn(c));
+                    html += '<tr>';
+                    html += '<td style="padding:5px 8px;border-bottom:1px solid #333;">' + row.label + '</td>';
+                    html += '<td style="padding:5px 8px;text-align:center;border-bottom:1px solid #333;">' + mon + '</td>';
+                    vals.forEach((v, i) => { html += '<td style="' + tdSt + '">' + valCelda(v, vals[0], fmtNum, '') + '</td>'; });
+                    html += '</tr>';
+                }
                 html += '</tbody></table>';
 
                 // ===== 4. GASTOS VARIOS EN DIVISA (sin STABZ) =====
-                // Recolectar todos los gastos de todos los costeos, agrupar por descripción normalizada
-                const gastosMap = new Map(); // key -> { desc, moneda, valores: [monto por costeo] }
+                const gastosMap = new Map();
                 costeos.forEach((c, idx) => {
-                    const gv = c.gastos_varios || [];
-                    gv.forEach(g => {
+                    (c.gastos_varios || []).forEach(g => {
                         const desc = (g.descripcion || '').toUpperCase().trim();
-                        // Excluir STABZ completamente
                         if (desc.includes('STABZ') || (g.proveedor_gasto || '').toUpperCase().includes('STABZ')) return;
-                        if (!gastosMap.has(desc)) {
-                            gastosMap.set(desc, { desc: g.descripcion, moneda: g.moneda || 'USD', valores: new Array(N).fill(0) });
-                        }
+                        if (!gastosMap.has(desc)) gastosMap.set(desc, { desc: g.descripcion, moneda: g.moneda || 'USD', valores: new Array(N).fill(0) });
                         gastosMap.get(desc).valores[idx] = parseFloat(g.monto) || 0;
                         if (g.moneda) gastosMap.get(desc).moneda = g.moneda;
                     });
@@ -2200,10 +2201,7 @@ async function ejecutarCalculo(id, metodo) {
                     html += '<thead><tr style="background:#2a2a3e;">';
                     html += '<th style="padding:6px 8px;text-align:left;border-bottom:2px solid #444;">Descripción</th>';
                     html += '<th style="padding:6px 8px;text-align:center;border-bottom:2px solid #444;">Mon.</th>';
-                    costeos.forEach((c, i) => {
-                        html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colores[i%colores.length] + ';">' + (c.nombre_costeo || '').substring(0,15) + '</th>';
-                    });
-                    if (N === 2) html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;">Dif %</th>';
+                    html += thCosteos();
                     html += '</tr></thead><tbody>';
 
                     const totales = new Array(N).fill(0);
@@ -2211,48 +2209,36 @@ async function ejecutarCalculo(id, metodo) {
                         html += '<tr>';
                         html += '<td style="padding:5px 8px;border-bottom:1px solid #333;">' + (item.desc || '-') + '</td>';
                         html += '<td style="padding:5px 8px;text-align:center;border-bottom:1px solid #333;font-size:11px;">' + item.moneda + '</td>';
-                        item.valores.forEach((v, idx) => {
-                            totales[idx] += v;
-                            const soloUno = item.valores.filter(x => x > 0).length === 1;
-                            const bg = v === 0 && item.valores.some(x => x > 0) ? 'color:#666;' : (soloUno && v > 0 ? 'color:#ff9800;' : '');
-                            html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;' + bg + '">' + (v ? fmtNum(v) : '-') + '</td>';
+                        item.valores.forEach((v, i) => {
+                            totales[i] += v;
+                            html += '<td style="' + tdSt + '">' + valCelda(v, item.valores[0], fmtNum, '') + '</td>';
                         });
-                        if (N === 2) {
-                            const d = pctDif(item.valores[0], item.valores[1]);
-                            html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(d) + ';font-weight:bold;">' + (item.valores[0] && item.valores[1] ? fmtPct(d) : '-') + '</td>';
-                        }
                         html += '</tr>';
                     }
-                    // Total
                     html += '<tr style="background:#1a1a2e;font-weight:bold;">';
                     html += '<td colspan="2" style="padding:6px 8px;border-top:2px solid #444;">TOTAL GASTOS</td>';
-                    totales.forEach(v => { html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">' + fmtNum(v) + '</td>'; });
-                    if (N === 2) { const d = pctDif(totales[0], totales[1]); html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;color:' + colorPct(d) + ';">' + fmtPct(d) + '</td>'; }
-                    html += '</tr>';
-                    html += '</tbody></table>';
+                    totales.forEach((v, i) => { html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">' + valCelda(v, totales[0], fmtNum, '') + '</td>'; });
+                    html += '</tr></tbody></table>';
                 }
 
                 // ===== 5. GASTOS DE ADUANA (ARS) =====
                 const gastosAduanaFields = [
                     {key:'despachante',label:'Despachante'},{key:'gestion_senasa',label:'Gestión SENASA'},
-                    {key:'gestion_anmat',label:'Gestión ANMAT'},{key:'transporte_internacional',label:'Transporte Internacional'},
+                    {key:'gestion_anmat',label:'Gestión ANMAT'},{key:'transporte_internacional',label:'Transporte Intl.'},
                     {key:'gastos_origen',label:'Gastos Origen'},{key:'terminal',label:'Terminal'},
                     {key:'maritima_agencia',label:'Marítima/Agencia'},{key:'bancarios',label:'Bancarios'},
                     {key:'gestor',label:'Gestor'},{key:'transporte_nacional',label:'Transporte Nacional'},
                     {key:'custodia',label:'Custodia'},{key:'sim',label:'SIM'}
                 ];
                 const gastosAduanaDatos = costeos.map(c => c.gastos_aduana || {});
-                const tieneGastosAduana = gastosAduanaFields.some(f => gastosAduanaDatos.some(ga => parseFloat(ga[f.key]) > 0));
+                const tieneGA = gastosAduanaFields.some(f => gastosAduanaDatos.some(ga => parseFloat(ga[f.key]) > 0));
 
-                if (tieneGastosAduana) {
+                if (tieneGA) {
                     html += '<h4 style="color:#9C27B0;margin:20px 0 8px 0;">🏛️ Gastos de Aduana (ARS)</h4>';
                     html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
                     html += '<thead><tr style="background:#2a2a3e;">';
                     html += '<th style="padding:6px 8px;text-align:left;border-bottom:2px solid #444;">Concepto</th>';
-                    costeos.forEach((c, i) => {
-                        html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;color:' + colores[i%colores.length] + ';">' + (c.nombre_costeo || '').substring(0,15) + '</th>';
-                    });
-                    if (N === 2) html += '<th style="padding:6px 8px;text-align:right;border-bottom:2px solid #444;">Dif %</th>';
+                    html += thCosteos();
                     html += '</tr></thead><tbody>';
                     const totGA = new Array(N).fill(0);
                     for (const f of gastosAduanaFields) {
@@ -2260,18 +2246,16 @@ async function ejecutarCalculo(id, metodo) {
                         if (vals.every(v => v === 0)) continue;
                         html += '<tr>';
                         html += '<td style="padding:5px 8px;border-bottom:1px solid #333;">' + f.label + '</td>';
-                        vals.forEach((v, idx) => { totGA[idx] += v; html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;">$' + fmtNum(v) + '</td>'; });
-                        if (N === 2) { const d = pctDif(vals[0], vals[1]); html += '<td style="padding:5px 8px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(d) + ';font-weight:bold;">' + (vals[0] && vals[1] ? fmtPct(d) : '-') + '</td>'; }
+                        vals.forEach((v, i) => { totGA[i] += v; html += '<td style="' + tdSt + '">' + valCelda(v, vals[0], fmtNum, '$') + '</td>'; });
                         html += '</tr>';
                     }
                     html += '<tr style="background:#1a1a2e;font-weight:bold;">';
                     html += '<td style="padding:6px 8px;border-top:2px solid #444;">TOTAL</td>';
-                    totGA.forEach(v => { html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">$' + fmtNum(v) + '</td>'; });
-                    if (N === 2) { const d = pctDif(totGA[0], totGA[1]); html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;color:' + colorPct(d) + ';">' + fmtPct(d) + '</td>'; }
+                    totGA.forEach((v, i) => { html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">' + valCelda(v, totGA[0], fmtNum, '$') + '</td>'; });
                     html += '</tr></tbody></table>';
                 }
 
-                // ===== 6. ARTÍCULOS: FOB, derechos, imp interno con ALERTAS =====
+                // ===== 6. ARTÍCULOS: FOB + ALERTAS =====
                 const todosCodigosComp = new Set();
                 costeos.forEach(c => (c.articulos||[]).forEach(a => todosCodigosComp.add(a.codigo_goodies)));
 
@@ -2279,11 +2263,9 @@ async function ejecutarCalculo(id, metodo) {
                 html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
                 html += '<thead><tr style="background:#2a2a3e;">';
                 html += '<th style="padding:6px;text-align:left;border-bottom:2px solid #444;">Artículo</th>';
-                // FOB por costeo
                 costeos.forEach((c, i) => {
-                    html += '<th style="padding:6px;text-align:right;border-bottom:2px solid #444;color:' + colores[i%colores.length] + ';font-size:11px;">FOB ' + (c.nombre_costeo || '').substring(0,10) + '</th>';
+                    html += '<th style="padding:6px;text-align:right;border-bottom:2px solid #444;color:' + colores[i%colores.length] + ';font-size:11px;">FOB ' + (c.nombre_costeo || '').substring(0,10) + (i === 0 ? ' (BASE)' : '') + '</th>';
                 });
-                if (N === 2) html += '<th style="padding:6px;text-align:right;border-bottom:2px solid #444;font-size:11px;">Dif FOB %</th>';
                 html += '<th style="padding:6px;text-align:center;border-bottom:2px solid #444;font-size:11px;">Alertas</th>';
                 html += '</tr></thead><tbody>';
 
@@ -2294,33 +2276,34 @@ async function ejecutarCalculo(id, metodo) {
                     const derechos = artsPorCosteo.map(a => a ? (parseFloat(a.derechos_porcentaje)||0) : 0);
                     const impInt = artsPorCosteo.map(a => a ? (parseFloat(a.impuesto_interno_porcentaje)||0) : 0);
 
-                    // Detectar alertas
                     const alertas = [];
-                    const derechosUnicos = [...new Set(derechos.filter(d => d > 0).map(d => d.toFixed(4)))];
+                    const derechosActivos = derechos.filter(d => d > 0);
+                    const derechosUnicos = [...new Set(derechosActivos.map(d => d.toFixed(4)))];
                     if (derechosUnicos.length > 1) alertas.push('⚠️ Derechos: ' + derechos.map(d => (d*100).toFixed(1) + '%').join(' / '));
-                    const impIntUnicos = [...new Set(impInt.filter(d => d > 0).map(d => d.toFixed(4)))];
+                    const impIntActivos = impInt.filter(d => d > 0);
+                    const impIntUnicos = [...new Set(impIntActivos.map(d => d.toFixed(4)))];
                     if (impIntUnicos.length > 1) alertas.push('⚠️ Imp.Int: ' + impInt.map(d => (d*100).toFixed(1) + '%').join(' / '));
-                    if (N === 2 && fobs[0] > 0 && fobs[1] > 0) {
-                        const difFob = Math.abs(pctDif(fobs[0], fobs[1]));
-                        if (difFob > 5) alertas.push('⚠️ FOB varía ' + difFob.toFixed(1) + '%');
+                    // Alerta FOB: si cualquier par de fobs difiere > 5%
+                    const fobsActivos = fobs.filter(f => f > 0);
+                    if (fobsActivos.length >= 2) {
+                        const maxFob = Math.max(...fobsActivos);
+                        const minFob = Math.min(...fobsActivos);
+                        const difMaxFob = ((maxFob - minFob) / minFob) * 100;
+                        if (difMaxFob > 5) alertas.push('⚠️ FOB varía ' + difMaxFob.toFixed(1) + '%');
                     }
 
                     const tieneAlerta = alertas.length > 0;
                     const rowBg = tieneAlerta ? ' style="background:rgba(244,67,54,0.08);"' : '';
                     html += '<tr' + rowBg + '>';
                     html += '<td style="padding:4px 6px;border-bottom:1px solid #333;"><strong>' + codigo + '</strong><br><small style="color:#aaa;">' + nombre + '</small></td>';
-                    fobs.forEach(v => { html += '<td style="padding:4px 6px;text-align:right;border-bottom:1px solid #333;">' + (v ? fmtFob(v) : '-') + '</td>'; });
-                    if (N === 2) {
-                        const d = pctDif(fobs[0], fobs[1]);
-                        html += '<td style="padding:4px 6px;text-align:right;border-bottom:1px solid #333;color:' + colorPct(d) + ';font-weight:bold;">' + (fobs[0] && fobs[1] ? fmtPct(d) : '-') + '</td>';
-                    }
+                    fobs.forEach((v, i) => { html += '<td style="padding:4px 6px;text-align:right;border-bottom:1px solid #333;">' + valCelda(v, fobs[0], fmtFob, '') + '</td>'; });
                     html += '<td style="padding:4px 6px;border-bottom:1px solid #333;font-size:11px;">' + (tieneAlerta ? alertas.join('<br>') : '<span style="color:#4CAF50;">✔</span>') + '</td>';
                     html += '</tr>';
                 }
                 html += '</tbody></table>';
 
                 document.getElementById('compPvsDefBody').innerHTML = html;
-                const titulo = costeos.map(c => c.nombre_costeo).join(' vs ');
+                const titulo = costeos.map(c => (c.nombre_costeo||'').substring(0,20)).join(' vs ');
                 document.getElementById('compPvsDefTitle').textContent = 'Comparativo: ' + titulo;
                 document.getElementById('compPvsDefModal').classList.add('show');
             } catch (err) {
