@@ -307,4 +307,15 @@ router.get('/stats', auth, async (req, res) => {
     } catch (error) { res.json({ total: 0, ultima_actualizacion: null }); }
 });
 
+router.get('/rubros', auth, async (req, res) => {
+    try {
+        const rubros = await CatalogoArticulo.findAll({
+            attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col('rubro')), 'rubro']],
+            where: { habilitado: true, proveedor_activo: true, rubro: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } },
+            order: [['rubro', 'ASC']], raw: true
+        });
+        res.json(rubros.map(r => r.rubro).filter(r => r));
+    } catch (error) { res.status(500).json({ error: 'Error' }); }
+});
+
 module.exports = router;

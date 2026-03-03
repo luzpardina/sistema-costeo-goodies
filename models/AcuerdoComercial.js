@@ -18,6 +18,10 @@ const AcuerdoComercial = sequelize.define('AcuerdoComercial', {
     pct_acuerdo: {
         type: DataTypes.DECIMAL(5, 2),
         defaultValue: 0
+    },
+    rubros: {
+        type: DataTypes.TEXT,
+        defaultValue: ''
     }
 }, {
     tableName: 'acuerdos_comerciales',

@@ -131,6 +131,17 @@ router.delete('/acuerdos/:id', auth, async (req, res) => {
     }
 });
 
+router.put('/acuerdos/:id', auth, async (req, res) => {
+    try {
+        const acuerdo = await AcuerdoComercial.findByPk(req.params.id);
+        if (!acuerdo) return res.status(404).json({ error: 'Acuerdo no encontrado' });
+        await acuerdo.update(req.body);
+        res.json(acuerdo);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // =============================================
 // CÁLCULO DE MÁRGENES (para todas las listas)
 // =============================================

@@ -32,6 +32,22 @@ const ListaPrecio = sequelize.define('ListaPrecio', {
         type: DataTypes.DECIMAL(5, 2),
         defaultValue: 0
     },
+    pct_margen_goodies: {
+        type: DataTypes.DECIMAL(5, 2),
+        defaultValue: 0
+    },
+    pct_markup_tradicional: {
+        type: DataTypes.DECIMAL(5, 2),
+        defaultValue: 0
+    },
+    pct_otro: {
+        type: DataTypes.DECIMAL(5, 2),
+        defaultValue: 0
+    },
+    observacion: {
+        type: DataTypes.TEXT,
+        defaultValue: ''
+    },
     activa: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
