@@ -818,7 +818,8 @@
                     <select id="selectMarcaMaestro" style="padding:8px;border-radius:5px;background:#2a2a3e;color:#fff;border:1px solid #444;"><option value="">Filtrar por marca...</option></select>
                     <button class="btn btn-info" onclick="cargarArticulosPorMarca()" style="background:#2196F3;" title="Carga artículos filtrados por marca">📦 Cargar por marca</button>
                 </div>
-                <div id="maestroAlertas" style="display:none; margin-bottom:10px;"></div>
+                <div id="maestroAlertas" style="display:none; margin-bottom:10px; position:relative;">
+                </div>
                 <div class="table-container" style="max-height: 400px; overflow-y: auto; overflow-x: auto;">
                     <table class="articulos-tabla" style="min-width:1300px;">
                         <thead>
@@ -2863,19 +2864,35 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                             msgBase += '\n✅ Se completaron ' + data.catalogo.completados.length + ' dato(s) vacíos en el catálogo.';
                         }
                     }
-                    // Info sobre sincronización proveedor/fábrica al catálogo
+                    // Info sobre sincronización proveedor/fábrica al catálogo (preguntar antes de aplicar)
                     if (data.catalogo_sync) {
-                        if (data.catalogo_sync.proveedor_cambios && data.catalogo_sync.proveedor_cambios.length > 0) {
-                            msgBase += '\n\n🔄 CATÁLOGO ACTUALIZADO - Proveedor de Origen:';
-                            data.catalogo_sync.proveedor_cambios.forEach(c => {
-                                msgBase += '\n  ' + c.codigo + ': "' + (c.antes || 'vacío') + '" → "' + c.despues + '"';
-                            });
-                        }
-                        if (data.catalogo_sync.fabrica_cambios && data.catalogo_sync.fabrica_cambios.length > 0) {
-                            msgBase += '\n\n🔄 CATÁLOGO ACTUALIZADO - Empresa Fábrica:';
-                            data.catalogo_sync.fabrica_cambios.forEach(c => {
-                                msgBase += '\n  ' + c.codigo + ': "' + (c.antes || 'vacío') + '" → "' + c.despues + '"';
-                            });
+                        const hasProv = data.catalogo_sync.proveedor_cambios && data.catalogo_sync.proveedor_cambios.length > 0;
+                        const hasFab = data.catalogo_sync.fabrica_cambios && data.catalogo_sync.fabrica_cambios.length > 0;
+                        if (hasProv || hasFab) {
+                            let syncMsg = '⚠️ Se detectaron diferencias con el catálogo maestro:\n';
+                            if (hasProv) {
+                                syncMsg += '\n📋 Proveedor de Origen:';
+                                data.catalogo_sync.proveedor_cambios.forEach(c => {
+                                    syncMsg += '\n  ' + c.codigo + ': "' + c.antes + '" → "' + c.despues + '"';
+                                });
+                            }
+                            if (hasFab) {
+                                syncMsg += '\n\n🏭 Empresa Fábrica:';
+                                data.catalogo_sync.fabrica_cambios.forEach(c => {
+                                    syncMsg += '\n  ' + c.codigo + ': "' + c.antes + '" → "' + c.despues + '"';
+                                });
+                            }
+                            syncMsg += '\n\n¿Querés actualizar el catálogo con estos valores del costeo?';
+                            if (confirm(syncMsg)) {
+                                fetch(API_URL + '/api/costeos/sync-catalogo', {
+                                    method: 'POST',
+                                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(data.catalogo_sync)
+                                }).then(r => r.json()).then(d => {
+                                    if (d.ok) alert('✅ Catálogo actualizado: ' + d.actualizados + ' cambio(s) aplicados');
+                                    else alert('Error al sincronizar: ' + (d.error || 'desconocido'));
+                                }).catch(e => console.error('Error sync catálogo:', e));
+                            }
                         }
                     }
                     alert(msgBase);
@@ -3114,7 +3131,15 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                     } else if (articulosManual[idx].nombre.toUpperCase().trim() !== exacto.nombre.toUpperCase().trim()) {
                         const alertaDiv = document.getElementById('maestroAlertas');
                         alertaDiv.style.display = 'block';
-                        alertaDiv.innerHTML = '<div style="background:#ff9800;color:#000;padding:8px;border-radius:5px;margin-bottom:5px;">⚠️ ' + codigo + ': nombre actual "' + articulosManual[idx].nombre + '" ≠ catálogo "' + exacto.nombre + '"</div>' + alertaDiv.innerHTML;
+                        // Limitar a máximo 20 alertas visibles
+                        const existingAlerts = alertaDiv.querySelectorAll('.alerta-nombre');
+                        if (existingAlerts.length >= 20) { existingAlerts[existingAlerts.length - 1].remove(); }
+                        const clearBtn = alertaDiv.querySelector('.btn-limpiar-alertas') ? '' : '<div style="text-align:right;margin-bottom:5px;"><button class="btn-limpiar-alertas" onclick="document.getElementById(\'maestroAlertas\').innerHTML=\'\';document.getElementById(\'maestroAlertas\').style.display=\'none\';" style="background:#555;color:#fff;border:none;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:11px;">✕ Limpiar alertas</button></div>';
+                        if (clearBtn) alertaDiv.innerHTML = clearBtn + alertaDiv.innerHTML;
+                        const alertHtml = '<div class="alerta-nombre" style="background:#ff9800;color:#000;padding:8px;border-radius:5px;margin-bottom:5px;font-size:12px;">⚠️ ' + codigo + ': nombre actual "' + articulosManual[idx].nombre + '" ≠ catálogo "' + exacto.nombre + '"</div>';
+                        const btnEl = alertaDiv.querySelector('.btn-limpiar-alertas');
+                        if (btnEl) { btnEl.parentElement.insertAdjacentHTML('afterend', alertHtml); }
+                        else { alertaDiv.innerHTML = alertHtml + alertaDiv.innerHTML; }
                     }
                     // Derechos
                     if ((!articulosManual[idx].derechos || articulosManual[idx].derechos === '') && exacto.derechos_porcentaje != null) {

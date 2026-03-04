@@ -466,25 +466,21 @@ router.put('/:id/actualizar', auth, async (req, res) => {
                     grupo: art.grupo || ''
                 });
 
-                // Sincronizar proveedor y empresa_fabrica al catálogo maestro
+                // Detectar diferencias proveedor/empresa_fabrica vs catálogo (NO aplica, solo informa)
                 if (art.codigo_goodies && art.codigo_goodies !== 'S/COD') {
                     const catArt = await CatalogoArticulo.findOne({ where: { codigo_goodies: { [Op.iLike]: art.codigo_goodies } } });
                     if (catArt) {
-                        const catUpdates = {};
-                        // Actualizar proveedor del catálogo con el proveedor del costeo
-                        if (datos.proveedor && datos.proveedor !== catArt.proveedor) {
-                            catUpdates.proveedor = datos.proveedor;
+                        if (datos.proveedor && datos.proveedor.trim() !== '' && datos.proveedor !== catArt.proveedor) {
                             if (!catalogoSyncInfo.proveedor_cambios) catalogoSyncInfo.proveedor_cambios = [];
-                            catalogoSyncInfo.proveedor_cambios.push({ codigo: art.codigo_goodies, antes: catArt.proveedor, despues: datos.proveedor });
+                            if (!catalogoSyncInfo.proveedor_cambios.find(c => c.codigo === art.codigo_goodies)) {
+                                catalogoSyncInfo.proveedor_cambios.push({ codigo: art.codigo_goodies, antes: catArt.proveedor || '(vacío)', despues: datos.proveedor });
+                            }
                         }
-                        // Actualizar empresa_fabrica con empresa_intermediaria del costeo (si existe)
-                        if (datos.empresa_intermediaria && datos.empresa_intermediaria !== catArt.empresa_fabrica) {
-                            catUpdates.empresa_fabrica = datos.empresa_intermediaria;
+                        if (datos.empresa_intermediaria && datos.empresa_intermediaria.trim() !== '' && datos.empresa_intermediaria !== catArt.empresa_fabrica) {
                             if (!catalogoSyncInfo.fabrica_cambios) catalogoSyncInfo.fabrica_cambios = [];
-                            catalogoSyncInfo.fabrica_cambios.push({ codigo: art.codigo_goodies, antes: catArt.empresa_fabrica, despues: datos.empresa_intermediaria });
-                        }
-                        if (Object.keys(catUpdates).length > 0) {
-                            await catArt.update(catUpdates);
+                            if (!catalogoSyncInfo.fabrica_cambios.find(c => c.codigo === art.codigo_goodies)) {
+                                catalogoSyncInfo.fabrica_cambios.push({ codigo: art.codigo_goodies, antes: catArt.empresa_fabrica || '(vacío)', despues: datos.empresa_intermediaria });
+                            }
                         }
                     }
                 }
@@ -536,6 +532,32 @@ router.put('/:id/actualizar', auth, async (req, res) => {
     } catch (error) {
         console.error('Error al actualizar costeo:', error);
         res.status(500).json({ error: 'Error al actualizar costeo', detalles: error.message });
+    }
+});
+
+// Aplicar sincronización de proveedor/fábrica al catálogo (después de confirmar)
+router.post('/sync-catalogo', auth, async (req, res) => {
+    try {
+        const { Op } = require('sequelize');
+        const { proveedor_cambios, fabrica_cambios } = req.body;
+        let actualizados = 0;
+
+        if (proveedor_cambios && proveedor_cambios.length > 0) {
+            for (const c of proveedor_cambios) {
+                const art = await CatalogoArticulo.findOne({ where: { codigo_goodies: { [Op.iLike]: c.codigo } } });
+                if (art) { await art.update({ proveedor: c.despues }); actualizados++; }
+            }
+        }
+        if (fabrica_cambios && fabrica_cambios.length > 0) {
+            for (const c of fabrica_cambios) {
+                const art = await CatalogoArticulo.findOne({ where: { codigo_goodies: { [Op.iLike]: c.codigo } } });
+                if (art) { await art.update({ empresa_fabrica: c.despues }); actualizados++; }
+            }
+        }
+        res.json({ ok: true, actualizados });
+    } catch (error) {
+        console.error('Error sincronizando catálogo:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 
