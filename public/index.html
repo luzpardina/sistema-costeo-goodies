@@ -185,6 +185,10 @@
                 </h3>
                 <div class="filtros">
                     <div class="filtro-grupo">
+                        <label>Nombre Costeo</label>
+                        <input type="text" id="filtroNombre" placeholder="Buscar por nombre..." oninput="aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
+                    </div>
+                    <div class="filtro-grupo">
                         <label>Proveedor de Origen</label>
                         <input type="text" id="filtroProveedor" list="listaProveedores" placeholder="Escribí para buscar..." onkeyup="aplicarFiltros()" onchange="aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
                         <datalist id="listaProveedores"></datalist>
@@ -1679,6 +1683,7 @@ async function cargarCosteos() {
         }
         function toggleCriterio() { const cb = document.getElementById('filtroUltimo'); document.getElementById('criterioContainer').classList.toggle('show', cb.checked); }
         function limpiarFiltros() {
+            document.getElementById('filtroNombre').value = '';
             document.getElementById('filtroProveedor').value = '';
             document.getElementById('filtroFabricante').value = '';
             document.getElementById('filtroTipo').value = '';
@@ -1690,6 +1695,7 @@ async function cargarCosteos() {
         }
 
         function aplicarFiltros() {
+            const nombre = (document.getElementById('filtroNombre').value || '').toLowerCase();
             const proveedor = document.getElementById('filtroProveedor').value;
             const fabricante = document.getElementById('filtroFabricante').value;
             const marca = document.getElementById('filtroMarca').value.toLowerCase();
@@ -1697,6 +1703,7 @@ async function cargarCosteos() {
             const soloUltimo = document.getElementById('filtroUltimo').checked;
             const criterio = document.getElementById('filtroCriterio').value;
             let filtrados = [...todosLosCosteos];
+            if (nombre) filtrados = filtrados.filter(c => c.nombre_costeo && c.nombre_costeo.toLowerCase().includes(nombre));
             if (proveedor) filtrados = filtrados.filter(c => c.proveedor && c.proveedor.toLowerCase().includes(proveedor.toLowerCase()));
             if (fabricante) filtrados = filtrados.filter(c => (c.empresa_fabrica && c.empresa_fabrica.toLowerCase().includes(fabricante.toLowerCase())) || (c.proveedor && c.proveedor.toLowerCase().includes(fabricante.toLowerCase())));
             if (marca) filtrados = filtrados.filter(c => (c.marcas && c.marcas.toLowerCase().includes(marca)) || (c.articulos_nombres && c.articulos_nombres.toLowerCase().includes(marca)));
