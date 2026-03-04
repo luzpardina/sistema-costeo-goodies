@@ -32,6 +32,91 @@ router.post('/precargar', auth, upload.single('archivo'), costeoController.preca
 // Carga manual
 router.post('/manual', auth, costeoController.cargaManual);
 
+// Buscador rápido global
+router.get('/buscar', auth, async (req, res) => {
+    try {
+        const { Op } = require('sequelize');
+        const q = (req.query.q || '').trim();
+        if (q.length < 2) return res.json({ articulos: [], costeos: [] });
+
+        const qLike = '%' + q + '%';
+
+        // Buscar artículos en catálogo
+        const catalogoResults = await CatalogoArticulo.findAll({
+            where: {
+                [Op.or]: [
+                    { codigo_goodies: { [Op.iLike]: qLike } },
+                    { nombre: { [Op.iLike]: qLike } },
+                    { proveedor: { [Op.iLike]: qLike } },
+                    { empresa_fabrica: { [Op.iLike]: qLike } },
+                    { marca: { [Op.iLike]: qLike } }
+                ]
+            },
+            limit: 15,
+            order: [['codigo_goodies', 'ASC']]
+        });
+
+        // Para cada artículo encontrado, buscar en qué costeos aparece
+        const articulosConCosteos = [];
+        for (const cat of catalogoResults) {
+            const artEnCosteos = await ArticuloCosteo.findAll({
+                where: { codigo_goodies: cat.codigo_goodies },
+                include: [{
+                    model: Costeo, as: 'costeo',
+                    attributes: ['id', 'nombre_costeo', 'estado', 'fecha_despacho', 'proveedor']
+                }],
+                order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'DESC']],
+                limit: 5
+            });
+
+            const ultimoCosteo = artEnCosteos.find(a => a.costeo && a.costeo.estado === 'calculado' && a.costeo.fecha_despacho);
+            
+            articulosConCosteos.push({
+                codigo_goodies: cat.codigo_goodies,
+                nombre: cat.nombre,
+                proveedor: cat.proveedor || '',
+                empresa_fabrica: cat.empresa_fabrica || '',
+                marca: cat.marca || '',
+                rubro: cat.rubro || '',
+                activo: cat.habilitado !== false && cat.proveedor_activo !== false,
+                ultimo_costo: ultimoCosteo ? parseFloat(ultimoCosteo.costo_unitario_neto_ars) || 0 : null,
+                ultimo_costeo_nombre: ultimoCosteo && ultimoCosteo.costeo ? ultimoCosteo.costeo.nombre_costeo : null,
+                ultimo_costeo_fecha: ultimoCosteo && ultimoCosteo.costeo ? ultimoCosteo.costeo.fecha_despacho : null,
+                cantidad_costeos: artEnCosteos.length,
+                costeos: artEnCosteos.filter(a => a.costeo).map(a => ({
+                    id: a.costeo.id,
+                    nombre: a.costeo.nombre_costeo,
+                    estado: a.costeo.estado,
+                    fecha_despacho: a.costeo.fecha_despacho,
+                    costo_neto: parseFloat(a.costo_unitario_neto_ars) || 0
+                }))
+            });
+        }
+
+        // Buscar costeos por nombre
+        const costeoResults = await Costeo.findAll({
+            where: {
+                [Op.or]: [
+                    { nombre_costeo: { [Op.iLike]: qLike } },
+                    { proveedor: { [Op.iLike]: qLike } },
+                    { nro_despacho: { [Op.iLike]: qLike } }
+                ]
+            },
+            attributes: ['id', 'nombre_costeo', 'proveedor', 'estado', 'fecha_despacho', 'moneda_principal'],
+            limit: 10,
+            order: [['fecha_despacho', 'DESC NULLS LAST']]
+        });
+
+        res.json({
+            articulos: articulosConCosteos,
+            costeos: costeoResults
+        });
+    } catch (error) {
+        console.error('Error en búsqueda global:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Listar costeos
 router.get('/listar', auth, async (req, res) => {
     try {

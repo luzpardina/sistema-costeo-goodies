@@ -129,6 +129,13 @@
                 <button class="modulo-tab" id="btnModContable" onclick="cambiarModulo('contable')" style="flex:1;padding:12px 20px;border:none;background:transparent;color:#888;font-size:15px;font-weight:bold;cursor:pointer;transition:all 0.3s;">📊 CONTABLE</button>
                 <button class="modulo-tab" id="btnModAdmin" onclick="cambiarModulo('admin')" style="flex:1;padding:12px 20px;border:none;background:transparent;color:#888;font-size:15px;font-weight:bold;cursor:pointer;transition:all 0.3s;">⚙️ ADMIN</button>
             </div>
+            <!-- BUSCADOR RÁPIDO GLOBAL -->
+            <div style="margin-bottom:15px;position:relative;">
+                <input type="text" id="buscadorGlobal" placeholder="🔍 Buscador rápido: escribí un código, nombre o proveedor..." 
+                    oninput="buscarGlobal(this.value)" onfocus="if(this.value.length>=2)document.getElementById('buscadorResultados').style.display='block'" 
+                    style="width:100%;padding:10px 15px;background:#1a1a2e;border:1px solid #444;color:#fff;border-radius:8px;font-size:14px;">
+                <div id="buscadorResultados" style="display:none;position:absolute;top:100%;left:0;right:0;background:#1e1e2f;border:1px solid #555;border-radius:0 0 8px 8px;max-height:350px;overflow-y:auto;z-index:500;box-shadow:0 8px 20px rgba(0,0,0,0.5);"></div>
+            </div>
             <!-- MÓDULO COMEX (contenido existente) -->
             <div id="modComex">
             <div class="cards">
@@ -4754,6 +4761,89 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             fileInput.value = '';
         } catch(e) { alert('Error al importar: ' + e.message); fileInput.value = ''; }
     }
+
+    // =============================================
+    // BUSCADOR RÁPIDO GLOBAL
+    // =============================================
+    let buscarGlobalTimeout = null;
+    function buscarGlobal(q) {
+        const div = document.getElementById('buscadorResultados');
+        if (q.length < 2) { div.style.display = 'none'; return; }
+        clearTimeout(buscarGlobalTimeout);
+        buscarGlobalTimeout = setTimeout(async () => {
+            try {
+                const resp = await fetch(API_URL + '/api/costeos/buscar?q=' + encodeURIComponent(q), { headers: { 'Authorization': 'Bearer ' + token } });
+                const data = await resp.json();
+                const fmtMoney = v => '$' + (parseFloat(v)||0).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+                const fmtFecha = f => f ? new Date(f).toLocaleDateString('es-AR') : '-';
+                let html = '';
+
+                if (data.articulos && data.articulos.length > 0) {
+                    html += '<div style="padding:6px 12px;background:#2a2a3e;color:#4fc3f7;font-size:11px;font-weight:bold;">ARTÍCULOS (' + data.articulos.length + ')</div>';
+                    data.articulos.forEach(a => {
+                        const actColor = a.activo ? '#4CAF50' : '#f44336';
+                        html += '<div style="padding:8px 12px;border-bottom:1px solid #333;cursor:pointer;" onmouseover="this.style.background=\'#2a2a3e\'" onmouseout="this.style.background=\'transparent\'" onclick="expandirBusquedaArticulo(this)">';
+                        html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+                        html += '<div><strong style="color:#fff;">' + a.codigo_goodies + '</strong> <span style="color:#aaa;font-size:12px;">' + (a.nombre || '').substring(0, 40) + '</span></div>';
+                        html += '<div style="text-align:right;">';
+                        if (a.ultimo_costo) html += '<span style="color:#4CAF50;font-weight:bold;">' + fmtMoney(a.ultimo_costo) + '</span>';
+                        else html += '<span style="color:#666;">Sin costo</span>';
+                        html += '</div></div>';
+                        html += '<div style="font-size:11px;color:#888;margin-top:2px;">' + a.proveedor + (a.empresa_fabrica ? ' → ' + a.empresa_fabrica : '') + (a.marca ? ' | ' + a.marca : '') + ' <span style="color:' + actColor + ';">' + (a.activo ? '● Activo' : '● Inactivo') + '</span></div>';
+                        // Detalle expandible
+                        html += '<div class="busq-detalle" style="display:none;margin-top:6px;padding:6px;background:#12121e;border-radius:4px;font-size:11px;">';
+                        if (a.ultimo_costeo_nombre) html += '<p style="color:#aaa;">Último costeo: <strong style="color:#fff;">' + a.ultimo_costeo_nombre + '</strong> (' + fmtFecha(a.ultimo_costeo_fecha) + ')</p>';
+                        if (a.costeos && a.costeos.length > 0) {
+                            html += '<p style="color:#888;margin-top:4px;">Aparece en ' + a.cantidad_costeos + ' costeo(s):</p>';
+                            a.costeos.forEach(c => {
+                                const estColor = c.estado === 'calculado' ? '#4CAF50' : '#ff9800';
+                                html += '<div style="display:flex;justify-content:space-between;padding:2px 0;">';
+                                html += '<span style="color:' + estColor + ';">' + (c.estado === 'calculado' ? '✔' : '⚠') + ' ' + c.nombre + '</span>';
+                                html += '<span style="color:#aaa;">' + fmtFecha(c.fecha_despacho) + ' | ' + fmtMoney(c.costo_neto) + '</span>';
+                                html += '</div>';
+                            });
+                        }
+                        html += '</div></div>';
+                    });
+                }
+
+                if (data.costeos && data.costeos.length > 0) {
+                    html += '<div style="padding:6px 12px;background:#2a2a3e;color:#ff9800;font-size:11px;font-weight:bold;">COSTEOS (' + data.costeos.length + ')</div>';
+                    data.costeos.forEach(c => {
+                        const estColor = c.estado === 'calculado' ? '#4CAF50' : '#ff9800';
+                        html += '<div style="padding:8px 12px;border-bottom:1px solid #333;cursor:pointer;" onmouseover="this.style.background=\'#2a2a3e\'" onmouseout="this.style.background=\'transparent\'" onclick="editarCosteo(\'' + c.id + '\'); cerrarBuscador();">';
+                        html += '<div style="display:flex;justify-content:space-between;">';
+                        html += '<span><strong style="color:#fff;">' + (c.nombre_costeo || 'Sin nombre') + '</strong> <span style="color:#aaa;font-size:12px;">' + (c.proveedor || '') + '</span></span>';
+                        html += '<span style="color:' + estColor + ';">' + (c.estado === 'calculado' ? '✔' : '⚠') + ' ' + fmtFecha(c.fecha_despacho) + '</span>';
+                        html += '</div></div>';
+                    });
+                }
+
+                if (!html) html = '<div style="padding:15px;color:#666;text-align:center;">No se encontraron resultados para "' + q + '"</div>';
+                div.innerHTML = html;
+                div.style.display = 'block';
+            } catch(e) { console.error('Error buscando:', e); }
+        }, 300);
+    }
+
+    function expandirBusquedaArticulo(el) {
+        const det = el.querySelector('.busq-detalle');
+        if (det) det.style.display = det.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function cerrarBuscador() {
+        document.getElementById('buscadorResultados').style.display = 'none';
+        document.getElementById('buscadorGlobal').value = '';
+    }
+
+    // Cerrar buscador al hacer clic fuera
+    document.addEventListener('click', function(e) {
+        const buscador = document.getElementById('buscadorGlobal');
+        const resultados = document.getElementById('buscadorResultados');
+        if (buscador && resultados && !buscador.contains(e.target) && !resultados.contains(e.target)) {
+            resultados.style.display = 'none';
+        }
+    });
 
     </script>
 <!-- Modal Comparativo Consolidado -->
