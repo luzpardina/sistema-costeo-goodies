@@ -379,13 +379,23 @@
                         <label style="font-size:10px;color:#888;">% Acuerdo</label>
                         <input type="number" id="acuerdoPct" placeholder="%" step="0.1" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;width:70px;font-size:12px;">
                     </div>
+                    <div id="ocEscalonesAdd" style="display:none;flex-direction:row;gap:4px;">
+                        <div style="display:flex;flex-direction:column;gap:2px;">
+                            <label style="font-size:10px;color:#888;">OC 2 %</label>
+                            <input type="number" id="acuerdoPct2" placeholder="%" step="0.1" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;width:60px;font-size:12px;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:2px;">
+                            <label style="font-size:10px;color:#888;">OC 3 %</label>
+                            <input type="number" id="acuerdoPct3" placeholder="%" step="0.1" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;width:60px;font-size:12px;">
+                        </div>
+                    </div>
                     <div style="display:flex;flex-direction:column;gap:2px;">
                         <label style="font-size:10px;color:#888;">Tipo</label>
-                        <select id="acuerdoTipo" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;font-size:12px;">
+                        <select id="acuerdoTipo" onchange="document.getElementById('ocEscalonesAdd').style.display=this.value==='desc_oc'?'flex':'none'" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;font-size:12px;">
                             <option value="flat">Flat (s/Precio bruto)</option>
-                            <option value="desc_oc">Dscto en OC</option>
-                            <option value="nota_credito">NC x Acuerdos/Logística</option>
-                            <option value="factura_cliente">Fact. Cli x Logística</option>
+                            <option value="desc_oc">Desc. en OC</option>
+                            <option value="nota_credito">Nota de Crédito</option>
+                            <option value="factura_cliente">Factura del Cliente</option>
                         </select>
                     </div>
                     <div style="display:flex;flex-direction:column;gap:2px;">
@@ -397,8 +407,7 @@
                         <select id="acuerdoBase" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;font-size:12px;">
                             <option value="bruto">Sobre Precio Acordado</option>
                             <option value="neto_post_desc_oc">Sobre Neto post OC</option>
-                            <option value="neto_post_nota_credito">Sobre Neto post NC</option>
-                            <option value="neto_post_factura_cliente">Sobre Neto post Fact.Cli</option>
+                            
                         </select>
                     </div>
                     <button class="btn btn-primary" onclick="agregarAcuerdo()" style="padding:6px 15px;">+ Agregar</button>
@@ -3651,9 +3660,9 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
 
     const TIPO_ACUERDO_LABELS = {
         'flat': 'Flat (s/Bruto)',
-        'desc_oc': 'Dscto en OC',
-        'nota_credito': 'NC x Acuerdos/Logística',
-        'factura_cliente': 'Fact. Cli x Logística'
+        'desc_oc': 'Desc. en OC',
+        'nota_credito': 'Nota de Crédito',
+        'factura_cliente': 'Factura del Cliente'
     };
     const BASE_CALCULO_LABELS = {
         'bruto': 'Sobre Precio Acordado',
@@ -3682,12 +3691,14 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 return `<tr style="background:rgba(33,150,243,0.08);">
                     <td>${lista ? lista.nombre : '-'}</td>
                     <td>${a.categoria}</td>
-                    <td><input type="number" step="0.1" style="${editSt}width:60px;" value="${a.pct_acuerdo}" id="ed_acuerdo_pct_${a.id}"></td>
+                    <td><input type="number" step="0.1" style="${editSt}width:60px;" value="${a.pct_acuerdo}" id="ed_acuerdo_pct_${a.id}">
+                        ${a.tipo_acuerdo === 'desc_oc' ? '<br><span style="font-size:9px;color:#888;">OC2:</span><input type="number" step="0.1" style="' + editSt + 'width:50px;" value="' + (a.pct_acuerdo_2||0) + '" id="ed_acuerdo_pct2_' + a.id + '"> <span style="font-size:9px;color:#888;">OC3:</span><input type="number" step="0.1" style="' + editSt + 'width:50px;" value="' + (a.pct_acuerdo_3||0) + '" id="ed_acuerdo_pct3_' + a.id + '">' : ''}
+                    </td>
                     <td><select style="${editSt}" id="ed_acuerdo_tipo_${a.id}">
                         <option value="flat" ${a.tipo_acuerdo==='flat'?'selected':''}>Flat (s/Bruto)</option>
-                        <option value="desc_oc" ${a.tipo_acuerdo==='desc_oc'?'selected':''}>Dscto en OC</option>
-                        <option value="nota_credito" ${a.tipo_acuerdo==='nota_credito'?'selected':''}>NC x Acuerdos/Logística</option>
-                        <option value="factura_cliente" ${a.tipo_acuerdo==='factura_cliente'?'selected':''}>Fact. Cli x Logística</option>
+                        <option value="desc_oc" ${a.tipo_acuerdo==='desc_oc'?'selected':''}>Desc. en OC</option>
+                        <option value="nota_credito" ${a.tipo_acuerdo==='nota_credito'?'selected':''}>Nota de Crédito</option>
+                        <option value="factura_cliente" ${a.tipo_acuerdo==='factura_cliente'?'selected':''}>Factura del Cliente</option>
                     </select></td>
                     <td><input type="number" min="1" max="10" style="${editSt}width:40px;" value="${orden}" id="ed_acuerdo_orden_${a.id}"></td>
                     <td><select style="${editSt}" id="ed_acuerdo_base_${a.id}">
@@ -3704,10 +3715,13 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 </tr>`;
             }
             const tipoColor = a.tipo_acuerdo === 'desc_oc' ? '#4fc3f7' : a.tipo_acuerdo === 'nota_credito' ? '#ff9800' : a.tipo_acuerdo === 'factura_cliente' ? '#f44336' : '#4CAF50';
+            const pct2 = parseFloat(a.pct_acuerdo_2) || 0;
+            const pct3 = parseFloat(a.pct_acuerdo_3) || 0;
+            const pctDisplay = a.pct_acuerdo + '%' + (pct2 > 0 ? ' → ' + pct2 + '%' : '') + (pct3 > 0 ? ' → ' + pct3 + '%' : '');
             return `<tr>
                 <td>${lista ? lista.nombre : a.lista_id}</td>
                 <td>${a.categoria}</td>
-                <td>${a.pct_acuerdo}%</td>
+                <td>${pctDisplay}</td>
                 <td style="color:${tipoColor};">${tipoLabel}</td>
                 <td style="text-align:center;">${orden}</td>
                 <td style="font-size:11px;">${baseLabel}</td>
@@ -3732,6 +3746,10 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
 
     async function guardarAcuerdoInline(id) {
         const pct = parseFloat(document.getElementById('ed_acuerdo_pct_' + id).value) || 0;
+        const pct2El = document.getElementById('ed_acuerdo_pct2_' + id);
+        const pct3El = document.getElementById('ed_acuerdo_pct3_' + id);
+        const pct_acuerdo_2 = pct2El ? parseFloat(pct2El.value) || 0 : 0;
+        const pct_acuerdo_3 = pct3El ? parseFloat(pct3El.value) || 0 : 0;
         const tipo_acuerdo = document.getElementById('ed_acuerdo_tipo_' + id).value;
         const orden = parseInt(document.getElementById('ed_acuerdo_orden_' + id).value) || 1;
         const base_calculo = document.getElementById('ed_acuerdo_base_' + id).value;
@@ -3741,7 +3759,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             await fetch(API_URL + '/api/comercial/acuerdos/' + id, {
                 method: 'PUT',
                 headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pct_acuerdo: pct, tipo_acuerdo, orden, base_calculo, rubros })
+                body: JSON.stringify({ pct_acuerdo: pct, pct_acuerdo_2, pct_acuerdo_3, tipo_acuerdo, orden, base_calculo, rubros })
             });
             await cargarAcuerdos();
         } catch(e) { alert('Error: ' + e.message); }
@@ -3751,6 +3769,8 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         const lista_id = document.getElementById('acuerdoListaSelect').value;
         const categoria = document.getElementById('acuerdoCategoriaSelect').value;
         const pct_acuerdo = parseFloat(document.getElementById('acuerdoPct').value) || 0;
+        const pct_acuerdo_2 = parseFloat(document.getElementById('acuerdoPct2').value) || 0;
+        const pct_acuerdo_3 = parseFloat(document.getElementById('acuerdoPct3').value) || 0;
         const tipo_acuerdo = document.getElementById('acuerdoTipo').value;
         const orden = parseInt(document.getElementById('acuerdoOrden').value) || 1;
         const base_calculo = document.getElementById('acuerdoBase').value;
@@ -3759,9 +3779,11 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         await fetch(API_URL + '/api/comercial/acuerdos', {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lista_id, categoria, pct_acuerdo, tipo_acuerdo, orden, base_calculo })
+            body: JSON.stringify({ lista_id, categoria, pct_acuerdo, pct_acuerdo_2, pct_acuerdo_3, tipo_acuerdo, orden, base_calculo })
         });
         document.getElementById('acuerdoPct').value = '';
+        document.getElementById('acuerdoPct2').value = '';
+        document.getElementById('acuerdoPct3').value = '';
         cargarAcuerdos();
     }
 
@@ -3980,7 +4002,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 html += '<p style="font-size:11px;color:#aaa;">Desglose: Margen ' + fmtMoney(p.margen_goodies_monto) + ' | Log ' + fmtMoney(p.logistico_monto) + ' | IIBB ' + fmtMoney(p.iibb_monto) + ' | Fin ' + fmtMoney(p.financiero_monto) + ' | Com ' + fmtMoney(p.comision_monto) + (p.otro_costo_monto > 0 ? ' | Otro ' + fmtMoney(p.otro_costo_monto) : '') + (p.acuerdo_flat_monto > 0 ? ' | Acuerdo(flat) ' + fmtMoney(p.acuerdo_flat_monto) : '') + '</p>';
                 // Paso 1b: Acuerdos cadena
                 if (p.tiene_acuerdos_cadena) {
-                    const TIPO_LABELS = {desc_oc:'Dscto en OC',nota_credito:'NC x Acuerdos/Logística',factura_cliente:'Fact. Cli x Logística'};
+                    const TIPO_LABELS = {desc_oc:'Desc. en OC',nota_credito:'Nota de Crédito',factura_cliente:'Factura del Cliente'};
                     const BASE_LABELS = {bruto:'Precio Acordado',neto_post_desc_oc:'Post OC',neto_post_nota_credito:'Post NC',neto_post_factura_cliente:'Post Fact.Cli'};
                     html += '<p style="margin-top:8px;"><strong style="color:#ce93d8;">Paso 1b — Acuerdos en Cadena</strong> (Σ ' + p.pct_acuerdo_cadena_total + '% → gross-up segunda capa)</p>';
                     html += '<p>Precio Bruto Acordado = ' + fmtMoney(p.precio_neto_goodies) + ' ÷ (1 - ' + p.pct_acuerdo_cadena_total + '%) = <strong>' + fmtMoney(p.precio_bruto_acordado) + '</strong></p>';

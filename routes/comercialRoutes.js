@@ -203,7 +203,24 @@ router.post('/calcular-precios', auth, async (req, res) => {
                 const acuerdosFlat = acuerdosLista.filter(a => a.tipo_acuerdo === 'flat');
                 const acuerdosCadena = acuerdosLista.filter(a => a.tipo_acuerdo !== 'flat').sort((x, y) => (x.orden || 1) - (y.orden || 1));
                 const pctAcuerdoFlat = acuerdosFlat.reduce((sum, a) => sum + (parseFloat(a.pct_acuerdo) || 0), 0);
-                const pctAcuerdoCadenaTotal = acuerdosCadena.reduce((sum, a) => sum + (parseFloat(a.pct_acuerdo) || 0), 0);
+
+                // Para OC con escalones, calcular tasa efectiva compuesta
+                // effective = 1 - (1-p1)(1-p2)(1-p3) en vez de sumar
+                let pctAcuerdoCadenaTotal = 0;
+                for (const ac of acuerdosCadena) {
+                    if (ac.tipo_acuerdo === 'desc_oc') {
+                        const p1 = (parseFloat(ac.pct_acuerdo) || 0) / 100;
+                        const p2 = (parseFloat(ac.pct_acuerdo_2) || 0) / 100;
+                        const p3 = (parseFloat(ac.pct_acuerdo_3) || 0) / 100;
+                        let factor = (1 - p1);
+                        if (p2 > 0) factor *= (1 - p2);
+                        if (p3 > 0) factor *= (1 - p3);
+                        const effectiveOC = (1 - factor) * 100;
+                        pctAcuerdoCadenaTotal += effectiveOC;
+                    } else {
+                        pctAcuerdoCadenaTotal += parseFloat(ac.pct_acuerdo) || 0;
+                    }
+                }
 
                 // === PASO 1: Precio Neto Goodies (gross-up costos + acuerdos flat) ===
                 const sumaPctGoodies = pctMargenGoodies + pctLogistico + pctIIBB + pctFinanciero + pctComision + pctOtroCosto + pctAcuerdoFlat;
@@ -228,21 +245,53 @@ router.post('/calcular-precios', auth, async (req, res) => {
                     // Calcular netos intermedios segun base de cada acuerdo
                     const netos = { bruto: precioBrutoAcordado };
                     for (const ac of acuerdosCadena) {
-                        const pctAc = parseFloat(ac.pct_acuerdo) || 0;
-                        const base = netos[ac.base_calculo] || precioBrutoAcordado;
-                        const montoDesc = base * (pctAc / 100);
-                        const neto = base - montoDesc;
-                        netos['neto_post_' + ac.tipo_acuerdo] = neto;
-                        detalleAcuerdosCadena.push({
-                            tipo: ac.tipo_acuerdo,
-                            pct: pctAc,
-                            base_calculo: ac.base_calculo,
-                            base_valor: Math.round(base * 100) / 100,
-                            monto: Math.round(montoDesc * 100) / 100,
-                            neto_post: Math.round(neto * 100) / 100,
-                            orden: ac.orden || 1,
-                            categoria: ac.categoria
-                        });
+                        if (ac.tipo_acuerdo === 'desc_oc') {
+                            // OC con escalones: aplicar en cascada
+                            const pcts = [parseFloat(ac.pct_acuerdo) || 0];
+                            if (parseFloat(ac.pct_acuerdo_2) > 0) pcts.push(parseFloat(ac.pct_acuerdo_2));
+                            if (parseFloat(ac.pct_acuerdo_3) > 0) pcts.push(parseFloat(ac.pct_acuerdo_3));
+                            
+                            let baseOC = netos[ac.base_calculo] || precioBrutoAcordado;
+                            let totalDescOC = 0;
+                            const subpasos = [];
+                            for (let i = 0; i < pcts.length; i++) {
+                                const montoStep = baseOC * (pcts[i] / 100);
+                                const netoStep = baseOC - montoStep;
+                                subpasos.push({ step: i + 1, pct: pcts[i], base: Math.round(baseOC * 100) / 100, monto: Math.round(montoStep * 100) / 100, neto: Math.round(netoStep * 100) / 100 });
+                                totalDescOC += montoStep;
+                                baseOC = netoStep;
+                            }
+                            netos['neto_post_desc_oc'] = baseOC;
+                            detalleAcuerdosCadena.push({
+                                tipo: 'desc_oc',
+                                pct: pcts[0],
+                                pct_2: pcts[1] || 0,
+                                pct_3: pcts[2] || 0,
+                                base_calculo: ac.base_calculo,
+                                base_valor: Math.round((netos[ac.base_calculo] || precioBrutoAcordado) * 100) / 100,
+                                monto: Math.round(totalDescOC * 100) / 100,
+                                neto_post: Math.round(baseOC * 100) / 100,
+                                orden: ac.orden || 1,
+                                categoria: ac.categoria,
+                                subpasos
+                            });
+                        } else {
+                            const pctAc = parseFloat(ac.pct_acuerdo) || 0;
+                            const base = netos[ac.base_calculo] || precioBrutoAcordado;
+                            const montoDesc = base * (pctAc / 100);
+                            const neto = base - montoDesc;
+                            netos['neto_post_' + ac.tipo_acuerdo] = neto;
+                            detalleAcuerdosCadena.push({
+                                tipo: ac.tipo_acuerdo,
+                                pct: pctAc,
+                                base_calculo: ac.base_calculo,
+                                base_valor: Math.round(base * 100) / 100,
+                                monto: Math.round(montoDesc * 100) / 100,
+                                neto_post: Math.round(neto * 100) / 100,
+                                orden: ac.orden || 1,
+                                categoria: ac.categoria
+                            });
+                        }
                     }
                 }
 
@@ -406,7 +455,21 @@ router.post('/calcular-margenes', auth, async (req, res) => {
                 const acuerdosFlat = acuerdosLista.filter(a => a.tipo_acuerdo === 'flat');
                 const acuerdosCadena = acuerdosLista.filter(a => a.tipo_acuerdo !== 'flat');
                 const pctAcuerdoFlat = acuerdosFlat.reduce((sum, a) => sum + (parseFloat(a.pct_acuerdo) || 0), 0);
-                const pctAcuerdoCadenaTotal = acuerdosCadena.reduce((sum, a) => sum + (parseFloat(a.pct_acuerdo) || 0), 0);
+                // Compound rate for OC escalones
+                let pctAcuerdoCadenaTotal = 0;
+                for (const ac of acuerdosCadena) {
+                    if (ac.tipo_acuerdo === 'desc_oc') {
+                        const p1 = (parseFloat(ac.pct_acuerdo) || 0) / 100;
+                        const p2 = (parseFloat(ac.pct_acuerdo_2) || 0) / 100;
+                        const p3 = (parseFloat(ac.pct_acuerdo_3) || 0) / 100;
+                        let factor = (1 - p1);
+                        if (p2 > 0) factor *= (1 - p2);
+                        if (p3 > 0) factor *= (1 - p3);
+                        pctAcuerdoCadenaTotal += (1 - factor) * 100;
+                    } else {
+                        pctAcuerdoCadenaTotal += parseFloat(ac.pct_acuerdo) || 0;
+                    }
+                }
                 const tieneAcuerdosCadena = acuerdosCadena.length > 0;
 
                 // === DESANDAR LA CADENA DESDE PVP HACIA ATRÁS ===

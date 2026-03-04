@@ -659,9 +659,9 @@
                     <tr><td><strong>Tipo</strong></td><td>Cómo se instrumenta:
                         <ul>
                             <li style="color:#4CAF50;"><strong>Flat:</strong> se suma al Σ% de Goodies (una sola capa de gross-up)</li>
-                            <li style="color:#4fc3f7;"><strong>Dscto en OC:</strong> descuento en la orden de compra / factura de Goodies</li>
-                            <li style="color:#ff9800;"><strong>NC x Acuerdos/Logística:</strong> Goodies emite NC posterior</li>
-                            <li style="color:#f44336;"><strong>Fact. Cli x Logística:</strong> el super factura a Goodies</li>
+                            <li style="color:#4fc3f7;"><strong>Desc. en OC:</strong> descuento en la orden de compra / factura de Goodies</li>
+                            <li style="color:#ff9800;"><strong>Nota de Crédito:</strong> Goodies emite NC posterior</li>
+                            <li style="color:#f44336;"><strong>Factura del Cliente:</strong> el super factura a Goodies</li>
                         </ul>
                     </td></tr>
                     <tr><td><strong>Orden</strong></td><td>Secuencia de aplicación (1, 2, 3...)</td></tr>
@@ -746,7 +746,7 @@
             <section id="comercial-precios-super">
                 <h2>Cálculo de Precios — Supermercados (acuerdos en cadena)</h2>
                 <p>
-                    Cuando una lista tiene acuerdos comerciales de tipo OC, NC o Fact. Cli x Logística (no Flat), 
+                    Cuando una lista tiene acuerdos comerciales de tipo OC, NC o Factura del Cliente (no Flat), 
                     el sistema aplica una <strong>segunda capa de gross-up</strong> encima del Precio Neto Goodies.
                 </p>
 
@@ -780,9 +780,9 @@
                 <h4>Aplicación de los acuerdos</h4>
                 <table>
                     <tr><th>Orden</th><th>Tipo</th><th>%</th><th>Base</th><th>Monto</th><th>Neto post</th></tr>
-                    <tr><td>1</td><td style="color:#4fc3f7;">Dscto en OC</td><td>11%</td><td>$187.62 (Bruto)</td><td>-$20.64</td><td>$166.98</td></tr>
-                    <tr><td>2</td><td style="color:#ff9800;">NC x Acuerdos/Logística</td><td>5%</td><td>$187.62 (Bruto)</td><td>-$9.38</td><td>$157.60</td></tr>
-                    <tr><td>3</td><td style="color:#f44336;">Fact. Cli x Logística</td><td>2%</td><td>$187.62 (Bruto)</td><td>-$3.75</td><td>$153.85</td></tr>
+                    <tr><td>1</td><td style="color:#4fc3f7;">Desc. en OC</td><td>11%</td><td>$187.62 (Bruto)</td><td>-$20.64</td><td>$166.98</td></tr>
+                    <tr><td>2</td><td style="color:#ff9800;">Nota de Crédito</td><td>5%</td><td>$187.62 (Bruto)</td><td>-$9.38</td><td>$157.60</td></tr>
+                    <tr><td>3</td><td style="color:#f44336;">Factura del Cliente</td><td>2%</td><td>$187.62 (Bruto)</td><td>-$3.75</td><td>$153.85</td></tr>
                 </table>
 
                 <h4>Qué pasa con la plata</h4>
@@ -959,9 +959,9 @@
                     <tr><td><strong>Acuerdo Flat</strong></td><td>Acuerdo comercial que se suma al Σ% de Goodies (una sola capa de gross-up)</td></tr>
                     <tr><td><strong>Acuerdo en Cadena</strong></td><td>Acuerdo que genera una segunda capa de gross-up. Se descuenta mediante OC, NC o factura del cliente</td></tr>
                     <tr><td><strong>Precio Bruto Acordado</strong></td><td>Precio acordado con el super antes de aplicar descuentos (Neto Goodies ÷ (1 - Σ% acuerdos))</td></tr>
-                    <tr><td><strong>Dscto en OC</strong></td><td>Descuento aplicado en la orden de compra / factura. Reduce el monto que Goodies factura</td></tr>
-                    <tr><td><strong>NC x Acuerdos/Logística</strong></td><td>Goodies emite nota de crédito posterior al super. Reduce el cobro neto</td></tr>
-                    <tr><td><strong>Fact. Cli x Logística</strong></td><td>El super factura a Goodies por servicios. Reduce el cobro neto</td></tr>
+                    <tr><td><strong>Desc. en OC</strong></td><td>Descuento aplicado en la orden de compra / factura. Reduce el monto que Goodies factura</td></tr>
+                    <tr><td><strong>Nota de Crédito</strong></td><td>Goodies emite nota de crédito posterior al super. Reduce el cobro neto</td></tr>
+                    <tr><td><strong>Factura del Cliente</strong></td><td>El super factura a Goodies por servicios. Reduce el cobro neto</td></tr>
                     <tr><td><strong>Neto Real Goodies</strong></td><td>Lo que Goodies cobra realmente después de todos los acuerdos. Debe coincidir con el Precio Neto Goodies</td></tr>
                 </table>
             </section>

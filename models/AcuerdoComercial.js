@@ -19,6 +19,16 @@ const AcuerdoComercial = sequelize.define('AcuerdoComercial', {
         type: DataTypes.DECIMAL(5, 2),
         defaultValue: 0
     },
+    pct_acuerdo_2: {
+        type: DataTypes.DECIMAL(5, 2),
+        defaultValue: 0,
+        comment: 'Solo para desc_oc: segundo escalón (sobre neto del primero)'
+    },
+    pct_acuerdo_3: {
+        type: DataTypes.DECIMAL(5, 2),
+        defaultValue: 0,
+        comment: 'Solo para desc_oc: tercer escalón (sobre neto del segundo)'
+    },
     rubros: {
         type: DataTypes.TEXT,
         defaultValue: ''
