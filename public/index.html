@@ -211,19 +211,6 @@
                             <option value="presupuesto">Presupuesto</option>
                         </select>
                     </div>
-                    <div class="filtro-grupo">
-                        <div class="filtro-check">
-                            <input type="checkbox" id="filtroUltimo" onchange="toggleCriterio(); aplicarFiltros();">
-                            <label for="filtroUltimo">Solo ultima version</label>
-                        </div>
-                        <div class="criterio-container" id="criterioContainer">
-                            <select id="filtroCriterio" onchange="aplicarFiltros()">
-                                <option value="fecha_carga">Por fecha de carga</option>
-                                <option value="fecha_factura">Por fecha de factura</option>
-                                <option value="fecha_despacho">Por fecha de despacho</option>
-                            </select>
-                        </div>
-                    </div>
                     <button class="btn btn-secondary" onclick="limpiarFiltros()">Limpiar</button>
                 </div>
                 <div class="acciones-masivas" id="accionesMasivas" style="display: none;">
@@ -1681,15 +1668,13 @@ async function cargarCosteos() {
             var dlMarArt = document.getElementById('listaMarcasArticulo');
             if (dlMarArt) dlMarArt.innerHTML = marcas.map(m => '<option value="' + m + '">').join('');
         }
-        function toggleCriterio() { const cb = document.getElementById('filtroUltimo'); document.getElementById('criterioContainer').classList.toggle('show', cb.checked); }
+        
         function limpiarFiltros() {
             document.getElementById('filtroNombre').value = '';
             document.getElementById('filtroProveedor').value = '';
             document.getElementById('filtroFabricante').value = '';
             document.getElementById('filtroTipo').value = '';
             document.getElementById('filtroMarca').value = '';
-            document.getElementById('filtroUltimo').checked = false;
-            document.getElementById('criterioContainer').classList.remove('show');
             seleccionados.clear();
             aplicarFiltros();
         }
@@ -1700,8 +1685,6 @@ async function cargarCosteos() {
             const fabricante = document.getElementById('filtroFabricante').value;
             const marca = document.getElementById('filtroMarca').value.toLowerCase();
             const tipo = document.getElementById('filtroTipo').value;
-            const soloUltimo = document.getElementById('filtroUltimo').checked;
-            const criterio = document.getElementById('filtroCriterio').value;
             let filtrados = [...todosLosCosteos];
             if (nombre) filtrados = filtrados.filter(c => c.nombre_costeo && c.nombre_costeo.toLowerCase().includes(nombre));
             if (proveedor) filtrados = filtrados.filter(c => c.proveedor && c.proveedor.toLowerCase().includes(proveedor.toLowerCase()));
@@ -1709,22 +1692,6 @@ async function cargarCosteos() {
             if (marca) filtrados = filtrados.filter(c => (c.marcas && c.marcas.toLowerCase().includes(marca)) || (c.articulos_nombres && c.articulos_nombres.toLowerCase().includes(marca)));
             if (tipo === 'definitivo') filtrados = filtrados.filter(c => esDefinitivo(c));
             else if (tipo === 'presupuesto') filtrados = filtrados.filter(c => !esDefinitivo(c));
-            if (soloUltimo) {
-                if (criterio === 'fecha_factura') filtrados = filtrados.filter(c => c.fecha_factura);
-                else if (criterio === 'fecha_despacho') filtrados = filtrados.filter(c => c.fecha_despacho);
-                const ultimosPorProveedor = {};
-                filtrados.forEach(c => {
-                    const prov = c.proveedor || 'Sin Proveedor';
-                    let fechaComparar;
-                    if (criterio === 'fecha_factura') fechaComparar = new Date(c.fecha_factura);
-                    else if (criterio === 'fecha_despacho') fechaComparar = new Date(c.fecha_despacho);
-                    else fechaComparar = c.created_at ? new Date(c.created_at) : new Date(0);
-                    if (!ultimosPorProveedor[prov] || fechaComparar > ultimosPorProveedor[prov].fecha) {
-                        ultimosPorProveedor[prov] = { costeo: c, fecha: fechaComparar };
-                    }
-                });
-                filtrados = Object.values(ultimosPorProveedor).map(u => u.costeo);
-            }
             costeosFiltrados = filtrados;
             renderizarTabla(filtrados);
             actualizarAccionesMasivas();
