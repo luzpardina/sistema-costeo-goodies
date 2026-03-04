@@ -1713,17 +1713,20 @@ async function cargarCosteos() {
         }
         
         function cascadaFiltrosCosteos(desde) {
-            const prov = document.getElementById('filtroProveedor').value.toLowerCase();
-            const fab = document.getElementById('filtroFabricante').value.toLowerCase();
-            let filtrados = [...todosLosCosteos];
-            if (prov) filtrados = filtrados.filter(c => c.proveedor && c.proveedor.toLowerCase().includes(prov));
-            if (fab && desde !== 'fabrica') filtrados = filtrados.filter(c => c.empresa_fabrica && c.empresa_fabrica.toLowerCase().includes(fab));
+            // Usar todosLosArticulos (catálogo de último costo) que tiene relación correcta proveedor→fabrica→marca
+            const arts = todosLosArticulos || [];
+            if (arts.length === 0) return;
+            const prov = document.getElementById('filtroProveedor').value;
+            const fab = document.getElementById('filtroFabricante').value;
+            let filtrados = [...arts];
+            if (prov) filtrados = filtrados.filter(a => a.proveedor && a.proveedor.toLowerCase().includes(prov.toLowerCase()));
+            if (fab && desde !== 'fabrica') filtrados = filtrados.filter(a => a.empresa_fabrica && a.empresa_fabrica.toLowerCase().includes(fab.toLowerCase()));
             if (desde !== 'fabrica') {
-                const fabricas = [...new Set(filtrados.map(c => c.empresa_fabrica).filter(f => f))].sort();
+                const fabricas = [...new Set(filtrados.map(a => a.empresa_fabrica).filter(f => f))].sort();
                 document.getElementById('listaFabricantes').innerHTML = fabricas.map(f => '<option value="' + f + '">').join('');
             }
-            if (fab) filtrados = filtrados.filter(c => c.empresa_fabrica && c.empresa_fabrica.toLowerCase().includes(fab));
-            const marcas = [...new Set(filtrados.flatMap(c => (c.marcas || '').split(',').map(m => m.trim())).filter(m => m))].sort();
+            if (fab) filtrados = filtrados.filter(a => a.empresa_fabrica && a.empresa_fabrica.toLowerCase().includes(fab.toLowerCase()));
+            const marcas = [...new Set(filtrados.map(a => a.marca).filter(m => m))].sort();
             document.getElementById('listaMarcas').innerHTML = marcas.map(m => '<option value="' + m + '">').join('');
         }
 
