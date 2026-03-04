@@ -607,6 +607,10 @@
                     <p style="color:#aaa;margin-top:10px;">Hosting: Railway</p>
                     <p style="color:#aaa;margin-top:10px;">Base de datos: PostgreSQL</p>
                 </div>
+                <div style="margin-top:15px;display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="btn btn-success" onclick="exportarConfiguracion()" title="Descargar listas de precios y acuerdos como JSON">📥 Exportar Configuración</button>
+                    <label class="btn btn-warning" style="cursor:pointer;" title="Restaurar listas y acuerdos desde un archivo JSON">📤 Importar Configuración<input type="file" id="importConfigFile" accept=".json" onchange="importarConfiguracion()" style="display:none;"></label>
+                </div>
             </div>
         </div>
     </div>
@@ -740,7 +744,7 @@
             </div>
         </div>
     </div>
-    <div class="modal" id="cargaManualModal">
+    <div class="modal" id="cargaManualModal" oninput="marcarModificado()" onchange="marcarModificado()">
         <div class="modal-content modal-fullsize">
             <div class="modal-header">
                 <h3>Carga Manual de Legajo</h3>
@@ -1812,7 +1816,9 @@ async function duplicarCosteo(id) {
                 const res = await fetch(API_URL + '/api/costeos/' + id, { headers: { 'Authorization': 'Bearer ' + token } });
                 const costeo = await res.json();
                 if (res.ok) {
-                    document.getElementById('cm_nombre').value = (costeo.nombre_costeo || '') + ' - DEFINITIVO';
+                    const nuevoNombre = prompt('Nombre para la copia:', (costeo.nombre_costeo || '') + ' - COPIA');
+                    if (!nuevoNombre) return;
+                    document.getElementById('cm_nombre').value = nuevoNombre;
                     document.getElementById('cm_proveedor').value = costeo.proveedor || '';
                     document.getElementById('cm_tieneIntermediaria').checked = !!costeo.empresa_intermediaria;
                     document.getElementById('cm_intermediaria').value = costeo.empresa_intermediaria || '';
@@ -2126,7 +2132,13 @@ async function ejecutarCalculo(id, metodo) {
             cargarCosteos();
         }
 
+        var costeoModificado = false;
+        function marcarModificado() { costeoModificado = true; }
         function cerrarModal(id) { 
+            if (id === 'cargaManualModal' && costeoModificado) {
+                if (!confirm('Hay cambios sin guardar. ¿Seguro que querés cerrar?')) return;
+            }
+            costeoModificado = false;
             const modal = document.getElementById(id);
             if (modal) {
                 modal.classList.remove('show');
@@ -2892,6 +2904,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 });
                 const data = await res.json();
                 if (res.ok) {
+                    costeoModificado = false;
                     let msgBase = window.costeoEditandoId ? 'Costeo actualizado exitosamente!' : 'Costeo guardado exitosamente!';
                     
                     // Info sobre catálogo
@@ -4277,6 +4290,23 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         }
         html += '</details>';
 
+        // Alertas de margen bajo
+        const alertasMargen = [];
+        resultados.forEach(r => {
+            r.margenes.forEach(m => {
+                if (m.margen_pct < 10 && r.costo_neto > 0) {
+                    alertasMargen.push({ codigo: r.codigo_goodies, nombre: r.nombre, lista: m.lista_nombre, margen: m.margen_pct });
+                }
+            });
+        });
+        if (alertasMargen.length > 0) {
+            html = '<div style="background:rgba(244,67,54,0.1);border:1px solid #f44336;border-radius:6px;padding:10px 15px;margin-bottom:15px;">' +
+                '<p style="color:#f44336;font-weight:bold;">⚠️ ' + alertasMargen.length + ' artículo(s) con margen menor al 10%:</p>' +
+                '<div style="max-height:120px;overflow-y:auto;font-size:11px;">' +
+                alertasMargen.map(a => '<p style="margin:2px 0;color:#f44336;">' + a.codigo + ' — ' + a.lista + ': <strong>' + a.margen.toFixed(1) + '%</strong></p>').join('') +
+                '</div></div>' + html;
+        }
+
         div.innerHTML = html;
     }
 
@@ -4358,7 +4388,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         } catch(e) { console.error('Error cargando revaluaciones:', e); }
     }
 
-    let articulosCentumCargados = [];
+    var articulosCentumCargados = [];
 
     async function parsearExcelCentum() {
         const fileInput = document.getElementById('valExcelFile');
@@ -4647,6 +4677,82 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         cargarCosteos(); cargarUltimosCostos(); cargarHistorialRevaluaciones(); cargarStatsMaestro();
         // Pre-cargar datos para módulos nuevos
         setTimeout(() => { cargarArticulosSimulador(); }, 2000);
+    }
+
+    // =============================================
+    // ADMIN - EXPORTAR / IMPORTAR CONFIGURACIÓN
+    // =============================================
+    async function exportarConfiguracion() {
+        try {
+            const [listasResp, acuerdosResp] = await Promise.all([
+                fetch(API_URL + '/api/comercial/listas', { headers: { 'Authorization': 'Bearer ' + token } }),
+                fetch(API_URL + '/api/comercial/acuerdos', { headers: { 'Authorization': 'Bearer ' + token } })
+            ]);
+            const listas = await listasResp.json();
+            const acuerdos = await acuerdosResp.json();
+            const config = {
+                exportado: new Date().toISOString(),
+                sistema: 'Sistema de Costeo GOODIES',
+                listas_precios: listas.map(l => { const { id, created_at, updated_at, ...datos } = l; return datos; }),
+                acuerdos_comerciales: acuerdos.map(a => {
+                    const lista = listas.find(l => l.id === a.lista_id);
+                    const { id, lista_id, created_at, updated_at, ...datos } = a;
+                    return { ...datos, lista_nombre: lista ? lista.nombre : 'Desconocida' };
+                })
+            };
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Config_Goodies_' + new Date().toISOString().split('T')[0] + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            alert('✅ Configuración exportada: ' + config.listas_precios.length + ' listas, ' + config.acuerdos_comerciales.length + ' acuerdos');
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function importarConfiguracion() {
+        const fileInput = document.getElementById('importConfigFile');
+        const file = fileInput.files[0];
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const config = JSON.parse(text);
+            if (!config.listas_precios) { alert('Archivo inválido: no contiene listas_precios'); return; }
+            const confirmMsg = '¿Importar configuración?\n\n' +
+                '• ' + config.listas_precios.length + ' listas de precios\n' +
+                '• ' + (config.acuerdos_comerciales || []).length + ' acuerdos comerciales\n\n' +
+                'ATENCIÓN: Esto creará las listas y acuerdos nuevos (no elimina los existentes).';
+            if (!confirm(confirmMsg)) { fileInput.value = ''; return; }
+            // Crear listas
+            const listasCreadas = {};
+            for (const l of config.listas_precios) {
+                const resp = await fetch(API_URL + '/api/comercial/listas', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(l)
+                });
+                const nueva = await resp.json();
+                listasCreadas[l.nombre] = nueva.id;
+            }
+            // Crear acuerdos
+            let acuerdosOk = 0;
+            for (const a of (config.acuerdos_comerciales || [])) {
+                const listaId = listasCreadas[a.lista_nombre];
+                if (!listaId) continue;
+                const { lista_nombre, ...datos } = a;
+                await fetch(API_URL + '/api/comercial/acuerdos', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...datos, lista_id: listaId })
+                });
+                acuerdosOk++;
+            }
+            alert('✅ Importación completada:\n• ' + Object.keys(listasCreadas).length + ' listas creadas\n• ' + acuerdosOk + ' acuerdos creados');
+            cargarListas();
+            cargarAcuerdos();
+            fileInput.value = '';
+        } catch(e) { alert('Error al importar: ' + e.message); fileInput.value = ''; }
     }
 
     </script>
