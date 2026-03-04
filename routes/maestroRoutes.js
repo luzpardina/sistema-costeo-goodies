@@ -407,4 +407,26 @@ router.get('/rubros', auth, async (req, res) => {
     } catch (error) { res.status(500).json({ error: 'Error' }); }
 });
 
+// Catálogo filtrado (para carga de artículos en costeo)
+router.get('/catalogo', auth, async (req, res) => {
+    try {
+        const where = { habilitado: true, proveedor_activo: true, empresa_fabrica_activa: true };
+        if (req.query.proveedor) {
+            where.proveedor = { [Op.iLike]: req.query.proveedor };
+        }
+        if (req.query.empresa_fabrica) {
+            where.empresa_fabrica = { [Op.iLike]: req.query.empresa_fabrica };
+        }
+        const articulos = await CatalogoArticulo.findAll({
+            where,
+            order: [['codigo_goodies', 'ASC']],
+            attributes: ['codigo_goodies', 'nombre', 'proveedor', 'empresa_fabrica', 'marca', 'rubro', 
+                         'derechos_porcentaje', 'imp_interno_porcentaje', 'iva_porcentaje', 'estadistica_porcentaje']
+        });
+        res.json(articulos);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;
