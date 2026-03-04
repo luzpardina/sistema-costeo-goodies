@@ -379,10 +379,16 @@ router.put('/:id/actualizar', auth, async (req, res) => {
     try {
         const { id } = req.params;
         const datos = req.body;
+        const { Op } = require('sequelize');
 
         const costeo = await Costeo.findByPk(id);
         if (!costeo) {
             return res.status(404).json({ error: 'Costeo no encontrado' });
+        }
+
+        // Si estaba calculado, resetear estado porque los datos cambiaron
+        if (costeo.estado === 'calculado') {
+            await costeo.update({ estado: 'borrador' });
         }
 
         await costeo.update({
@@ -414,7 +420,8 @@ router.put('/:id/actualizar', auth, async (req, res) => {
             es_consolidado: datos.es_consolidado || false,
             volumen_m3: datos.volumen_m3 || null,
             peso_kg: datos.peso_kg || null,
-            metodo_prorrateo: datos.metodo_prorrateo || null
+            metodo_prorrateo: datos.metodo_prorrateo || null,
+            estado: 'borrador'
         });
 
         await ConsolidadoProveedor.destroy({ where: { costeo_id: id } });
@@ -457,6 +464,25 @@ router.put('/:id/actualizar', auth, async (req, res) => {
                     aplica_anmat: art.aplica_anmat !== false,
                     grupo: art.grupo || ''
                 });
+
+                // Sincronizar proveedor y empresa_fabrica al catálogo maestro
+                if (art.codigo_goodies && art.codigo_goodies !== 'S/COD') {
+                    const catArt = await CatalogoArticulo.findOne({ where: { codigo_goodies: { [Op.iLike]: art.codigo_goodies } } });
+                    if (catArt) {
+                        const catUpdates = {};
+                        // Actualizar proveedor del catálogo con el proveedor del costeo
+                        if (datos.proveedor && datos.proveedor !== catArt.proveedor) {
+                            catUpdates.proveedor = datos.proveedor;
+                        }
+                        // Actualizar empresa_fabrica con empresa_intermediaria del costeo (si existe)
+                        if (datos.empresa_intermediaria && datos.empresa_intermediaria !== catArt.empresa_fabrica) {
+                            catUpdates.empresa_fabrica = datos.empresa_intermediaria;
+                        }
+                        if (Object.keys(catUpdates).length > 0) {
+                            await catArt.update(catUpdates);
+                        }
+                    }
+                }
             }
         }
 
