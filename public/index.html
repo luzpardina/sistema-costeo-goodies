@@ -136,7 +136,7 @@
                     <h3>Importar / Cargar Legajo</h3>
                     <div class="message" id="importMessage"></div>
                     <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                        <button class="btn btn-primary" onclick="abrirCargaManual()" style="flex:1;">+ Carga Manual</button>
+                        <button class="btn btn-primary" title="Crear un nuevo costeo desde cero, ingresando datos manualmente" onclick="abrirCargaManual()" style="flex:1;">+ Carga Manual</button>
                     </div>
                     <div class="loading" id="importLoading"><div class="spinner"></div><p>Procesando...</p></div>
                 </div>
@@ -169,7 +169,7 @@
                     <div id="catalogoFechaActualizacion" style="margin-top:6px;font-size:12px;color:#888;"></div>
                     <div id="catalogoImportStats" style="display:none;margin-top:10px;padding:10px;background:#1e1e2f;border-radius:5px;font-size:13px;"></div>
                     <div style="display:flex; gap:8px; margin-top:15px;">
-                        <button class="btn btn-success" style="flex:1;" onclick="descargarCatalogo()">📥 Descargar Catálogo</button>
+                        <button class="btn btn-success" style="flex:1;" title="Descargar el catálogo completo en Excel (activos e inactivos)" onclick="descargarCatalogo()">📥 Descargar Catálogo</button>
                         <label class="btn btn-primary" style="flex:1; cursor:pointer; text-align:center; margin:0;">
                             📤 Subir Catálogo
                             <input type="file" accept=".xlsx,.xls" onchange="importarCatalogoMaestro(this)" style="display:none;">
@@ -178,7 +178,11 @@
                 </div>
             </div>
             <div class="card">
-                <h3>Listado de Costeos</h3>
+                <h3 style="display:flex;align-items:center;gap:15px;">Listado de Costeos
+                    <span style="font-size:11px;font-weight:normal;color:#888;">Ordenar por:</span>
+                    <button id="sortFechaDesp" onclick="cambiarOrdenCosteos('fecha_despacho')" class="btn btn-sm" style="padding:3px 10px;font-size:11px;background:#4CAF50;border:none;color:#fff;border-radius:3px;">📅 Fecha Despacho</button>
+                    <button id="sortActualizado" onclick="cambiarOrdenCosteos('actualizado')" class="btn btn-sm" style="padding:3px 10px;font-size:11px;background:#333;border:1px solid #555;color:#aaa;border-radius:3px;">🕒 Última Actualización</button>
+                </h3>
                 <div class="filtros">
                     <div class="filtro-grupo">
                         <label>Proveedor de Origen</label>
@@ -220,7 +224,7 @@
                 </div>
                 <div class="acciones-masivas" id="accionesMasivas" style="display: none;">
                     <span>Seleccionados: <span class="contador" id="contadorSeleccionados">0</span></span>
-                    <button class="btn btn-sm" style="background:#00bcd4;color:#fff;" id="btnCompararSeleccionados" onclick="compararSeleccionados()">📊 Comparar Seleccionados</button>
+                    <button class="btn btn-sm" style="background:#00bcd4;color:#fff;" id="btnCompararSeleccionados" title="Seleccioná 2 costeos con los checkboxes para compararlos lado a lado" onclick="compararSeleccionados()">📊 Comparar Seleccionados</button>
                 </div>
                 <div class="loading" id="tableLoading"><div class="spinner"></div><p>Cargando...</p></div>
                 <div class="table-container" style="max-height: 500px; overflow-y: auto;">
@@ -244,7 +248,7 @@
                 </div>
             </div>
             <div class="card" style="margin-top: 20px;">
-                <h3>Último Costo por Artículo</h3>
+                <h3>Último Costo por Artículo <a href="/manual.html#comex-ultimocosto" target="_blank" style="font-size:12px;color:#4fc3f7;text-decoration:none;font-weight:normal;" title="Ver en el manual">❓</a></h3>
                 <div class="filtros" style="margin-bottom: 15px;">
                     <div class="filtro-grupo">
                         <label>Buscar Artículo</label>
@@ -266,7 +270,7 @@
                         <datalist id="listaMarcasArticulo"></datalist>
                     </div>
                     <button class="btn btn-secondary" onclick="cargarUltimosCostos()">Actualizar</button>
-                    <button class="btn btn-success" onclick="exportarUltimosCostosXLSX()">📥 Exportar Excel</button>
+                    <button class="btn btn-success" title="Exportar el último costo de cada artículo a Excel" onclick="exportarUltimosCostosXLSX()">📥 Exportar Excel</button>
                     <button class="btn btn-warning" onclick="exportarSeleccionadosXLSX()" style="display:none;" id="btnExportarSeleccion">Exportar Seleccionados (<span id="countSeleccion">0</span>)</button>
                     <button class="btn" onclick="limpiarFiltrosArticulos()" style="background:#666;">✕ Limpiar Filtros</button>
                 </div>
@@ -298,7 +302,7 @@
             <div class="card">
                 <h3>Historial de Revaluaciones</h3>
                 <div style="margin-bottom: 15px;">
-                    <button class="btn btn-primary" onclick="abrirModalRevaluar()">+ Nueva Revaluación</button>
+                    <button class="btn btn-primary" title="Recalcular costos de todos los artículos con nuevos tipos de cambio. Ver manual para más detalle." onclick="abrirModalRevaluar()">+ Nueva Revaluación</button>
                 </div>
                 <div class="table-container" style="max-height: 400px; overflow-y: auto;">
                     <table>
@@ -328,10 +332,10 @@
         <div class="cards">
             <!-- LISTAS DE PRECIOS -->
             <div class="card" style="grid-column: 1 / -1;">
-                <h3>💰 Listas de Precios</h3>
+                <h3>💰 Listas de Precios <a href="/manual.html#comercial-listas" target="_blank" style="font-size:12px;color:#4fc3f7;text-decoration:none;font-weight:normal;" title="Ver en el manual">❓</a></h3>
                 <div style="display:flex;gap:10px;margin-bottom:15px;">
-                    <button class="btn btn-primary" onclick="abrirNuevaLista()">+ Nueva Lista</button>
-                    <button class="btn btn-secondary" onclick="cargarListasPorDefecto()">Cargar Listas por Defecto</button>
+                    <button class="btn btn-primary" title="Crear una nueva lista de precios con sus parámetros" onclick="abrirNuevaLista()">+ Nueva Lista</button>
+                    <button class="btn btn-secondary" title="Crear las 7 listas predefinidas (Distribuidor, Tradicional, Jumbo, Coto, Carrefour, ML, Tienda)" onclick="cargarListasPorDefecto()">Cargar Listas por Defecto</button>
                 </div>
                 <div class="table-container" style="max-height:500px;overflow-x:auto;overflow-y:auto;">
                     <table style="font-size:12px;">
@@ -403,21 +407,27 @@
 
             <!-- CÁLCULO DE PRECIOS (Costo → Precio) -->
             <div class="card" style="grid-column: 1 / -1;">
-                <h3>💲 Cálculo de Precios (Costo → Precio de Venta)</h3>
-                <p style="color:#aaa;margin-bottom:15px;">Calcula el Precio Neto Goodies, factura y PVP estimado para cada lista a partir del costo del artículo.</p>
+                <h3>💲 Cálculo de Precios (Costo → Precio de Venta) <a href="/manual.html#comercial-precios" target="_blank" style="font-size:12px;color:#4fc3f7;text-decoration:none;font-weight:normal;" title="Ver en el manual">❓</a></h3>
+                <p style="color:#aaa;margin-bottom:10px;">Calcula el Precio Neto Goodies, factura y PVP estimado para cada lista a partir del costo del artículo.</p>
+                <div id="listasCheckPrecios" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:#1a1a2e;border-radius:6px;border:1px solid #333;">
+                    <span style="color:#888;font-size:11px;margin-right:5px;align-self:center;">Listas:</span>
+                </div>
                 <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
                     <input type="text" id="filtroPrecioTexto" placeholder="🔍 Buscar por código o nombre..." oninput="filtrarArticulosPrecios()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px 12px;border-radius:5px;width:250px;">
-                    <select id="filtroPrecioProveedor" onchange="filtrarArticulosPrecios()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                    <select id="filtroPrecioProveedor" onchange="cascadaFiltrosPrecios(); filtrarArticulosPrecios()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
                         <option value="">Todos los proveedores</option>
+                    </select>
+                    <select id="filtroPrecioFabricante" onchange="cascadaFiltrosPrecios('fabrica'); filtrarArticulosPrecios()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                        <option value="">Todas las fábricas</option>
                     </select>
                     <select id="filtroPrecioMarca" onchange="filtrarArticulosPrecios()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
                         <option value="">Todas las marcas</option>
                     </select>
                 </div>
                 <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
-                    <button class="btn btn-secondary" onclick="cargarArticulosParaPrecios()">📦 Cargar Artículos</button>
-                    <button class="btn btn-primary" onclick="calcularPrecios()">💲 Calcular Precios</button>
-                    <button class="btn btn-success" onclick="exportarPrecios()">📥 Exportar Excel</button>
+                    <button class="btn btn-secondary" title="Traer artículos del catálogo con su último costo para calcular precios" onclick="cargarArticulosParaPrecios()">📦 Cargar Artículos</button>
+                    <button class="btn btn-primary" title="Calcula precios de venta para los artículos y listas seleccionadas usando fórmula gross-up" onclick="calcularPrecios()">💲 Calcular Precios</button>
+                    <button class="btn btn-success" title="Descargar resultados de precios calculados en Excel" onclick="exportarPrecios()">📥 Exportar Excel</button>
                 </div>
                 <div class="table-container" style="max-height:300px;overflow-y:auto;">
                     <table style="font-size:12px;">
@@ -433,14 +443,17 @@
 
             <!-- CÁLCULO DE MÁRGENES (PVP → Margen) -->
             <div class="card" style="grid-column: 1 / -1;">
-                <h3>📊 Cálculo de Margen (PVP → Margen Goodies)</h3>
-                <p style="color:#aaa;margin-bottom:15px;">Ingresá el PVP actual de cada artículo para calcular el margen real de Goodies en cada lista.</p>
+                <h3>📊 Cálculo de Margen (PVP → Margen Goodies) <a href="/manual.html#comercial-margenes" target="_blank" style="font-size:12px;color:#4fc3f7;text-decoration:none;font-weight:normal;" title="Ver en el manual">❓</a></h3>
+                <p style="color:#aaa;margin-bottom:10px;">Ingresá el PVP actual de cada artículo para calcular el margen real de Goodies en cada lista.</p>
+                <div id="listasCheckMargenes" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:#1a1a2e;border-radius:6px;border:1px solid #333;">
+                    <span style="color:#888;font-size:11px;margin-right:5px;align-self:center;">Listas:</span>
+                </div>
                 <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
                     <input type="text" id="filtroMargenTexto" placeholder="🔍 Buscar por código o nombre..." oninput="filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px 12px;border-radius:5px;width:250px;">
-                    <select id="filtroMargenProveedor" onchange="filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                    <select id="filtroMargenProveedor" onchange="cascadaFiltrosMargenes(); filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
                         <option value="">Todos los proveedores</option>
                     </select>
-                    <select id="filtroMargenFabricante" onchange="filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                    <select id="filtroMargenFabricante" onchange="cascadaFiltrosMargenes('fabrica'); filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
                         <option value="">Todas las fábricas</option>
                     </select>
                     <select id="filtroMargenMarca" onchange="filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
@@ -448,11 +461,11 @@
                     </select>
                 </div>
                 <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
-                    <button class="btn btn-secondary" onclick="cargarArticulosParaMargen()">📦 Cargar Artículos del Catálogo</button>
-                    <button class="btn btn-warning" onclick="descargarTemplatePvp()">📥 Descargar Template PVP</button>
+                    <button class="btn btn-secondary" title="Traer artículos del catálogo con su último costo para calcular márgenes" onclick="cargarArticulosParaMargen()">📦 Cargar Artículos del Catálogo</button>
+                    <button class="btn btn-warning" title="Descargar un Excel con los artículos para completar la columna PVP" onclick="descargarTemplatePvp()">📥 Descargar Template PVP</button>
                     <label class="btn btn-purple" style="cursor:pointer;">📤 Subir Template PVP<input type="file" id="pvpExcelFile" accept=".xlsx,.xls" onchange="subirTemplatePvp()" style="display:none;"></label>
-                    <button class="btn btn-primary" onclick="calcularMargenes()">📊 Calcular Márgenes</button>
-                    <button class="btn btn-success" onclick="exportarMargenes()">📥 Exportar Excel</button>
+                    <button class="btn btn-primary" title="Calcular el margen real de Goodies en cada lista desde el PVP ingresado" onclick="calcularMargenes()">📊 Calcular Márgenes</button>
+                    <button class="btn btn-success" title="Descargar resultados de márgenes calculados en Excel" onclick="exportarMargenes()">📥 Exportar Excel</button>
                 </div>
                 <div class="table-container" style="max-height:300px;overflow-y:auto;">
                     <table>
@@ -467,7 +480,7 @@
 
             <!-- SIMULADOR DE DESCUENTO -->
             <div class="card" style="grid-column: 1 / -1;">
-                <h3>🎯 Simulador de Descuento (Break-Even)</h3>
+                <h3>🎯 Simulador de Descuento (Break-Even) <a href="/manual.html#comercial-simulador" target="_blank" style="font-size:12px;color:#4fc3f7;text-decoration:none;font-weight:normal;" title="Ver en el manual">❓</a></h3>
                 <p style="color:#aaa;margin-bottom:15px;">Calculá el descuento máximo que podés ofrecer según diferentes aumentos de volumen.</p>
                 <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
                     <select id="filtroSimProveedor" onchange="filtrarArticulosSim()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
@@ -498,7 +511,7 @@
                         <input type="number" id="simCantidad" step="1" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;width:100%;">
                     </div>
                 </div>
-                <button class="btn btn-primary" onclick="simularDescuento()">🎯 Simular</button>
+                <button class="btn btn-primary" title="Calcular descuento máximo break-even según aumento de volumen" onclick="simularDescuento()">🎯 Simular</button>
                 <button class="btn btn-danger" onclick="document.getElementById('resultadoSimulador').innerHTML='';">🗑️ Limpiar</button>
                 <div id="resultadoSimulador" style="margin-top:20px;"></div>
             </div>
@@ -557,7 +570,7 @@
                         <tbody id="valuacionDetalleBody"></tbody>
                     </table>
                 </div>
-                <button class="btn btn-success" onclick="exportarValuacion()" style="margin-top:15px;">📥 Exportar Excel</button>
+                <button class="btn btn-success" title="Exportar la comparación contable vs revaluado a Excel" onclick="exportarValuacion()" style="margin-top:15px;">📥 Exportar Excel</button>
                 <button class="btn btn-danger" onclick="document.getElementById('resultadoValuacionCard').style.display='none';ultimaValuacionData=null;" style="margin-top:15px;">🗑️ Limpiar</button>
             </div>
 
@@ -608,7 +621,7 @@
 <div class="modal" id="revaluarModal">
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
-                <h3>Revaluación de Costos</h3>
+                <h3>Revaluación de Costos <a href="/manual.html#comex-revaluacion" target="_blank" style="font-size:12px;color:#4fc3f7;text-decoration:none;font-weight:normal;" title="Ver en el manual">❓</a></h3>
                 <button class="modal-close" onclick="cerrarModal('revaluarModal')">×</button>
             </div>
             <div class="modal-body">
@@ -656,7 +669,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="cerrarModal('revaluarModal')">Cancelar</button>
-                <button class="btn btn-primary" onclick="ejecutarRevaluacion()">Revaluar</button>
+                <button class="btn btn-primary" title="Ejecutar la revaluación con los TC ingresados (toma todos los costeos calculados)" onclick="ejecutarRevaluacion()">Revaluar</button>
             </div>
         </div>
     </div>
@@ -1601,11 +1614,22 @@ function exportarUltimosCostosXLSX() {
                 btn.style.display = 'none';
             }
         }
+        let ordenCosteos = 'fecha_despacho';
+        function cambiarOrdenCosteos(orden) {
+            ordenCosteos = orden;
+            document.getElementById('sortFechaDesp').style.background = orden === 'fecha_despacho' ? '#4CAF50' : '#333';
+            document.getElementById('sortFechaDesp').style.color = orden === 'fecha_despacho' ? '#fff' : '#aaa';
+            document.getElementById('sortFechaDesp').style.border = orden === 'fecha_despacho' ? 'none' : '1px solid #555';
+            document.getElementById('sortActualizado').style.background = orden === 'actualizado' ? '#4CAF50' : '#333';
+            document.getElementById('sortActualizado').style.color = orden === 'actualizado' ? '#fff' : '#aaa';
+            document.getElementById('sortActualizado').style.border = orden === 'actualizado' ? 'none' : '1px solid #555';
+            cargarCosteos();
+        }
 async function cargarCosteos() {
             const loading = document.getElementById('tableLoading');
             loading.classList.add('show');
             try {
-                const res = await fetch(API_URL + '/api/costeos/listar', { headers: { 'Authorization': 'Bearer ' + token } });
+                const res = await fetch(API_URL + '/api/costeos/listar?sort=' + ordenCosteos, { headers: { 'Authorization': 'Bearer ' + token } });
                 const data = await res.json();
                 if (res.ok && Array.isArray(data)) {
                     todosLosCosteos = data;
@@ -3432,6 +3456,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             // Por defecto seleccionar las que estaban activas
             listasPrecios.forEach(l => { if (l.activa) listasSeleccionadas.add(l.id); });
             renderListas();
+            renderListasInline();
             actualizarSelectsListas();
             cargarRubrosDisponibles();
         } catch(e) { console.error('Error cargando listas:', e); }
@@ -3494,6 +3519,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
     function toggleListaSeleccion(id, checked) {
         if (checked) listasSeleccionadas.add(id);
         else listasSeleccionadas.delete(id);
+        renderListasInline();
     }
 
     function toggleSelectAllListas() {
@@ -3503,6 +3529,30 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             else listasSeleccionadas.delete(l.id);
         });
         renderListas();
+        renderListasInline();
+    }
+
+    function renderListasInline() {
+        ['listasCheckPrecios', 'listasCheckMargenes'].forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = '<span style="color:#888;font-size:11px;margin-right:5px;align-self:center;">Listas:</span>';
+            listasPrecios.forEach(l => {
+                const sel = listasSeleccionadas.has(l.id);
+                const label = document.createElement('label');
+                label.style.cssText = 'display:inline-flex;align-items:center;gap:4px;font-size:12px;color:' + (sel ? '#fff' : '#888') + ';cursor:pointer;padding:3px 8px;background:' + (sel ? 'rgba(79,195,247,0.15)' : 'transparent') + ';border-radius:4px;border:1px solid ' + (sel ? '#4fc3f7' : '#444') + ';';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = sel;
+                cb.onchange = function() {
+                    toggleListaSeleccion(l.id, this.checked);
+                    renderListas();
+                };
+                label.appendChild(cb);
+                label.appendChild(document.createTextNode(l.nombre));
+                container.appendChild(label);
+            });
+        });
     }
 
     function editarListaInline(id) {
@@ -3738,6 +3788,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 codigo_goodies: a.codigo_goodies || a.codigo,
                 nombre: a.nombre,
                 proveedor: a.proveedor || '',
+                empresa_fabrica: a.empresa_fabrica || '',
                 marca: a.marca || '',
                 rubro: a.rubro || '',
                 costo_neto: parseFloat(a.costo_neto || a.costo_unitario_neto_ars) || 0,
@@ -3745,11 +3796,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 imp_interno_pct: a.imp_interno_porcentaje ? (parseFloat(a.imp_interno_porcentaje) * 100) : 0
             })).filter(a => a.costo_neto > 0);
 
-            const proveedores = [...new Set(articulosPreciosTodos.map(a => a.proveedor).filter(p => p))].sort();
-            const marcas = [...new Set(articulosPreciosTodos.map(a => a.marca).filter(m => m))].sort();
-            document.getElementById('filtroPrecioProveedor').innerHTML = '<option value="">Todos los proveedores</option>' + proveedores.map(p => '<option>' + p + '</option>').join('');
-            document.getElementById('filtroPrecioMarca').innerHTML = '<option value="">Todas las marcas</option>' + marcas.map(m => '<option>' + m + '</option>').join('');
-
+            poblarDropdownsPrecios(articulosPreciosTodos);
             preciosSeleccionados = new Set(articulosPreciosTodos.map(a => a.codigo_goodies));
             articulosPrecios = [...articulosPreciosTodos];
             renderArticulosPrecios();
@@ -3757,13 +3804,42 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         } catch(e) { alert('Error: ' + e.message); console.error(e); }
     }
 
+    function poblarDropdownsPrecios(arts) {
+        const proveedores = [...new Set(arts.map(a => a.proveedor).filter(p => p))].sort();
+        const fabricas = [...new Set(arts.map(a => a.empresa_fabrica).filter(f => f))].sort();
+        const marcas = [...new Set(arts.map(a => a.marca).filter(m => m))].sort();
+        document.getElementById('filtroPrecioProveedor').innerHTML = '<option value="">Todos los proveedores</option>' + proveedores.map(p => '<option>' + p + '</option>').join('');
+        document.getElementById('filtroPrecioFabricante').innerHTML = '<option value="">Todas las fábricas</option>' + fabricas.map(f => '<option>' + f + '</option>').join('');
+        document.getElementById('filtroPrecioMarca').innerHTML = '<option value="">Todas las marcas</option>' + marcas.map(m => '<option>' + m + '</option>').join('');
+    }
+
+    function cascadaFiltrosPrecios(desde) {
+        const prov = document.getElementById('filtroPrecioProveedor').value;
+        const fab = document.getElementById('filtroPrecioFabricante').value;
+        let filtrados = [...articulosPreciosTodos];
+        if (prov) filtrados = filtrados.filter(a => a.proveedor === prov);
+        if (fab && desde !== 'fabrica') filtrados = filtrados.filter(a => a.empresa_fabrica === fab);
+        // Repoblar los dropdowns dependientes
+        if (desde !== 'fabrica') {
+            const fabricas = [...new Set(filtrados.map(a => a.empresa_fabrica).filter(f => f))].sort();
+            const fabSel = document.getElementById('filtroPrecioFabricante').value;
+            document.getElementById('filtroPrecioFabricante').innerHTML = '<option value="">Todas las fábricas</option>' + fabricas.map(f => '<option' + (f === fabSel ? ' selected' : '') + '>' + f + '</option>').join('');
+        }
+        if (fab) filtrados = filtrados.filter(a => a.empresa_fabrica === fab);
+        const marcas = [...new Set(filtrados.map(a => a.marca).filter(m => m))].sort();
+        const marcaSel = document.getElementById('filtroPrecioMarca').value;
+        document.getElementById('filtroPrecioMarca').innerHTML = '<option value="">Todas las marcas</option>' + marcas.map(m => '<option' + (m === marcaSel ? ' selected' : '') + '>' + m + '</option>').join('');
+    }
+
     function filtrarArticulosPrecios() {
         const texto = (document.getElementById('filtroPrecioTexto').value || '').toLowerCase();
         const proveedor = document.getElementById('filtroPrecioProveedor').value;
+        const fabrica = document.getElementById('filtroPrecioFabricante').value;
         const marca = document.getElementById('filtroPrecioMarca').value;
         articulosPrecios = articulosPreciosTodos.filter(a => {
             return (!texto || a.codigo_goodies.toLowerCase().includes(texto) || a.nombre.toLowerCase().includes(texto)) &&
                    (!proveedor || a.proveedor === proveedor) &&
+                   (!fabrica || a.empresa_fabrica === fabrica) &&
                    (!marca || a.marca === marca);
         });
         // Al filtrar, seleccionar todos los filtrados (limpia selección anterior)
@@ -4032,6 +4108,23 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             const matchMarca = !marca || a.marca === marca;
             return matchTexto && matchProv && matchFab && matchMarca;
         });
+
+    function cascadaFiltrosMargenes(desde) {
+        const prov = document.getElementById('filtroMargenProveedor').value;
+        const fab = document.getElementById('filtroMargenFabricante').value;
+        let filtrados = [...articulosPvpTodos];
+        if (prov) filtrados = filtrados.filter(a => a.proveedor === prov);
+        if (fab && desde !== 'fabrica') filtrados = filtrados.filter(a => a.empresa_fabrica === fab);
+        if (desde !== 'fabrica') {
+            const fabricas = [...new Set(filtrados.map(a => a.empresa_fabrica).filter(f => f))].sort();
+            const fabSel = document.getElementById('filtroMargenFabricante').value;
+            document.getElementById('filtroMargenFabricante').innerHTML = '<option value="">Todas las fábricas</option>' + fabricas.map(f => '<option' + (f === fabSel ? ' selected' : '') + '>' + f + '</option>').join('');
+        }
+        if (fab) filtrados = filtrados.filter(a => a.empresa_fabrica === fab);
+        const marcas = [...new Set(filtrados.map(a => a.marca).filter(m => m))].sort();
+        const marcaSel = document.getElementById('filtroMargenMarca').value;
+        document.getElementById('filtroMargenMarca').innerHTML = '<option value="">Todas las marcas</option>' + marcas.map(m => '<option' + (m === marcaSel ? ' selected' : '') + '>' + m + '</option>').join('');
+    }
         renderArticulosPvp();
     }
 

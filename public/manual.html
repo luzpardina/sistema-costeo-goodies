@@ -495,8 +495,8 @@
             <section id="comex-revaluacion">
                 <h2>Revaluación de Costos</h2>
                 <p>
-                    Permite recalcular un costeo existente con un tipo de cambio diferente, 
-                    sin modificar el costeo original. Útil para:
+                    Permite recalcular costos con tipos de cambio diferentes, 
+                    sin modificar los costeos originales. Útil para:
                 </p>
                 <ul>
                     <li>Actualizar costos por variación del dólar</li>
@@ -504,12 +504,24 @@
                     <li>Valuación contable a fecha de cierre</li>
                 </ul>
 
+                <h4>¿Qué hace exactamente la revaluación?</h4>
+                <div class="important">
+                    El sistema toma <strong>TODOS los costeos calculados</strong> (con estado ✔ y fecha de despacho cargada), 
+                    agrupa los artículos por código y se queda con el <strong>más reciente</strong> de cada uno 
+                    (el último por fecha de despacho). Luego recalcula cada artículo aplicando los nuevos 
+                    tipos de cambio ingresados en la ventana de revaluación. Los costeos originales NO se modifican.
+                </div>
+                <p>
+                    Es decir: si un artículo aparece en 3 costeos distintos, la revaluación solo toma el del 
+                    costeo con la fecha de despacho más reciente.
+                </p>
+
                 <h4>Opciones de revaluación</h4>
                 <table>
                     <tr><th>Opción</th><th>Descripción</th></tr>
                     <tr><td>Motivo</td><td>Revaluación Contable, Análisis de Margen, Actualización Costos de Reposición, Otro</td></tr>
                     <tr><td>Especificar Detalle</td><td>Campo libre para agregar contexto (ej: "TC cierre Enero 2026")</td></tr>
-                    <tr><td>Solo costos contables</td><td>Excluye gastos marcados como "No Contable"</td></tr>
+                    <tr><td>Solo costos contables</td><td>Excluye gastos marcados como "No Contable" del recálculo</td></tr>
                     <tr><td>Nuevo TC USD/EUR/GBP</td><td>Tipos de cambio para la revaluación</td></tr>
                 </table>
             </section>

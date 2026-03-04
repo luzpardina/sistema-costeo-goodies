@@ -36,8 +36,12 @@ router.post('/manual', auth, costeoController.cargaManual);
 router.get('/listar', auth, async (req, res) => {
     try {
         const { Op } = require('sequelize');
+        const sortBy = req.query.sort || 'fecha_despacho';
+        const orderClause = sortBy === 'actualizado'
+            ? [['updated_at', 'DESC']]
+            : [['fecha_despacho', 'DESC NULLS LAST'], ['created_at', 'DESC']];
         const costeos = await Costeo.findAll({
-            order: [['created_at', 'DESC']],
+            order: orderClause,
             include: [
                 { model: ArticuloCosteo, as: 'articulos', attributes: ['id', 'codigo_goodies', 'nombre'] }
             ]
