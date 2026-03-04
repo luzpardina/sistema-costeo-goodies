@@ -3636,6 +3636,8 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                    (!proveedor || a.proveedor === proveedor) &&
                    (!marca || a.marca === marca);
         });
+        // Al filtrar, seleccionar todos los filtrados (limpia selección anterior)
+        preciosSeleccionados = new Set(articulosPrecios.map(a => a.codigo_goodies));
         renderArticulosPrecios();
     }
 
@@ -3646,13 +3648,18 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         renderArticulosPrecios();
     }
 
+    function togglePrecioCheck(codigo) {
+        if (preciosSeleccionados.has(codigo)) preciosSeleccionados.delete(codigo);
+        else preciosSeleccionados.add(codigo);
+    }
+
     function renderArticulosPrecios() {
         const body = document.getElementById('articulosPreciosBody');
         if (!body) return;
         body.innerHTML = articulosPrecios.map(a => {
             const chk = preciosSeleccionados.has(a.codigo_goodies) ? 'checked' : '';
             return '<tr>' +
-                '<td><input type="checkbox" ' + chk + ' onchange="preciosSeleccionados.has(\'' + a.codigo_goodies + '\') ? preciosSeleccionados.delete(\'' + a.codigo_goodies + '\') : preciosSeleccionados.add(\'' + a.codigo_goodies + '\')"></td>' +
+                '<td><input type="checkbox" ' + chk + ' onchange="togglePrecioCheck(\'' + a.codigo_goodies + '\')"></td>' +
                 '<td>' + a.codigo_goodies + '</td><td>' + a.nombre + '</td><td>' + a.proveedor + '</td><td>' + a.rubro + '</td>' +
                 '<td style="text-align:right;font-weight:bold;">$' + a.costo_neto.toFixed(2) + '</td>' +
                 '<td style="text-align:center;">' + a.iva_pct.toFixed(0) + '%</td>' +
@@ -3662,8 +3669,9 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
     }
 
     async function calcularPrecios() {
-        const codigos = [...preciosSeleccionados];
-        if (codigos.length === 0) { alert('Seleccioná al menos un artículo'); return; }
+        // Solo artículos que están en la vista filtrada Y tildados
+        const codigos = articulosPrecios.filter(a => preciosSeleccionados.has(a.codigo_goodies)).map(a => a.codigo_goodies);
+        if (codigos.length === 0) { alert('Seleccioná al menos un artículo de los filtrados'); return; }
         const listasIds = [...listasSeleccionadas];
         if (listasIds.length === 0) { alert('Seleccioná al menos una lista de precios (checkboxes en Listas de Precios)'); return; }
 
