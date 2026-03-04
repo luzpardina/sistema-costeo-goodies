@@ -104,7 +104,7 @@ router.get('/acuerdos/:listaId', auth, async (req, res) => {
 // Listar todos los acuerdos
 router.get('/acuerdos', auth, async (req, res) => {
     try {
-        const acuerdos = await AcuerdoComercial.findAll({ order: [['lista_id', 'ASC'], ['categoria', 'ASC']] });
+        const acuerdos = await AcuerdoComercial.findAll({ order: [['lista_id', 'ASC'], ['orden', 'ASC'], ['categoria', 'ASC']] });
         res.json(acuerdos);
     } catch (error) {
         res.status(500).json({ error: error.message });

@@ -22,6 +22,20 @@ const AcuerdoComercial = sequelize.define('AcuerdoComercial', {
     rubros: {
         type: DataTypes.TEXT,
         defaultValue: ''
+    },
+    tipo_acuerdo: {
+        type: DataTypes.STRING(30),
+        defaultValue: 'flat',
+        comment: 'flat | desc_oc | nota_credito | factura_cliente'
+    },
+    orden: {
+        type: DataTypes.INTEGER,
+        defaultValue: 1
+    },
+    base_calculo: {
+        type: DataTypes.STRING(30),
+        defaultValue: 'bruto',
+        comment: 'bruto | neto_post_desc_oc | neto_post_nota_credito | neto_post_factura_cliente'
     }
 }, {
     tableName: 'acuerdos_comerciales',

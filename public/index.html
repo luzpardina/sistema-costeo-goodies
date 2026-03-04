@@ -349,22 +349,53 @@
             <!-- ACUERDOS COMERCIALES -->
             <div class="card" style="grid-column: 1 / -1;">
                 <h3>🤝 Acuerdos Comerciales (% Acuerdo por Lista + Categoría)</h3>
-                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
-                    <select id="acuerdoListaSelect" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
-                        <option value="">Seleccionar Lista...</option>
-                    </select>
-                    <select id="acuerdoCategoriaSelect" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
-                        <option value="Frescos">Frescos</option>
-                        <option value="Almacén">Almacén</option>
-                        <option value="Bebidas">Bebidas</option>
-                        <option value="Otros">Otros</option>
-                    </select>
-                    <input type="number" id="acuerdoPct" placeholder="% Acuerdo" step="0.1" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;width:120px;">
-                    <button class="btn btn-primary" onclick="agregarAcuerdo()">+ Agregar</button>
+                <div style="display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap;align-items:end;">
+                    <div style="display:flex;flex-direction:column;gap:2px;">
+                        <label style="font-size:10px;color:#888;">Lista</label>
+                        <select id="acuerdoListaSelect" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;font-size:12px;">
+                            <option value="">Seleccionar Lista...</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:2px;">
+                        <label style="font-size:10px;color:#888;">Categoría</label>
+                        <select id="acuerdoCategoriaSelect" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;font-size:12px;">
+                            <option value="Frescos">Frescos</option>
+                            <option value="Almacén">Almacén</option>
+                            <option value="Bebidas">Bebidas</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:2px;">
+                        <label style="font-size:10px;color:#888;">% Acuerdo</label>
+                        <input type="number" id="acuerdoPct" placeholder="%" step="0.1" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;width:70px;font-size:12px;">
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:2px;">
+                        <label style="font-size:10px;color:#888;">Tipo</label>
+                        <select id="acuerdoTipo" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;font-size:12px;">
+                            <option value="flat">Flat (s/Precio bruto)</option>
+                            <option value="desc_oc">Descuento en OC</option>
+                            <option value="nota_credito">Nota de Crédito</option>
+                            <option value="factura_cliente">Factura del Cliente</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:2px;">
+                        <label style="font-size:10px;color:#888;">Orden</label>
+                        <input type="number" id="acuerdoOrden" value="1" min="1" max="10" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;width:50px;font-size:12px;">
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:2px;">
+                        <label style="font-size:10px;color:#888;">Base de cálculo</label>
+                        <select id="acuerdoBase" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;font-size:12px;">
+                            <option value="bruto">Precio bruto</option>
+                            <option value="neto_post_desc_oc">Neto post Desc. OC</option>
+                            <option value="neto_post_nota_credito">Neto post NC</option>
+                            <option value="neto_post_factura_cliente">Neto post Fact. Cliente</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="agregarAcuerdo()" style="padding:6px 15px;">+ Agregar</button>
                 </div>
-                <div class="table-container" style="max-height:300px;overflow-y:auto;">
-                    <table>
-                        <thead><tr><th>Lista</th><th>Categoría</th><th>% Acuerdo</th><th>Rubros</th><th>Acciones</th></tr></thead>
+                <div class="table-container" style="max-height:350px;overflow-y:auto;">
+                    <table style="font-size:12px;">
+                        <thead><tr><th>Lista</th><th>Categoría</th><th>% Acuerdo</th><th>Tipo</th><th>Orden</th><th>Base de Cálculo</th><th>Rubros</th><th>Acciones</th></tr></thead>
                         <tbody id="acuerdosBody"></tbody>
                     </table>
                 </div>
@@ -3564,6 +3595,19 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         } catch(e) { console.error('Error cargando acuerdos:', e); }
     }
 
+    const TIPO_ACUERDO_LABELS = {
+        'flat': 'Flat (s/Bruto)',
+        'desc_oc': 'Desc. en OC',
+        'nota_credito': 'Nota de Crédito',
+        'factura_cliente': 'Fact. del Cliente'
+    };
+    const BASE_CALCULO_LABELS = {
+        'bruto': 'Precio bruto',
+        'neto_post_desc_oc': 'Neto post OC',
+        'neto_post_nota_credito': 'Neto post NC',
+        'neto_post_factura_cliente': 'Neto post Fact.Cli.'
+    };
+
     function renderAcuerdos() {
         const body = document.getElementById('acuerdosBody');
         if (!body) return;
@@ -3571,8 +3615,12 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             const lista = listasPrecios.find(l => l.id === a.lista_id);
             const editing = a._editing;
             const rubrosArr = (a.rubros || '').split(',').filter(r => r.trim());
+            const tipoLabel = TIPO_ACUERDO_LABELS[a.tipo_acuerdo] || 'Flat (s/Bruto)';
+            const baseLabel = BASE_CALCULO_LABELS[a.base_calculo] || 'Precio bruto';
+            const orden = a.orden || 1;
+
             if (editing) {
-                const editSt = 'background:#1e1e2f;border:1px solid #555;color:#fff;padding:3px 5px;border-radius:3px;font-size:12px;';
+                const editSt = 'background:#1e1e2f;border:1px solid #555;color:#fff;padding:3px 5px;border-radius:3px;font-size:11px;';
                 const rubrosCheckboxes = rubrosDisponibles.map(r => {
                     const checked = rubrosArr.includes(r) ? 'checked' : '';
                     return `<label style="display:inline-flex;align-items:center;gap:3px;margin:2px 6px 2px 0;font-size:11px;"><input type="checkbox" class="rubro-check-${a.id}" value="${r}" ${checked}>${r}</label>`;
@@ -3580,18 +3628,35 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 return `<tr style="background:rgba(33,150,243,0.08);">
                     <td>${lista ? lista.nombre : '-'}</td>
                     <td>${a.categoria}</td>
-                    <td><input type="number" step="0.1" style="${editSt}width:70px;" value="${a.pct_acuerdo}" id="ed_acuerdo_pct_${a.id}"></td>
-                    <td style="max-width:300px;">${rubrosCheckboxes || '<span style="color:#888;">Sin rubros en catálogo</span>'}</td>
+                    <td><input type="number" step="0.1" style="${editSt}width:60px;" value="${a.pct_acuerdo}" id="ed_acuerdo_pct_${a.id}"></td>
+                    <td><select style="${editSt}" id="ed_acuerdo_tipo_${a.id}">
+                        <option value="flat" ${a.tipo_acuerdo==='flat'?'selected':''}>Flat (s/Bruto)</option>
+                        <option value="desc_oc" ${a.tipo_acuerdo==='desc_oc'?'selected':''}>Desc. en OC</option>
+                        <option value="nota_credito" ${a.tipo_acuerdo==='nota_credito'?'selected':''}>Nota de Crédito</option>
+                        <option value="factura_cliente" ${a.tipo_acuerdo==='factura_cliente'?'selected':''}>Fact. del Cliente</option>
+                    </select></td>
+                    <td><input type="number" min="1" max="10" style="${editSt}width:40px;" value="${orden}" id="ed_acuerdo_orden_${a.id}"></td>
+                    <td><select style="${editSt}" id="ed_acuerdo_base_${a.id}">
+                        <option value="bruto" ${a.base_calculo==='bruto'?'selected':''}>Precio bruto</option>
+                        <option value="neto_post_desc_oc" ${a.base_calculo==='neto_post_desc_oc'?'selected':''}>Neto post OC</option>
+                        <option value="neto_post_nota_credito" ${a.base_calculo==='neto_post_nota_credito'?'selected':''}>Neto post NC</option>
+                        <option value="neto_post_factura_cliente" ${a.base_calculo==='neto_post_factura_cliente'?'selected':''}>Neto post Fact.Cli.</option>
+                    </select></td>
+                    <td style="max-width:250px;">${rubrosCheckboxes || '<span style="color:#888;">Sin rubros</span>'}</td>
                     <td style="white-space:nowrap;">
                         <button class="btn btn-sm btn-success" onclick="guardarAcuerdoInline('${a.id}')" title="Guardar">💾</button>
                         <button class="btn btn-sm btn-secondary" onclick="cancelarEdicionAcuerdo('${a.id}')" title="Cancelar">✕</button>
                     </td>
                 </tr>`;
             }
+            const tipoColor = a.tipo_acuerdo === 'desc_oc' ? '#4fc3f7' : a.tipo_acuerdo === 'nota_credito' ? '#ff9800' : a.tipo_acuerdo === 'factura_cliente' ? '#f44336' : '#4CAF50';
             return `<tr>
                 <td>${lista ? lista.nombre : a.lista_id}</td>
                 <td>${a.categoria}</td>
                 <td>${a.pct_acuerdo}%</td>
+                <td style="color:${tipoColor};">${tipoLabel}</td>
+                <td style="text-align:center;">${orden}</td>
+                <td style="font-size:11px;">${baseLabel}</td>
                 <td style="font-size:11px;color:#aaa;">${rubrosArr.length > 0 ? rubrosArr.join(', ') : '<span style="color:#666;">Todos</span>'}</td>
                 <td style="white-space:nowrap;">
                     <button class="btn btn-sm btn-secondary" onclick="editarAcuerdoInline('${a.id}')" title="Editar">✏️</button>
@@ -3613,13 +3678,16 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
 
     async function guardarAcuerdoInline(id) {
         const pct = parseFloat(document.getElementById('ed_acuerdo_pct_' + id).value) || 0;
+        const tipo_acuerdo = document.getElementById('ed_acuerdo_tipo_' + id).value;
+        const orden = parseInt(document.getElementById('ed_acuerdo_orden_' + id).value) || 1;
+        const base_calculo = document.getElementById('ed_acuerdo_base_' + id).value;
         const checks = document.querySelectorAll('.rubro-check-' + id + ':checked');
         const rubros = [...checks].map(c => c.value).join(',');
         try {
             await fetch(API_URL + '/api/comercial/acuerdos/' + id, {
                 method: 'PUT',
                 headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pct_acuerdo: pct, rubros })
+                body: JSON.stringify({ pct_acuerdo: pct, tipo_acuerdo, orden, base_calculo, rubros })
             });
             await cargarAcuerdos();
         } catch(e) { alert('Error: ' + e.message); }
@@ -3629,12 +3697,17 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         const lista_id = document.getElementById('acuerdoListaSelect').value;
         const categoria = document.getElementById('acuerdoCategoriaSelect').value;
         const pct_acuerdo = parseFloat(document.getElementById('acuerdoPct').value) || 0;
+        const tipo_acuerdo = document.getElementById('acuerdoTipo').value;
+        const orden = parseInt(document.getElementById('acuerdoOrden').value) || 1;
+        const base_calculo = document.getElementById('acuerdoBase').value;
         if (!lista_id) { alert('Seleccioná una lista'); return; }
+        if (!pct_acuerdo) { alert('Ingresá un porcentaje'); return; }
         await fetch(API_URL + '/api/comercial/acuerdos', {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lista_id, categoria, pct_acuerdo })
+            body: JSON.stringify({ lista_id, categoria, pct_acuerdo, tipo_acuerdo, orden, base_calculo })
         });
+        document.getElementById('acuerdoPct').value = '';
         cargarAcuerdos();
     }
 
