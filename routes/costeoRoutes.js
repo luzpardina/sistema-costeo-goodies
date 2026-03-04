@@ -441,6 +441,7 @@ router.put('/:id/actualizar', auth, async (req, res) => {
         }
 
         await ArticuloCosteo.destroy({ where: { costeo_id: id } });
+        const catalogoSyncInfo = {};
         if (datos.articulos && datos.articulos.length > 0) {
             for (const art of datos.articulos) {
                 const unidadesTotales = (parseFloat(art.cantidad_cajas) || 0) * (parseFloat(art.unidades_por_caja) || 0);
@@ -473,10 +474,14 @@ router.put('/:id/actualizar', auth, async (req, res) => {
                         // Actualizar proveedor del catálogo con el proveedor del costeo
                         if (datos.proveedor && datos.proveedor !== catArt.proveedor) {
                             catUpdates.proveedor = datos.proveedor;
+                            if (!catalogoSyncInfo.proveedor_cambios) catalogoSyncInfo.proveedor_cambios = [];
+                            catalogoSyncInfo.proveedor_cambios.push({ codigo: art.codigo_goodies, antes: catArt.proveedor, despues: datos.proveedor });
                         }
                         // Actualizar empresa_fabrica con empresa_intermediaria del costeo (si existe)
                         if (datos.empresa_intermediaria && datos.empresa_intermediaria !== catArt.empresa_fabrica) {
                             catUpdates.empresa_fabrica = datos.empresa_intermediaria;
+                            if (!catalogoSyncInfo.fabrica_cambios) catalogoSyncInfo.fabrica_cambios = [];
+                            catalogoSyncInfo.fabrica_cambios.push({ codigo: art.codigo_goodies, antes: catArt.empresa_fabrica, despues: datos.empresa_intermediaria });
                         }
                         if (Object.keys(catUpdates).length > 0) {
                             await catArt.update(catUpdates);
@@ -527,7 +532,7 @@ router.put('/:id/actualizar', auth, async (req, res) => {
             }
         }
 
-        res.json({ mensaje: 'Costeo actualizado exitosamente', id: id });
+        res.json({ mensaje: 'Costeo actualizado exitosamente', id: id, catalogo_sync: catalogoSyncInfo });
     } catch (error) {
         console.error('Error al actualizar costeo:', error);
         res.status(500).json({ error: 'Error al actualizar costeo', detalles: error.message });

@@ -1821,6 +1821,9 @@ setTimeout(function() { toggleConsolidado(); calcularPartesBaseAduana(); }, 100)
         }
 async function editarCosteo(id) {
             try {
+                // Limpiar alertas de legajos anteriores
+                const alertaDiv = document.getElementById('maestroAlertas');
+                if (alertaDiv) { alertaDiv.innerHTML = ''; alertaDiv.style.display = 'none'; }
                 const res = await fetch(API_URL + '/api/costeos/' + id, { headers: { 'Authorization': 'Bearer ' + token } });
                 const costeo = await res.json();
                 if (res.ok) {
@@ -2311,6 +2314,9 @@ function abrirCargaManual() {
             articulosManual = [];
             gastosManual = [];
             proveedoresConsolidado = [];
+            // Limpiar alertas de legajos anteriores
+            const alertaDiv = document.getElementById('maestroAlertas');
+            if (alertaDiv) { alertaDiv.innerHTML = ''; alertaDiv.style.display = 'none'; }
             document.getElementById('cm_nombre').value = '';
             document.getElementById('cm_proveedor').value = '';
             document.getElementById('cm_tieneIntermediaria').checked = false;
@@ -2855,6 +2861,21 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                         }
                         if (data.catalogo.completados && data.catalogo.completados.length > 0) {
                             msgBase += '\n✅ Se completaron ' + data.catalogo.completados.length + ' dato(s) vacíos en el catálogo.';
+                        }
+                    }
+                    // Info sobre sincronización proveedor/fábrica al catálogo
+                    if (data.catalogo_sync) {
+                        if (data.catalogo_sync.proveedor_cambios && data.catalogo_sync.proveedor_cambios.length > 0) {
+                            msgBase += '\n\n🔄 CATÁLOGO ACTUALIZADO - Proveedor de Origen:';
+                            data.catalogo_sync.proveedor_cambios.forEach(c => {
+                                msgBase += '\n  ' + c.codigo + ': "' + (c.antes || 'vacío') + '" → "' + c.despues + '"';
+                            });
+                        }
+                        if (data.catalogo_sync.fabrica_cambios && data.catalogo_sync.fabrica_cambios.length > 0) {
+                            msgBase += '\n\n🔄 CATÁLOGO ACTUALIZADO - Empresa Fábrica:';
+                            data.catalogo_sync.fabrica_cambios.forEach(c => {
+                                msgBase += '\n  ' + c.codigo + ': "' + (c.antes || 'vacío') + '" → "' + c.despues + '"';
+                            });
                         }
                     }
                     alert(msgBase);
