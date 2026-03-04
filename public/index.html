@@ -202,17 +202,17 @@
                     </div>
                     <div class="filtro-grupo">
                         <label>Proveedor de Origen</label>
-                        <input type="text" id="filtroProveedor" list="listaProveedores" placeholder="Escribí para buscar..." oninput="cascadaFiltrosCosteos(); aplicarFiltros()" onchange="cascadaFiltrosCosteos(); aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
+                        <input type="text" id="filtroProveedor" autocomplete="off" list="listaProveedores" placeholder="Escribí para buscar..." oninput="cascadaFiltrosCosteos(); aplicarFiltros()" onchange="cascadaFiltrosCosteos(); aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
                         <datalist id="listaProveedores"></datalist>
                     </div>
                     <div class="filtro-grupo">
                         <label>Empresa Fábrica</label>
-                        <input type="text" id="filtroFabricante" list="listaFabricantes" placeholder="Escribí para buscar..." oninput="cascadaFiltrosCosteos(); aplicarFiltros()" onchange="cascadaFiltrosCosteos(); aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
+                        <input type="text" id="filtroFabricante" autocomplete="off" list="listaFabricantes" placeholder="Escribí para buscar..." oninput="cascadaFiltrosCosteos(); aplicarFiltros()" onchange="cascadaFiltrosCosteos(); aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
                         <datalist id="listaFabricantes"></datalist>
                     </div>
                     <div class="filtro-grupo">
                         <label>Marca</label>
-                        <input type="text" id="filtroMarca" list="listaMarcas" placeholder="Escribí para buscar..." oninput="aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 180px;">
+                        <input type="text" id="filtroMarca" autocomplete="off" list="listaMarcas" placeholder="Escribí para buscar..." oninput="aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 180px;">
                         <datalist id="listaMarcas"></datalist>
                     </div>
                     <div class="filtro-grupo">
@@ -261,17 +261,17 @@
                     </div>
                     <div class="filtro-grupo">
                         <label>Proveedor de Origen</label>
-                        <input type="text" id="filtroProveedorArticulo" list="listaProveedoresArticulo" placeholder="Escribí para buscar..." oninput="cascadaFiltrosUltimoCosto(); filtrarArticulos()" onchange="cascadaFiltrosUltimoCosto(); filtrarArticulos()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
+                        <input type="text" id="filtroProveedorArticulo" autocomplete="off" list="listaProveedoresArticulo" placeholder="Escribí para buscar..." oninput="cascadaFiltrosUltimoCosto(); filtrarArticulos()" onchange="cascadaFiltrosUltimoCosto(); filtrarArticulos()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
                         <datalist id="listaProveedoresArticulo"></datalist>
                     </div>
                     <div class="filtro-grupo">
                         <label>Empresa Fábrica</label>
-                        <input type="text" id="filtroFabricanteArticulo" list="listaFabricantesArticulo" placeholder="Escribí para buscar..." oninput="cascadaFiltrosUltimoCosto(); filtrarArticulos()" onchange="cascadaFiltrosUltimoCosto(); filtrarArticulos()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
+                        <input type="text" id="filtroFabricanteArticulo" autocomplete="off" list="listaFabricantesArticulo" placeholder="Escribí para buscar..." oninput="cascadaFiltrosUltimoCosto(); filtrarArticulos()" onchange="cascadaFiltrosUltimoCosto(); filtrarArticulos()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
                         <datalist id="listaFabricantesArticulo"></datalist>
                     </div>
                     <div class="filtro-grupo">
                         <label>Marca</label>
-                        <input type="text" id="filtroMarcaArticulo" list="listaMarcasArticulo" placeholder="Escribí para buscar..." oninput="filtrarArticulos()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 150px;">
+                        <input type="text" id="filtroMarcaArticulo" autocomplete="off" list="listaMarcasArticulo" placeholder="Escribí para buscar..." oninput="filtrarArticulos()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 150px;">
                         <datalist id="listaMarcasArticulo"></datalist>
                     </div>
                     <button class="btn btn-secondary" onclick="cargarUltimosCostos()">Actualizar</button>
