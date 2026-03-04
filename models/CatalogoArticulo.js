@@ -42,6 +42,10 @@ const CatalogoArticulo = sequelize.define('CatalogoArticulo', {
     proveedor_activo: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
+    },
+    empresa_fabrica_activa: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
     }
 }, {
     tableName: 'catalogo_articulos',

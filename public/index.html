@@ -2893,6 +2893,10 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                         if (data.proveedores_inactivos > 0) info += ' | Inactivos: <strong style="color:#f44336;">' + data.proveedores_inactivos + '</strong>';
                         else info += ' <span style="color:#ff9800;">(ningún proveedor marcado como inactivo)</span>';
                     }
+                    if (data.fabricas_activas !== undefined) {
+                        info += '<br>Fábricas activas: <strong>' + data.fabricas_activas + '</strong>';
+                        if (data.fabricas_inactivas > 0) info += ' | Inactivas: <strong style="color:#f44336;">' + data.fabricas_inactivas + '</strong>';
+                    }
                     info += '<br>Artículos activos: <strong style="color:#4CAF50;">' + (data.total || 0) + '</strong>';
                     if (data.totalInactivos > 0) info += ' | Inactivos: <strong style="color:#f44336;">' + data.totalInactivos + '</strong>';
                     info += ' | Total: ' + (data.totalGeneral || 0);

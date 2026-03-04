@@ -38,6 +38,7 @@ function parsearExcelCatalogo(buffer) {
             iva_porcentaje: parsePct(row['% IVA'] || row['iva_porcentaje']),
             estadistica_porcentaje: parsePct(row['% Estadística'] || row['estadistica_porcentaje']),
             proveedor_activo: row['Proveedor Activo'] !== undefined ? String(row['Proveedor Activo']).toUpperCase().trim() !== 'NO' : null,
+            empresa_fabrica_activa: row['Empresa Fábrica Activa'] !== undefined ? String(row['Empresa Fábrica Activa']).toUpperCase().trim() !== 'NO' : null,
             habilitado: row['Artículo Activo'] !== undefined ? String(row['Artículo Activo']).toUpperCase().trim() !== 'NO' : null,
             unidades_por_caja: row['Und/Caja'] !== undefined ? parseFloat(row['Und/Caja']) || null : null,
             ultimo_valor_origen: row['Último Valor Origen'] !== undefined ? parseFloat(row['Último Valor Origen']) || null : null,
@@ -104,6 +105,9 @@ router.post('/previsualizar', auth, upload.single('archivo'), async (req, res) =
             if (reg.proveedor_activo !== null && existente.proveedor_activo !== reg.proveedor_activo) {
                 camposModificados.push({ campo: 'Proveedor Activo', antes: existente.proveedor_activo ? 'SI' : 'NO', despues: reg.proveedor_activo ? 'SI' : 'NO', tipo: 'cambio' });
             }
+            if (reg.empresa_fabrica_activa !== null && existente.empresa_fabrica_activa !== reg.empresa_fabrica_activa) {
+                camposModificados.push({ campo: 'Empresa Fábrica Activa', antes: existente.empresa_fabrica_activa ? 'SI' : 'NO', despues: reg.empresa_fabrica_activa ? 'SI' : 'NO', tipo: 'cambio' });
+            }
             if (reg.habilitado !== null && existente.habilitado !== reg.habilitado) {
                 camposModificados.push({ campo: 'Artículo Activo', antes: existente.habilitado ? 'SI' : 'NO', despues: reg.habilitado ? 'SI' : 'NO', tipo: 'cambio' });
             }
@@ -155,10 +159,11 @@ router.post('/importar', auth, upload.single('archivo'), async (req, res) => {
                     if (reg.ultimo_valor_origen !== null) updates.ultimo_valor_origen = reg.ultimo_valor_origen;
                     if (reg.ultimo_valor_fabrica !== null) updates.ultimo_valor_fabrica = reg.ultimo_valor_fabrica;
                     if (reg.proveedor_activo !== null) updates.proveedor_activo = reg.proveedor_activo;
+                    if (reg.empresa_fabrica_activa !== null) updates.empresa_fabrica_activa = reg.empresa_fabrica_activa;
                     if (reg.habilitado !== null) updates.habilitado = reg.habilitado;
                     if (Object.keys(updates).length > 0) { await existente.update(updates); actualizados++; }
                 } else {
-                    await CatalogoArticulo.create({ ...reg, habilitado: reg.habilitado !== null ? reg.habilitado : true, proveedor_activo: reg.proveedor_activo !== null ? reg.proveedor_activo : true });
+                    await CatalogoArticulo.create({ ...reg, habilitado: reg.habilitado !== null ? reg.habilitado : true, proveedor_activo: reg.proveedor_activo !== null ? reg.proveedor_activo : true, empresa_fabrica_activa: reg.empresa_fabrica_activa !== null ? reg.empresa_fabrica_activa : true });
                     importados++;
                 }
             } catch (e) { errores++; }
@@ -184,9 +189,9 @@ router.get('/descargar', auth, async (req, res) => {
             'Rubro', 'SubRubro', 'Cod. Elaborador', 'Pos. Arancelaria',
             '% Derechos', '% Imp. Internos', '% IVA', '% Estadística',
             'Moneda', 'País Origen', 'Und/Caja', 'Último Valor Origen', 'Último Valor Fábrica',
-            'Proveedor Activo', 'Artículo Activo'
+            'Proveedor Activo', 'Empresa Fábrica Activa', 'Artículo Activo'
         ];
-        const colWidths = [18.6, 57.5, 23.6, 26.5, 19.8, 30.8, 26.8, 15.4, 15.3, 10.8, 8, 5.9, 9.9, 8, 15.4, 8.9, 8.4, 7.4, 9.9, 7.8];
+        const colWidths = [18.6, 57.5, 23.6, 26.5, 19.8, 30.8, 26.8, 15.4, 15.3, 10.8, 8, 5.9, 9.9, 8, 15.4, 8.9, 8.4, 7.4, 9.9, 12, 7.8];
 
         // Set column widths
         ws.columns = headers.map((h, i) => ({ header: h, width: colWidths[i] || 12 }));
@@ -206,8 +211,9 @@ router.get('/descargar', auth, async (req, res) => {
         // Add data rows
         for (const a of articulos) {
             const isProvInactive = a.proveedor_activo === false;
+            const isFabInactive = a.empresa_fabrica_activa === false;
             const isArtInactive = a.habilitado === false;
-            const inactive = isProvInactive || isArtInactive;
+            const inactive = isProvInactive || isFabInactive || isArtInactive;
 
             const row = ws.addRow([
                 a.codigo_goodies,
@@ -229,6 +235,7 @@ router.get('/descargar', auth, async (req, res) => {
                 a.ultimo_valor_origen || '',
                 a.ultimo_valor_fabrica || '',
                 isProvInactive ? 'NO' : 'SI',
+                isFabInactive ? 'NO' : 'SI',
                 isArtInactive ? 'NO' : 'SI'
             ]);
 
@@ -241,7 +248,7 @@ router.get('/descargar', auth, async (req, res) => {
         }
 
         // Auto filter on all columns
-        ws.autoFilter = { from: 'A1', to: `T${articulos.length + 1}` };
+        ws.autoFilter = { from: 'A1', to: `U${articulos.length + 1}` };
 
         // Freeze first row
         ws.views = [{ state: 'frozen', ySplit: 1 }];
@@ -312,7 +319,7 @@ router.get('/fabricantes', auth, async (req, res) => {
     try {
         const fabricantes = await CatalogoArticulo.findAll({
             attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col('empresa_fabrica')), 'empresa_fabrica']],
-            where: { habilitado: true, proveedor_activo: true, empresa_fabrica: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } },
+            where: { habilitado: true, proveedor_activo: true, empresa_fabrica_activa: true, empresa_fabrica: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } },
             order: [['empresa_fabrica', 'ASC']], raw: true
         });
         res.json(fabricantes.map(f => f.empresa_fabrica).filter(f => f));
@@ -351,7 +358,7 @@ router.post('/validar', auth, async (req, res) => {
 router.get('/stats', auth, async (req, res) => {
     try {
         const total = await CatalogoArticulo.count({ where: { habilitado: true, proveedor_activo: true } });
-        const totalInactivos = await CatalogoArticulo.count({ where: { [Op.or]: [{ habilitado: false }, { proveedor_activo: false }] } });
+        const totalInactivos = await CatalogoArticulo.count({ where: { [Op.or]: [{ habilitado: false }, { proveedor_activo: false }, { empresa_fabrica_activa: false }] } });
         const totalGeneral = await CatalogoArticulo.count();
         const ultimoArt = await CatalogoArticulo.findOne({ order: [['updated_at', 'DESC']], attributes: ['updated_at'], raw: true });
         
@@ -366,11 +373,24 @@ router.get('/stats', auth, async (req, res) => {
             where: { proveedor_activo: false, proveedor: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } },
             raw: true
         });
+        // Contar fábricas activas vs inactivas
+        const fabsActivas = await CatalogoArticulo.findAll({
+            attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col('empresa_fabrica')), 'empresa_fabrica']],
+            where: { habilitado: true, empresa_fabrica_activa: true, empresa_fabrica: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } },
+            raw: true
+        });
+        const fabsInactivas = await CatalogoArticulo.findAll({
+            attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col('empresa_fabrica')), 'empresa_fabrica']],
+            where: { empresa_fabrica_activa: false, empresa_fabrica: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } },
+            raw: true
+        });
         
         res.json({ 
             total, totalInactivos, totalGeneral,
             proveedores_activos: provsActivos.length,
             proveedores_inactivos: provsInactivos.length,
+            fabricas_activas: fabsActivas.length,
+            fabricas_inactivas: fabsInactivas.length,
             ultima_actualizacion: ultimoArt ? ultimoArt.updated_at : null 
         });
     } catch (error) { res.json({ total: 0, ultima_actualizacion: null }); }

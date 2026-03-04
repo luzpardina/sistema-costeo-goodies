@@ -164,7 +164,7 @@ router.get('/ultimos-costos', auth, async (req, res) => {
         const codigos = resultado.map(r => r.codigo_goodies);
         const catItems = codigos.length > 0 ? await CatalogoArticulo.findAll({
             where: { codigo_goodies: { [Op.in]: codigos } },
-            attributes: ['codigo_goodies', 'proveedor', 'empresa_fabrica', 'marca', 'rubro', 'iva_porcentaje', 'imp_interno_porcentaje', 'proveedor_activo', 'habilitado'],
+            attributes: ['codigo_goodies', 'proveedor', 'empresa_fabrica', 'marca', 'rubro', 'iva_porcentaje', 'imp_interno_porcentaje', 'proveedor_activo', 'empresa_fabrica_activa', 'habilitado'],
             raw: true
         }) : [];
         const catMap = {};
@@ -172,7 +172,6 @@ router.get('/ultimos-costos', auth, async (req, res) => {
         resultado.forEach(r => {
             const cat = catMap[r.codigo_goodies];
             if (cat) {
-                // Usar proveedor y empresa_fabrica del catálogo (datos maestros)
                 r.proveedor = cat.proveedor || r.proveedor || '';
                 r.empresa_fabrica = cat.empresa_fabrica || '';
                 r.marca = cat.marca || '';
@@ -180,6 +179,7 @@ router.get('/ultimos-costos', auth, async (req, res) => {
                 r.iva_porcentaje = parseFloat(cat.iva_porcentaje) || 0.21;
                 r.imp_interno_porcentaje = parseFloat(cat.imp_interno_porcentaje) || 0;
                 r.proveedor_activo = cat.proveedor_activo !== false;
+                r.empresa_fabrica_activa = cat.empresa_fabrica_activa !== false;
                 r.articulo_activo = cat.habilitado !== false;
             } else {
                 r.marca = '';
@@ -188,12 +188,13 @@ router.get('/ultimos-costos', auth, async (req, res) => {
                 r.iva_porcentaje = 0.21;
                 r.imp_interno_porcentaje = 0;
                 r.proveedor_activo = true;
+                r.empresa_fabrica_activa = true;
                 r.articulo_activo = true;
             }
         });
 
-        // Filtrar: solo artículos con proveedor activo y artículo activo
-        const resultadoFiltrado = resultado.filter(r => r.proveedor_activo && r.articulo_activo);
+        // Filtrar: solo artículos con proveedor activo, fábrica activa y artículo activo
+        const resultadoFiltrado = resultado.filter(r => r.proveedor_activo && r.empresa_fabrica_activa && r.articulo_activo);
 
         res.json(resultadoFiltrado);
     } catch (error) {
