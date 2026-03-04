@@ -337,9 +337,9 @@
                     <table style="font-size:12px;">
                         <thead><tr>
                             <th style="width:30px;"><input type="checkbox" id="selectAllListas" onchange="toggleSelectAllListas()" title="Seleccionar todas para reportes"></th>
-                            <th>Nombre</th><th>% Logístico</th><th>% IIBB</th><th>% Financiero</th><th>% Comisión</th>
-                            <th>% Margen Cliente de Goodies</th><th>% Margen Goodies</th><th>% Markup Cliente Trad.</th>
-                            <th>% Otro Costo</th><th>Observación</th><th>Acciones</th>
+                            <th>Nombre</th><th>% Margen Goodies</th><th>% Logístico</th><th>% Financiero</th><th>% Comisión</th>
+                            <th>% IIBB</th><th>% Otro Costo</th><th>% Margen Cliente de Goodies</th><th>% Markup Cliente Trad.</th>
+                            <th>Observación</th><th>Acciones</th>
                         </tr></thead>
                         <tbody id="listasBody"></tbody>
                     </table>
@@ -3425,14 +3425,14 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 return `<tr style="background:rgba(33,150,243,0.08);">
                     <td><input type="checkbox" ${sel ? 'checked' : ''} onchange="toggleListaSeleccion('${l.id}', this.checked)"></td>
                     <td><input style="${editSt}width:100px;" value="${l.nombre}" id="ed_nombre_${l.id}"></td>
+                    <td><input type="number" step="0.1" style="${editSt}" value="${l.pct_margen_goodies||0}" id="ed_mg_${l.id}"></td>
                     <td><input type="number" step="0.1" style="${editSt}" value="${l.pct_logistico||0}" id="ed_log_${l.id}"></td>
-                    <td><input type="number" step="0.1" style="${editSt}" value="${l.pct_iibb||0}" id="ed_iibb_${l.id}"></td>
                     <td><input type="number" step="0.1" style="${editSt}" value="${l.pct_financiero||0}" id="ed_fin_${l.id}"></td>
                     <td><input type="number" step="0.1" style="${editSt}" value="${l.pct_comision||0}" id="ed_com_${l.id}"></td>
-                    <td><input type="number" step="0.1" style="${editSt}" value="${l.pct_margen_cliente||0}" id="ed_mc_${l.id}"></td>
-                    <td><input type="number" step="0.1" style="${editSt}" value="${l.pct_margen_goodies||0}" id="ed_mg_${l.id}"></td>
-                    <td><input type="number" step="0.1" style="${editSt}" value="${l.pct_markup_tradicional||0}" id="ed_mt_${l.id}"></td>
+                    <td><input type="number" step="0.1" style="${editSt}" value="${l.pct_iibb||0}" id="ed_iibb_${l.id}"></td>
                     <td><input type="number" step="0.1" style="${editSt}" value="${l.pct_otro||0}" id="ed_otro_${l.id}"></td>
+                    <td><input type="number" step="0.1" style="${editSt}" value="${l.pct_margen_cliente||0}" id="ed_mc_${l.id}"></td>
+                    <td><input type="number" step="0.1" style="${editSt}" value="${l.pct_markup_tradicional||0}" id="ed_mt_${l.id}"></td>
                     <td><input style="${obsSt}" value="${l.observacion||''}" id="ed_obs_${l.id}"></td>
                     <td class="actions" style="white-space:nowrap;">
                         <button class="btn btn-sm btn-success" onclick="guardarListaInline('${l.id}')" title="Guardar">💾</button>
@@ -3443,14 +3443,14 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             return `<tr>
                 <td><input type="checkbox" ${sel ? 'checked' : ''} onchange="toggleListaSeleccion('${l.id}', this.checked)"></td>
                 <td style="font-weight:bold;">${l.nombre}</td>
+                <td>${parseFloat(l.pct_margen_goodies||0).toFixed(2)}%</td>
                 <td>${parseFloat(l.pct_logistico||0).toFixed(2)}%</td>
-                <td>${parseFloat(l.pct_iibb||0).toFixed(2)}%</td>
                 <td>${parseFloat(l.pct_financiero||0).toFixed(2)}%</td>
                 <td>${parseFloat(l.pct_comision||0).toFixed(2)}%</td>
-                <td>${parseFloat(l.pct_margen_cliente||0).toFixed(2)}%</td>
-                <td>${parseFloat(l.pct_margen_goodies||0).toFixed(2)}%</td>
-                <td>${parseFloat(l.pct_markup_tradicional||0).toFixed(2)}%</td>
+                <td>${parseFloat(l.pct_iibb||0).toFixed(2)}%</td>
                 <td>${parseFloat(l.pct_otro||0).toFixed(2)}%</td>
+                <td>${parseFloat(l.pct_margen_cliente||0).toFixed(2)}%</td>
+                <td>${parseFloat(l.pct_markup_tradicional||0).toFixed(2)}%</td>
                 <td style="font-size:11px;color:#aaa;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${l.observacion||''}">${l.observacion || '-'}</td>
                 <td class="actions" style="white-space:nowrap;">
                     <button class="btn btn-sm btn-secondary" onclick="editarListaInline('${l.id}')" title="Editar">✏️</button>
