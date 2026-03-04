@@ -359,22 +359,19 @@ router.post('/calcular-precios', auth, async (req, res) => {
 router.post('/calcular-margenes', auth, async (req, res) => {
     try {
         const { articulos_pvp, lista_ids } = req.body;
-        // articulos_pvp = [{ codigo_goodies, pvp }, ...]
-        // lista_ids = array de UUIDs de listas seleccionadas (opcional)
 
         let whereListas = {};
         if (lista_ids && lista_ids.length > 0) {
             whereListas = { id: { [Op.in]: lista_ids } };
         }
         const listas = await ListaPrecio.findAll({ where: whereListas, order: [['nombre', 'ASC']] });
-        const acuerdos = await AcuerdoComercial.findAll();
+        const todosAcuerdos = await AcuerdoComercial.findAll({ order: [['orden', 'ASC']] });
 
         const resultados = [];
 
         for (const artPvp of articulos_pvp) {
             const { codigo_goodies, pvp } = artPvp;
 
-            // Buscar último costo neto del artículo
             const ultimoArticulo = await ArticuloCosteo.findOne({
                 where: { codigo_goodies },
                 include: [{ model: Costeo, as: 'costeo', where: { estado: 'calculado', fecha_despacho: { [Op.ne]: null } } }],
@@ -383,7 +380,6 @@ router.post('/calcular-margenes', auth, async (req, res) => {
 
             const costoNeto = ultimoArticulo ? parseFloat(ultimoArticulo.costo_unitario_neto_ars) || 0 : 0;
 
-            // Buscar datos del catálogo
             const catalogo = await CatalogoArticulo.findOne({ where: { codigo_goodies } });
             const ivaPct = catalogo ? (parseFloat(catalogo.iva_porcentaje) || 0.21) : 0.21;
             const impInternoPct = catalogo ? (parseFloat(catalogo.imp_interno_porcentaje) || 0) : 0;
@@ -400,47 +396,76 @@ router.post('/calcular-margenes', auth, async (req, res) => {
                 const pctComision = parseFloat(lista.pct_comision) || 0;
                 const pctOtroCosto = parseFloat(lista.pct_otro) || 0;
 
-                const acuerdo = acuerdos.find(a => a.lista_id === lista.id && a.categoria === rubro);
-                const pctAcuerdo = acuerdo ? parseFloat(acuerdo.pct_acuerdo) || 0 : 0;
+                // Buscar acuerdos para esta lista + rubro
+                const acuerdosLista = todosAcuerdos.filter(a => {
+                    if (a.lista_id !== lista.id) return false;
+                    const rubrosAcuerdo = (a.rubros || '').split(',').filter(r => r.trim());
+                    if (rubrosAcuerdo.length === 0) return true;
+                    return rubrosAcuerdo.includes(rubro);
+                });
+                const acuerdosFlat = acuerdosLista.filter(a => a.tipo_acuerdo === 'flat');
+                const acuerdosCadena = acuerdosLista.filter(a => a.tipo_acuerdo !== 'flat');
+                const pctAcuerdoFlat = acuerdosFlat.reduce((sum, a) => sum + (parseFloat(a.pct_acuerdo) || 0), 0);
+                const pctAcuerdoCadenaTotal = acuerdosCadena.reduce((sum, a) => sum + (parseFloat(a.pct_acuerdo) || 0), 0);
+                const tieneAcuerdosCadena = acuerdosCadena.length > 0;
 
                 // === DESANDAR LA CADENA DESDE PVP HACIA ATRÁS ===
-                // PVP incluye IVA → sacar IVA
+
+                // Paso 1: PVP incluye IVA → sacar IVA
                 let precioNetoFinal = pvp / (1 + ivaPct);
 
-                // Si hay markup tradicional → desandar el markup
+                // Paso 2: Si hay markup tradicional → desandar
                 let precioNetoEslabonAnterior = precioNetoFinal;
                 if (pctMarkupTrad > 0) {
                     precioNetoEslabonAnterior = precioNetoFinal / (1 + pctMarkupTrad / 100);
                 }
 
-                // Si hay margen cliente (distribuidor/super) → desandar el gross-up
-                let precioNetoGoodiesMasInternos = precioNetoEslabonAnterior;
+                // Paso 3: Si hay margen cliente (distribuidor/super) → desandar gross-up
+                let baseClienteMasInternos = precioNetoEslabonAnterior;
                 if (pctMargenCliente > 0) {
                     if (pctMargenCliente < 100) {
-                        precioNetoGoodiesMasInternos = precioNetoEslabonAnterior * (1 - pctMargenCliente / 100);
+                        baseClienteMasInternos = precioNetoEslabonAnterior * (1 - pctMargenCliente / 100);
                     } else {
-                        precioNetoGoodiesMasInternos = precioNetoEslabonAnterior / (1 + pctMargenCliente / 100);
+                        baseClienteMasInternos = precioNetoEslabonAnterior / (1 + pctMargenCliente / 100);
                     }
                 }
 
-                // Sacar imp. internos para obtener Precio Neto Goodies puro
-                let precioNetoGoodies = precioNetoGoodiesMasInternos;
+                // Paso 4: Quitar imp. internos
+                let basePreInternos = baseClienteMasInternos;
                 if (impInternoPct > 0) {
-                    precioNetoGoodies = precioNetoGoodiesMasInternos / (1 + impInternoPct);
+                    basePreInternos = baseClienteMasInternos / (1 + impInternoPct);
                 }
 
-                // Deducciones sobre Precio Neto Goodies (son % que Goodies paga de su precio)
-                const totalPctDeducciones = pctLogistico + pctIIBB + pctFinanciero + pctComision + pctOtroCosto + pctAcuerdo;
+                // Paso 5: Si hay acuerdos cadena, basePreInternos = Bruto Acordado
+                //          → aplicar (1 - Σ% cadena) para obtener Neto Goodies
+                //         Si NO hay acuerdos cadena, basePreInternos = Neto Goodies directamente
+                let precioNetoGoodies;
+                let precioBrutoAcordado = null;
+                if (tieneAcuerdosCadena) {
+                    precioBrutoAcordado = basePreInternos;
+                    precioNetoGoodies = precioBrutoAcordado * (1 - pctAcuerdoCadenaTotal / 100);
+                } else {
+                    precioNetoGoodies = basePreInternos;
+                }
+
+                // Paso 6: Deducciones sobre Neto Goodies (gastos + acuerdos flat)
+                const totalPctDeducciones = pctLogistico + pctIIBB + pctFinanciero + pctComision + pctOtroCosto + pctAcuerdoFlat;
                 const deducciones = precioNetoGoodies * (totalPctDeducciones / 100);
 
-                // Ingreso Neto Goodies = Precio Neto - todas las deducciones
+                // Ingreso Neto Goodies
                 const ingresoNeto = precioNetoGoodies - deducciones;
 
-                // Margen Goodies real = (Ingreso Neto - Costo Neto) / Costo Neto × 100
+                // Margen Goodies real
                 const margenPct = costoNeto > 0 ? ((ingresoNeto - costoNeto) / costoNeto) * 100 : 0;
-
-                // Margen sobre precio (para referencia)
                 const margenSobrePrecio = precioNetoGoodies > 0 ? ((ingresoNeto - costoNeto) / precioNetoGoodies) * 100 : 0;
+
+                // Margen punta a punta del super (informativo)
+                let margenPuntaPuntaSuper = null;
+                if (tieneAcuerdosCadena && pctMargenCliente > 0) {
+                    const precioVentaSuper = precioNetoEslabonAnterior; // neto super sin IVA
+                    const costoRealSuper = precioNetoGoodies; // lo que realmente paga después de acuerdos
+                    margenPuntaPuntaSuper = precioVentaSuper > 0 ? ((precioVentaSuper - costoRealSuper) / precioVentaSuper) * 100 : 0;
+                }
 
                 margenesListas.push({
                     lista_id: lista.id,
@@ -450,13 +475,22 @@ router.post('/calcular-margenes', auth, async (req, res) => {
                     precio_neto_trad: pctMarkupTrad > 0 ? Math.round(precioNetoFinal * 100) / 100 : null,
                     costo_trad: pctMarkupTrad > 0 ? Math.round(precioNetoEslabonAnterior * 100) / 100 : null,
                     precio_neto_cliente: pctMargenCliente > 0 ? Math.round(precioNetoEslabonAnterior * 100) / 100 : null,
+                    tiene_acuerdos_cadena: tieneAcuerdosCadena,
+                    precio_bruto_acordado: precioBrutoAcordado ? Math.round(precioBrutoAcordado * 100) / 100 : null,
+                    pct_acuerdo_cadena_total: pctAcuerdoCadenaTotal,
                     precio_neto_goodies: Math.round(precioNetoGoodies * 100) / 100,
                     total_deducciones: Math.round(deducciones * 100) / 100,
                     ingreso_neto: Math.round(ingresoNeto * 100) / 100,
                     costo_neto: Math.round(costoNeto * 100) / 100,
                     margen_pct: Math.round(margenPct * 100) / 100,
                     margen_sobre_precio: Math.round(margenSobrePrecio * 100) / 100,
-                    pcts_usados: { logistico: pctLogistico, iibb: pctIIBB, financiero: pctFinanciero, comision: pctComision, otro_costo: pctOtroCosto, acuerdo: pctAcuerdo, margen_cliente: pctMargenCliente, markup_trad: pctMarkupTrad }
+                    margen_punta_punta_super: margenPuntaPuntaSuper ? Math.round(margenPuntaPuntaSuper * 100) / 100 : null,
+                    pcts_usados: {
+                        logistico: pctLogistico, iibb: pctIIBB, financiero: pctFinanciero,
+                        comision: pctComision, otro_costo: pctOtroCosto,
+                        acuerdo_flat: pctAcuerdoFlat, acuerdo_cadena: pctAcuerdoCadenaTotal,
+                        margen_cliente: pctMargenCliente, markup_trad: pctMarkupTrad
+                    }
                 });
             }
 
