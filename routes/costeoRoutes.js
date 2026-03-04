@@ -832,4 +832,133 @@ router.post('/:id/duplicar', auth, async (req, res) => {
     }
 });
 
+// Reporte Importe Despacho — presupuesto de impuestos aduana
+router.get('/reporte-despacho/:id', auth, async (req, res) => {
+    try {
+        const { Op } = require('sequelize');
+        const costeo = await Costeo.findByPk(req.params.id, {
+            include: [
+                { model: ArticuloCosteo, as: 'articulos' },
+                { model: GastosVarios, as: 'gastos_varios' }
+            ]
+        });
+        if (!costeo) return res.status(404).json({ error: 'Costeo no encontrado' });
+
+        const monedaPrincipal = (costeo.moneda_principal || 'USD').toUpperCase();
+        let tcPrincipal = parseFloat(costeo.tc_usd) || 0;
+        if (monedaPrincipal === 'EUR') tcPrincipal = parseFloat(costeo.tc_eur) || 0;
+        if (monedaPrincipal === 'GBP') tcPrincipal = parseFloat(costeo.tc_gbp) || 0;
+
+        // FOB total en divisa y pesos
+        let fobTotalDivisa = 0;
+        for (const art of costeo.articulos) {
+            fobTotalDivisa += parseFloat(art.importe_total_origen) || 0;
+        }
+        const fobTotalPesos = fobTotalDivisa * tcPrincipal;
+
+        // Flete y seguro en pesos
+        const fleteMonto = parseFloat(costeo.flete_monto) || 0;
+        const seguroMonto = parseFloat(costeo.seguro_monto) || 0;
+        const fleteMoneda = (costeo.flete_moneda || 'USD').toUpperCase();
+        const seguroMoneda = (costeo.seguro_moneda || 'USD').toUpperCase();
+        let tcFlete = parseFloat(costeo.tc_usd) || 0;
+        if (fleteMoneda === 'EUR') tcFlete = parseFloat(costeo.tc_eur) || 0;
+        if (fleteMoneda === 'GBP') tcFlete = parseFloat(costeo.tc_gbp) || 0;
+        let tcSeguro = parseFloat(costeo.tc_usd) || 0;
+        if (seguroMoneda === 'EUR') tcSeguro = parseFloat(costeo.tc_eur) || 0;
+        if (seguroMoneda === 'GBP') tcSeguro = parseFloat(costeo.tc_gbp) || 0;
+        const fletePesos = fleteMonto * tcFlete;
+        const seguroPesos = seguroMonto * tcSeguro;
+
+        // CIF = FOB + Flete + Seguro
+        const cifPesos = fobTotalPesos + fletePesos + seguroPesos;
+
+        // Calcular impuestos por artículo
+        let totalDerechos = 0;
+        let totalEstadistica = 0;
+        let totalIVA = 0;
+        let totalIVAAdicional = 0;
+        let totalImpInterno = 0;
+        let totalANMAT = 0;
+        const detalleArticulos = [];
+
+        for (const art of costeo.articulos) {
+            const importeOrigenDivisa = parseFloat(art.importe_total_origen) || 0;
+            const participacion = fobTotalDivisa > 0 ? importeOrigenDivisa / fobTotalDivisa : 0;
+            const fobArtPesos = importeOrigenDivisa * tcPrincipal;
+            const fleteArt = fletePesos * participacion;
+            const seguroArt = seguroPesos * participacion;
+            const baseImponible = fobArtPesos + fleteArt + seguroArt;
+
+            const derechosPctRaw = parseFloat(art.derechos_porcentaje) || 0;
+            const derechosPct = derechosPctRaw > 1 ? derechosPctRaw / 100 : derechosPctRaw;
+            const impInternosPctRaw = parseFloat(art.impuesto_interno_porcentaje) || 0;
+            const impInternosPct = impInternosPctRaw > 1 ? impInternosPctRaw / 100 : impInternosPctRaw;
+
+            const derechos = derechosPct > 0 ? baseImponible * derechosPct : 0;
+            const estadistica = derechosPct > 0 ? baseImponible * 0.03 : 0;
+            const baseIVA = baseImponible + derechos + estadistica;
+            const iva = baseIVA * 0.21;
+            const ivaAdicional = baseIVA * 0.20;
+            const impInterno = impInternosPct > 0 ? baseIVA * impInternosPct : 0;
+            const anmat = art.anmat !== false ? fobArtPesos * 0.005 : 0;
+
+            totalDerechos += derechos;
+            totalEstadistica += estadistica;
+            totalIVA += iva;
+            totalIVAAdicional += ivaAdicional;
+            totalImpInterno += impInterno;
+            totalANMAT += anmat;
+
+            detalleArticulos.push({
+                codigo_goodies: art.codigo_goodies,
+                nombre: art.nombre,
+                unidades: parseInt(art.unidades_totales) || 0,
+                fob_divisa: Math.round(importeOrigenDivisa * 100) / 100,
+                fob_pesos: Math.round(fobArtPesos * 100) / 100,
+                base_imponible: Math.round(baseImponible * 100) / 100,
+                derechos_pct: derechosPct * 100,
+                derechos: Math.round(derechos * 100) / 100,
+                estadistica: Math.round(estadistica * 100) / 100,
+                iva: Math.round(iva * 100) / 100,
+                iva_adicional: Math.round(ivaAdicional * 100) / 100,
+                imp_interno_pct: impInternosPct * 100,
+                imp_interno: Math.round(impInterno * 100) / 100,
+                anmat: Math.round(anmat * 100) / 100,
+                total_impuestos: Math.round((derechos + estadistica + iva + ivaAdicional + impInterno + anmat) * 100) / 100
+            });
+        }
+
+        const totalImporteTributario = totalDerechos + totalEstadistica + totalIVA + totalIVAAdicional + totalImpInterno + totalANMAT;
+
+        res.json({
+            costeo_id: costeo.id,
+            nombre_costeo: costeo.nombre_costeo,
+            proveedor: costeo.proveedor,
+            moneda: monedaPrincipal,
+            tc_principal: tcPrincipal,
+            fecha_despacho: costeo.fecha_despacho,
+            nro_despacho: costeo.nro_despacho,
+            fob_divisa: Math.round(fobTotalDivisa * 100) / 100,
+            fob_pesos: Math.round(fobTotalPesos * 100) / 100,
+            flete_pesos: Math.round(fletePesos * 100) / 100,
+            seguro_pesos: Math.round(seguroPesos * 100) / 100,
+            cif_pesos: Math.round(cifPesos * 100) / 100,
+            resumen: {
+                derechos: Math.round(totalDerechos * 100) / 100,
+                estadistica: Math.round(totalEstadistica * 100) / 100,
+                iva: Math.round(totalIVA * 100) / 100,
+                iva_adicional: Math.round(totalIVAAdicional * 100) / 100,
+                imp_interno: Math.round(totalImpInterno * 100) / 100,
+                anmat: Math.round(totalANMAT * 100) / 100,
+                total: Math.round(totalImporteTributario * 100) / 100
+            },
+            articulos: detalleArticulos
+        });
+    } catch (error) {
+        console.error('Error generando reporte despacho:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

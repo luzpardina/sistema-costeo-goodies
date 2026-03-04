@@ -223,6 +223,7 @@
             <a href="#comex-comparativo">Comparativo</a>
             <a href="#comex-revaluacion">Revaluación</a>
             <a href="#comex-ultimocosto">Último Costo</a>
+            <a href="#comex-reporte-despacho">Reporte Importe Despacho</a>
 
             <div class="section-title">Catálogo Maestro</div>
             <a href="#catalogo">Catálogo de Artículos</a>
@@ -539,6 +540,30 @@
                 </div>
             </section>
 
+            <section id="comex-reporte-despacho">
+                <h2>Reporte Importe Despacho</h2>
+                <p>
+                    Genera un presupuesto de los impuestos y tasas que se pagarán en aduana para un costeo determinado. 
+                    Útil para anticipar el flujo de fondos necesario antes del despacho.
+                </p>
+                <h4>Cómo acceder</h4>
+                <p>
+                    En el listado de costeos, cada fila tiene un botón <strong>"📋 Imp"</strong> (verde oscuro) que abre el reporte.
+                </p>
+                <h4>Qué muestra</h4>
+                <ul>
+                    <li><strong>Resumen CIF:</strong> FOB en divisa y pesos, flete, seguro, CIF total</li>
+                    <li><strong>Presupuesto de impuestos:</strong> Derechos, Estadística 3%, IVA 21%, IVA Adicional 20%, Imp. Internos, ANMAT</li>
+                    <li><strong>Total a pagar en aduana:</strong> suma de todos los impuestos</li>
+                    <li><strong>Total operación:</strong> CIF + impuestos (el desembolso total estimado)</li>
+                    <li><strong>Detalle por artículo:</strong> desglose de impuestos por cada artículo del costeo</li>
+                </ul>
+                <div class="tip">
+                    El reporte usa los tipos de cambio y datos del costeo tal como están cargados. Si los datos cambiaron, 
+                    recalculá el costeo primero.
+                </div>
+            </section>
+
             <!-- ========================================= -->
             <!-- CATÁLOGO -->
             <!-- ========================================= -->
@@ -655,7 +680,7 @@
                     <tr><th>Campo</th><th>Descripción</th></tr>
                     <tr><td><strong>Lista</strong></td><td>A qué cliente aplica (Jumbo, Coto, Carrefour...)</td></tr>
                     <tr><td><strong>Categoría</strong></td><td>Frescos, Almacén, Bebidas u Otros</td></tr>
-                    <tr><td><strong>% Acuerdo</strong></td><td>Porcentaje del acuerdo</td></tr>
+                    <tr><td><strong>% Acuerdo</strong></td><td>Porcentaje del acuerdo. Para Desc. en OC se pueden cargar hasta 3 escalones (OC 1, OC 2, OC 3) que se aplican en cadena: OC 2 se calcula sobre el neto de OC 1, OC 3 sobre el neto de OC 2.</td></tr>
                     <tr><td><strong>Tipo</strong></td><td>Cómo se instrumenta:
                         <ul>
                             <li style="color:#4CAF50;"><strong>Flat:</strong> se suma al Σ% de Goodies (una sola capa de gross-up)</li>
@@ -669,8 +694,6 @@
                         <ul>
                             <li><strong>Sobre Precio Acordado:</strong> el precio bruto acordado (antes de cualquier descuento)</li>
                             <li><strong>Sobre Neto post OC:</strong> el neto después de aplicar el descuento en OC</li>
-                            <li><strong>Sobre Neto post NC:</strong> el neto después de aplicar la NC</li>
-                            <li><strong>Sobre Neto post Fact.Cli:</strong> el neto después de la factura del cliente</li>
                         </ul>
                     </td></tr>
                     <tr><td><strong>Rubros</strong></td><td>A qué rubros aplica. Si no se especifica ninguno, aplica a todos.</td></tr>
@@ -914,8 +937,9 @@
                 <h3>Precio de Venta — Supermercados (dos capas de gross-up)</h3>
                 <div class="formula">
                     Capa 1: Precio Neto Goodies = Costo Neto ÷ (1 - Σ% gastos)<br>
-                    Capa 2: Precio Bruto Acordado = Neto Goodies ÷ (1 - Σ% acuerdos cadena)<br><br>
-                    Goodies factura = Bruto - Desc. OC<br>
+                    Capa 2: Precio Bruto Acordado = Neto Goodies ÷ (1 - Σ% acuerdos cadena)<br>
+                    <small>Para OC escalonado: tasa efectiva = 1 - (1-OC1%)(1-OC2%)(1-OC3%)</small><br><br>
+                    Goodies factura = Bruto - Desc. OC (todos los escalones)<br>
                     Neto real Goodies = Facturado - NC - Fact.Cliente = Precio Neto Goodies ✓<br><br>
                     Base super = Bruto Acordado + Imp. Internos<br>
                     Neto Super = Base ÷ (1 - % Margen Super) [gross-up]<br>
@@ -986,6 +1010,9 @@
                     <li>Duplicar Costeo pide nombre (sugiere "- COPIA")</li>
                     <li>Tooltips en todos los botones + links ❓ al manual</li>
                     <li>Exportar/Importar configuración (listas + acuerdos) en ADMIN</li>
+                    <li>Desc. en OC escalonado: hasta 3 niveles en cadena (OC1 → OC2 → OC3) con tasa compuesta</li>
+                    <li>Categoría "Todas" en Acuerdos Comerciales</li>
+                    <li>Reporte Importe Despacho: presupuesto de impuestos aduana con desglose por artículo</li>
                     <li>Exportar márgenes a Excel (implementado)</li>
                     <li>Fix error módulo Contable (articulosCentumCargados)</li>
                     <li>Eliminada casilla "Solo ultima version" (obsoleta)</li>

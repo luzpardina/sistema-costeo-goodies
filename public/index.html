@@ -1770,6 +1770,7 @@ async function cargarCosteos() {
                     '<button class="btn btn-primary btn-sm" onclick="editarCosteo(\'' + costeo.id + '\')">Edit</button>' +
                     '<button class="btn btn-purple btn-sm" onclick="duplicarCosteo(\'' + costeo.id + '\')" title="Duplicar">Dup</button>' +
                     '<button class="btn btn-success btn-sm" onclick="exportarCosteo(\'' + costeo.id + '\')">Excel</button>' +
+                    '<button class="btn btn-sm" style="background:#00897B;color:#fff;" onclick="reporteDespacho(\'' + costeo.id + '\')" title="Reporte Importe Despacho (presupuesto impuestos aduana)">📋 Imp</button>' +
                     '<button class="btn btn-danger btn-sm" onclick="eliminarCosteo(\'' + costeo.id + '\')">X</button>' +
                     '</td></tr>';
             }).join('');
@@ -5032,6 +5033,77 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         }
 
         document.getElementById('dashboardContent').innerHTML = html;
+    }
+
+    // =============================================
+    // REPORTE IMPORTE DESPACHO
+    // =============================================
+    async function reporteDespacho(id) {
+        document.getElementById('modalHistorial').style.display = 'block';
+        document.getElementById('historialTitulo').textContent = '📋 Reporte Importe Despacho';
+        document.getElementById('historialContenido').innerHTML = '<p style="color:#888;">Cargando...</p>';
+        try {
+            const resp = await fetch(API_URL + '/api/costeos/reporte-despacho/' + id, { headers: { 'Authorization': 'Bearer ' + token } });
+            const data = await resp.json();
+            if (data.error) { document.getElementById('historialContenido').innerHTML = '<p style="color:#f44336;">' + data.error + '</p>'; return; }
+            const fmtMoney = v => '$' + (parseFloat(v)||0).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+            const fmtFecha = f => f ? new Date(f).toLocaleDateString('es-AR') : '-';
+
+            let html = '<div style="display:flex;justify-content:space-between;margin-bottom:15px;">';
+            html += '<div><strong style="color:#fff;font-size:16px;">' + data.nombre_costeo + '</strong><br><span style="color:#aaa;">' + (data.proveedor||'') + '</span></div>';
+            html += '<div style="text-align:right;"><span style="color:#aaa;">Despacho: ' + fmtFecha(data.fecha_despacho) + '</span><br><span style="color:#aaa;">TC: ' + data.moneda + ' ' + data.tc_principal + '</span></div>';
+            html += '</div>';
+
+            // Resumen CIF
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:15px;">';
+            html += '<div style="background:#1a1a2e;padding:10px;border-radius:6px;text-align:center;"><div style="color:#888;font-size:11px;">FOB ' + data.moneda + '</div><div style="color:#4fc3f7;font-weight:bold;">' + data.fob_divisa.toLocaleString('es-AR', {minimumFractionDigits:2}) + '</div></div>';
+            html += '<div style="background:#1a1a2e;padding:10px;border-radius:6px;text-align:center;"><div style="color:#888;font-size:11px;">FOB ARS</div><div style="color:#fff;font-weight:bold;">' + fmtMoney(data.fob_pesos) + '</div></div>';
+            html += '<div style="background:#1a1a2e;padding:10px;border-radius:6px;text-align:center;"><div style="color:#888;font-size:11px;">Flete + Seguro</div><div style="color:#fff;">' + fmtMoney(data.flete_pesos + data.seguro_pesos) + '</div></div>';
+            html += '<div style="background:#1a1a2e;padding:10px;border-radius:6px;text-align:center;"><div style="color:#888;font-size:11px;">CIF ARS</div><div style="color:#4CAF50;font-weight:bold;">' + fmtMoney(data.cif_pesos) + '</div></div>';
+            html += '</div>';
+
+            // Resumen impuestos
+            html += '<div style="background:#12121e;border-radius:8px;padding:15px;margin-bottom:15px;border:1px solid #333;">';
+            html += '<h4 style="color:#ff9800;margin-bottom:10px;">Presupuesto de Impuestos Aduaneros</h4>';
+            html += '<table style="width:100%;font-size:13px;">';
+            html += '<tr><td style="padding:4px 0;">Derechos de Importación</td><td style="text-align:right;font-weight:bold;">' + fmtMoney(data.resumen.derechos) + '</td></tr>';
+            html += '<tr><td style="padding:4px 0;">Tasa de Estadística (3%)</td><td style="text-align:right;">' + fmtMoney(data.resumen.estadistica) + '</td></tr>';
+            html += '<tr><td style="padding:4px 0;">IVA (21%)</td><td style="text-align:right;">' + fmtMoney(data.resumen.iva) + '</td></tr>';
+            html += '<tr><td style="padding:4px 0;">IVA Adicional (20%)</td><td style="text-align:right;">' + fmtMoney(data.resumen.iva_adicional) + '</td></tr>';
+            if (data.resumen.imp_interno > 0) html += '<tr><td style="padding:4px 0;">Impuesto Interno</td><td style="text-align:right;">' + fmtMoney(data.resumen.imp_interno) + '</td></tr>';
+            html += '<tr><td style="padding:4px 0;">ANMAT</td><td style="text-align:right;">' + fmtMoney(data.resumen.anmat) + '</td></tr>';
+            html += '<tr style="border-top:2px solid #555;"><td style="padding:8px 0;font-weight:bold;color:#ff9800;font-size:15px;">TOTAL A PAGAR EN ADUANA</td><td style="text-align:right;font-weight:bold;color:#ff9800;font-size:15px;">' + fmtMoney(data.resumen.total) + '</td></tr>';
+            html += '</table></div>';
+
+            // Total operación
+            html += '<div style="background:#1a3a1a;border:1px solid #4CAF50;border-radius:6px;padding:12px;margin-bottom:15px;display:flex;justify-content:space-between;font-size:14px;">';
+            html += '<span style="color:#4CAF50;font-weight:bold;">TOTAL OPERACIÓN (FOB + Flete + Seguro + Impuestos)</span>';
+            html += '<span style="color:#4CAF50;font-weight:bold;font-size:16px;">' + fmtMoney(data.cif_pesos + data.resumen.total) + '</span>';
+            html += '</div>';
+
+            // Detalle por artículo
+            html += '<details><summary style="cursor:pointer;color:#4fc3f7;font-weight:bold;font-size:12px;">📋 Detalle por artículo (' + data.articulos.length + ')</summary>';
+            html += '<table style="width:100%;font-size:11px;margin-top:10px;"><thead><tr style="background:#2a2a3e;">';
+            html += '<th>Código</th><th>Nombre</th><th>Derechos%</th><th>Derechos</th><th>Estad.</th><th>IVA</th><th>IVA Adic.</th><th>Imp.Int</th><th>ANMAT</th><th style="text-align:right;">Total</th>';
+            html += '</tr></thead><tbody>';
+            data.articulos.forEach(a => {
+                html += '<tr>';
+                html += '<td>' + a.codigo_goodies + '</td>';
+                html += '<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (a.nombre||'').substring(0,30) + '</td>';
+                html += '<td>' + a.derechos_pct + '%</td>';
+                html += '<td>' + fmtMoney(a.derechos) + '</td>';
+                html += '<td>' + fmtMoney(a.estadistica) + '</td>';
+                html += '<td>' + fmtMoney(a.iva) + '</td>';
+                html += '<td>' + fmtMoney(a.iva_adicional) + '</td>';
+                html += '<td>' + (a.imp_interno > 0 ? fmtMoney(a.imp_interno) : '-') + '</td>';
+                html += '<td>' + fmtMoney(a.anmat) + '</td>';
+                html += '<td style="text-align:right;font-weight:bold;">' + fmtMoney(a.total_impuestos) + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table></details>';
+
+            document.getElementById('historialContenido').innerHTML = html;
+        } catch(e) { document.getElementById('historialContenido').innerHTML = '<p style="color:#f44336;">Error: ' + e.message + '</p>'; }
     }
 
     // Cerrar buscador al hacer clic fuera
