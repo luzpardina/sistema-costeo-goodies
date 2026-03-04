@@ -3664,12 +3664,14 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
     async function calcularPrecios() {
         const codigos = [...preciosSeleccionados];
         if (codigos.length === 0) { alert('Seleccioná al menos un artículo'); return; }
+        const listasIds = [...listasSeleccionadas];
+        if (listasIds.length === 0) { alert('Seleccioná al menos una lista de precios (checkboxes en Listas de Precios)'); return; }
 
         try {
             const resp = await fetch(API_URL + '/api/comercial/calcular-precios', {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ codigos })
+                body: JSON.stringify({ codigos, lista_ids: listasIds })
             });
             const resultados = await resp.json();
             ultimosResultadosPrecios = resultados;
@@ -3881,12 +3883,14 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
     async function calcularMargenes() {
         const artConPvp = articulosPvpTodos.filter(a => a.pvp > 0);
         if (artConPvp.length === 0) { alert('Ingresá al menos un PVP'); return; }
+        const listasIds = [...listasSeleccionadas];
+        if (listasIds.length === 0) { alert('Seleccioná al menos una lista de precios (checkboxes en Listas de Precios)'); return; }
 
         try {
             const resp = await fetch(API_URL + '/api/comercial/calcular-margenes', {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ articulos_pvp: artConPvp.map(a => ({ codigo_goodies: a.codigo_goodies, pvp: a.pvp })) })
+                body: JSON.stringify({ articulos_pvp: artConPvp.map(a => ({ codigo_goodies: a.codigo_goodies, pvp: a.pvp })), lista_ids: listasIds })
             });
             const resultados = await resp.json();
             renderResultadoMargenes(resultados);

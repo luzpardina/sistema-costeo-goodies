@@ -154,10 +154,15 @@ router.put('/acuerdos/:id', auth, async (req, res) => {
 
 router.post('/calcular-precios', auth, async (req, res) => {
     try {
-        const { codigos } = req.body;
+        const { codigos, lista_ids } = req.body;
         // codigos = array de codigo_goodies
+        // lista_ids = array de UUIDs de listas seleccionadas (opcional)
 
-        const listas = await ListaPrecio.findAll({ order: [['nombre', 'ASC']] });
+        let whereListas = {};
+        if (lista_ids && lista_ids.length > 0) {
+            whereListas = { id: { [Op.in]: lista_ids } };
+        }
+        const listas = await ListaPrecio.findAll({ where: whereListas, order: [['nombre', 'ASC']] });
         const acuerdos = await AcuerdoComercial.findAll();
         const resultados = [];
 
@@ -222,8 +227,13 @@ router.post('/calcular-precios', auth, async (req, res) => {
                 let facturaCliente = null;
 
                 if (pctMargenCliente > 0) {
-                    // El cliente aplica margen gross-up sobre su costo
-                    precioNetoCliente = costoCliente / (1 - pctMargenCliente / 100);
+                    if (pctMargenCliente < 100) {
+                        // Gross-up: Precio = Costo / (1 - Margen%)
+                        precioNetoCliente = costoCliente / (1 - pctMargenCliente / 100);
+                    } else {
+                        // Markup directo para % >= 100: Precio = Costo × (1 + Margen%)
+                        precioNetoCliente = costoCliente * (1 + pctMargenCliente / 100);
+                    }
                     facturaCliente = precioNetoCliente + (precioNetoCliente * ivaPct);
                     // IVA sobre su neto, sin internos (ya están en el costo)
                 }
@@ -299,10 +309,15 @@ router.post('/calcular-precios', auth, async (req, res) => {
 
 router.post('/calcular-margenes', auth, async (req, res) => {
     try {
-        const { articulos_pvp } = req.body;
+        const { articulos_pvp, lista_ids } = req.body;
         // articulos_pvp = [{ codigo_goodies, pvp }, ...]
+        // lista_ids = array de UUIDs de listas seleccionadas (opcional)
 
-        const listas = await ListaPrecio.findAll({ order: [['nombre', 'ASC']] });
+        let whereListas = {};
+        if (lista_ids && lista_ids.length > 0) {
+            whereListas = { id: { [Op.in]: lista_ids } };
+        }
+        const listas = await ListaPrecio.findAll({ where: whereListas, order: [['nombre', 'ASC']] });
         const acuerdos = await AcuerdoComercial.findAll();
 
         const resultados = [];
@@ -352,7 +367,11 @@ router.post('/calcular-margenes', auth, async (req, res) => {
                 // Si hay margen cliente (distribuidor/super) → desandar el gross-up
                 let precioNetoGoodiesMasInternos = precioNetoEslabonAnterior;
                 if (pctMargenCliente > 0) {
-                    precioNetoGoodiesMasInternos = precioNetoEslabonAnterior * (1 - pctMargenCliente / 100);
+                    if (pctMargenCliente < 100) {
+                        precioNetoGoodiesMasInternos = precioNetoEslabonAnterior * (1 - pctMargenCliente / 100);
+                    } else {
+                        precioNetoGoodiesMasInternos = precioNetoEslabonAnterior / (1 + pctMargenCliente / 100);
+                    }
                 }
 
                 // Sacar imp. internos para obtener Precio Neto Goodies puro
