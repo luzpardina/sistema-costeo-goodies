@@ -240,10 +240,12 @@ router.post('/calcular-precios', auth, async (req, res) => {
 
                 // === PASO 4: PVP estimado (si hay markup tradicional) ===
                 let pvpEstimado = null;
+                let costoTrad = null;
+                let precioNetoTrad = null;
                 if (pctMarkupTrad > 0) {
-                    // El tradicional toma como costo el precio neto del eslabón anterior + internos
-                    const costoTrad = precioNetoCliente ? precioNetoCliente : costoCliente;
-                    const precioNetoTrad = costoTrad * (1 + pctMarkupTrad / 100);
+                    // El tradicional toma como costo el precio neto del eslabón anterior
+                    costoTrad = precioNetoCliente ? precioNetoCliente : costoCliente;
+                    precioNetoTrad = costoTrad * (1 + pctMarkupTrad / 100);
                     pvpEstimado = precioNetoTrad + (precioNetoTrad * ivaPct);
                 } else if (precioNetoCliente) {
                     // Si no hay markup trad, el PVP es la factura del cliente
@@ -256,7 +258,7 @@ router.post('/calcular-precios', auth, async (req, res) => {
                 preciosPorLista.push({
                     lista_id: lista.id,
                     lista_nombre: lista.nombre,
-                    // Paso 1
+                    // Paso 1: Goodies
                     suma_pct: Math.round(sumaPctGoodies * 100) / 100,
                     precio_neto_goodies: Math.round(precioNetoGoodies * 100) / 100,
                     margen_goodies_monto: Math.round(montoMargenGoodies * 100) / 100,
@@ -266,17 +268,19 @@ router.post('/calcular-precios', auth, async (req, res) => {
                     comision_monto: Math.round(montoComision * 100) / 100,
                     otro_costo_monto: Math.round(montoOtroCosto * 100) / 100,
                     acuerdo_monto: Math.round(montoAcuerdo * 100) / 100,
-                    // Paso 2
+                    // Paso 2: Factura Goodies
                     iva_pct: ivaPct * 100,
                     imp_interno_pct: impInternoPct * 100,
                     factura_goodies: Math.round(facturaGoodies * 100) / 100,
-                    // Paso 3
+                    // Paso 3: Cliente de Goodies (Distribuidor)
                     costo_cliente: Math.round(costoCliente * 100) / 100,
                     pct_margen_cliente: pctMargenCliente,
                     precio_neto_cliente: precioNetoCliente ? Math.round(precioNetoCliente * 100) / 100 : null,
                     factura_cliente: facturaCliente ? Math.round(facturaCliente * 100) / 100 : null,
-                    // Paso 4
+                    // Paso 4: Tradicional (Markup)
                     pct_markup_trad: pctMarkupTrad,
+                    costo_trad: costoTrad ? Math.round(costoTrad * 100) / 100 : null,
+                    precio_neto_trad: precioNetoTrad ? Math.round(precioNetoTrad * 100) / 100 : null,
                     pvp_estimado: pvpEstimado ? Math.round(pvpEstimado * 100) / 100 : null,
                     // Percentages used
                     pcts: { margen_goodies: pctMargenGoodies, logistico: pctLogistico, iibb: pctIIBB, financiero: pctFinanciero, comision: pctComision, otro_costo: pctOtroCosto, acuerdo: pctAcuerdo }
@@ -397,6 +401,10 @@ router.post('/calcular-margenes', auth, async (req, res) => {
                     lista_id: lista.id,
                     lista_nombre: lista.nombre,
                     pvp,
+                    precio_neto_final: Math.round(precioNetoFinal * 100) / 100,
+                    precio_neto_trad: pctMarkupTrad > 0 ? Math.round(precioNetoFinal * 100) / 100 : null,
+                    costo_trad: pctMarkupTrad > 0 ? Math.round(precioNetoEslabonAnterior * 100) / 100 : null,
+                    precio_neto_cliente: pctMargenCliente > 0 ? Math.round(precioNetoEslabonAnterior * 100) / 100 : null,
                     precio_neto_goodies: Math.round(precioNetoGoodies * 100) / 100,
                     total_deducciones: Math.round(deducciones * 100) / 100,
                     ingreso_neto: Math.round(ingresoNeto * 100) / 100,

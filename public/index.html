@@ -3750,21 +3750,30 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         const listas = resultados[0].precios.map(p => p.lista_nombre);
         const fmtMoney = v => '$' + (parseFloat(v)||0).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
 
-        let html = '<h4 style="color:#4CAF50;margin:10px 0;">Resultados: Precio Neto Goodies → PVP estimado por lista</h4>';
+        let html = '<h4 style="color:#4CAF50;margin:10px 0;">Resultados: Cadena de Precios por Lista</h4>';
+
+        // Detectar si alguna lista tiene distribuidor o tradicional
+        const hayDistribuidor = resultados.some(r => r.precios.some(p => p.pct_margen_cliente > 0));
+        const hayTradicional = resultados.some(r => r.precios.some(p => p.pct_markup_trad > 0));
+        const colsPorLista = 2 + (hayDistribuidor ? 1 : 0) + (hayTradicional ? 1 : 0) + 1; // Neto + Fact + [Distrib] + [Trad] + PVP
+
         html += '<div class="table-container" style="overflow-x:auto;"><table style="font-size:11px;">';
         html += '<thead><tr style="background:#2a2a3e;">';
         html += '<th style="position:sticky;left:0;background:#2a2a3e;z-index:2;">Artículo</th>';
         html += '<th style="text-align:right;">Costo Neto</th>';
         listas.forEach(l => {
-            html += '<th colspan="3" style="text-align:center;border-left:2px solid #555;">' + l + '</th>';
+            html += '<th colspan="' + colsPorLista + '" style="text-align:center;border-left:2px solid #555;">' + l + '</th>';
         });
         html += '</tr>';
+        // Sub-headers
         html += '<tr style="background:#1e1e2f;font-size:10px;">';
         html += '<th style="position:sticky;left:0;background:#1e1e2f;z-index:2;"></th><th></th>';
         listas.forEach(() => {
             html += '<th style="text-align:right;border-left:2px solid #555;">Neto Goodies</th>';
-            html += '<th style="text-align:right;">Factura</th>';
-            html += '<th style="text-align:right;">PVP Est.</th>';
+            html += '<th style="text-align:right;">Fact. Goodies</th>';
+            if (hayDistribuidor) html += '<th style="text-align:right;">Neto Distrib.</th>';
+            if (hayTradicional) html += '<th style="text-align:right;">Neto Trad.</th>';
+            html += '<th style="text-align:right;color:#4CAF50;">PVP Est.</th>';
         });
         html += '</tr></thead><tbody>';
 
@@ -3774,16 +3783,22 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             html += '<td style="text-align:right;font-weight:bold;">' + fmtMoney(r.costo_neto) + '</td>';
             r.precios.forEach(p => {
                 const margenColor = (p.pcts.margen_goodies || 0) >= 20 ? '#4CAF50' : '#ff9800';
-                html += '<td style="text-align:right;border-left:2px solid #555;">' + fmtMoney(p.precio_neto_goodies) + '<br><small style="color:' + margenColor + ';">MG:' + (p.pcts.margen_goodies||0).toFixed(0) + '% Σ:' + p.suma_pct.toFixed(0) + '%</small></td>';
+                html += '<td style="text-align:right;border-left:2px solid #555;">' + fmtMoney(p.precio_neto_goodies) + '<br><small style="color:' + margenColor + ';">MG:' + (p.pcts.margen_goodies||0).toFixed(0) + '%</small></td>';
                 html += '<td style="text-align:right;">' + fmtMoney(p.factura_goodies) + '</td>';
-                html += '<td style="text-align:right;font-weight:bold;">' + (p.pvp_estimado ? fmtMoney(p.pvp_estimado) : '-') + '</td>';
+                if (hayDistribuidor) {
+                    html += '<td style="text-align:right;">' + (p.precio_neto_cliente ? fmtMoney(p.precio_neto_cliente) + '<br><small style="color:#aaa;">mg:' + p.pct_margen_cliente + '%</small>' : '<small style="color:#555;">-</small>') + '</td>';
+                }
+                if (hayTradicional) {
+                    html += '<td style="text-align:right;">' + (p.precio_neto_trad ? fmtMoney(p.precio_neto_trad) + '<br><small style="color:#aaa;">mk:' + p.pct_markup_trad + '%</small>' : '<small style="color:#555;">-</small>') + '</td>';
+                }
+                html += '<td style="text-align:right;font-weight:bold;color:#4CAF50;">' + (p.pvp_estimado ? fmtMoney(p.pvp_estimado) : '-') + '</td>';
             });
             html += '</tr>';
         });
 
         html += '</tbody></table></div>';
 
-        // Detalle expandible por artículo
+        // Desglose expandible por artículo
         html += '<details style="margin-top:15px;"><summary style="cursor:pointer;color:#4fc3f7;font-weight:bold;">📋 Ver desglose detallado del primer artículo</summary>';
         if (resultados.length > 0) {
             const r = resultados[0];
@@ -3791,17 +3806,33 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             html += '<p><strong>' + r.codigo_goodies + '</strong> — ' + r.nombre + '</p>';
             html += '<p>Costo Neto: <strong>' + fmtMoney(r.costo_neto) + '</strong> | IVA: ' + r.iva_pct + '% | Imp.Int: ' + r.imp_interno_pct + '%</p>';
             r.precios.forEach(p => {
-                html += '<div style="margin-top:10px;padding:8px;background:#12121e;border-radius:4px;border-left:3px solid #4CAF50;">';
-                html += '<p style="font-weight:bold;color:#4fc3f7;">' + p.lista_nombre + ' (Σ%: ' + p.suma_pct.toFixed(1) + '%)</p>';
-                html += '<p>Fórmula: ' + fmtMoney(r.costo_neto) + ' / (1 - ' + p.suma_pct.toFixed(1) + '%) = <strong>' + fmtMoney(p.precio_neto_goodies) + '</strong></p>';
-                html += '<p style="font-size:11px;color:#aaa;">Margen Goodies: ' + fmtMoney(p.margen_goodies_monto) + ' (' + (p.pcts.margen_goodies||0) + '%) | Log: ' + fmtMoney(p.logistico_monto) + ' | IIBB: ' + fmtMoney(p.iibb_monto) + ' | Fin: ' + fmtMoney(p.financiero_monto) + ' | Com: ' + fmtMoney(p.comision_monto) + (p.otro_costo_monto > 0 ? ' | Otro: ' + fmtMoney(p.otro_costo_monto) : '') + (p.acuerdo_monto > 0 ? ' | Acuerdo: ' + fmtMoney(p.acuerdo_monto) : '') + '</p>';
-                html += '<p>Factura Goodies: ' + fmtMoney(p.precio_neto_goodies) + ' + IVA ' + fmtMoney(p.precio_neto_goodies * r.iva_pct / 100) + (r.imp_interno_pct > 0 ? ' + Int ' + fmtMoney(p.precio_neto_goodies * r.imp_interno_pct / 100) : '') + ' = <strong>' + fmtMoney(p.factura_goodies) + '</strong></p>';
-                if (p.precio_neto_cliente) {
-                    html += '<p>Costo cliente: ' + fmtMoney(p.costo_cliente) + ' → Margen cliente ' + p.pct_margen_cliente + '% → Neto cliente: ' + fmtMoney(p.precio_neto_cliente) + '</p>';
+                html += '<div style="margin-top:10px;padding:10px;background:#12121e;border-radius:4px;border-left:3px solid #4CAF50;">';
+                html += '<p style="font-weight:bold;color:#4fc3f7;font-size:14px;">' + p.lista_nombre + '</p>';
+                // Paso 1
+                html += '<p style="margin-top:8px;"><strong style="color:#ff9800;">Paso 1 — Precio Neto Goodies</strong> (gross-up)</p>';
+                html += '<p>Fórmula: ' + fmtMoney(r.costo_neto) + ' ÷ (1 - ' + p.suma_pct.toFixed(1) + '%) = <strong>' + fmtMoney(p.precio_neto_goodies) + '</strong></p>';
+                html += '<p style="font-size:11px;color:#aaa;">Σ% = MG ' + (p.pcts.margen_goodies||0) + '% + Log ' + (p.pcts.logistico||0) + '% + IIBB ' + (p.pcts.iibb||0) + '% + Fin ' + (p.pcts.financiero||0) + '% + Com ' + (p.pcts.comision||0) + '%' + (p.pcts.otro_costo > 0 ? ' + Otro ' + p.pcts.otro_costo + '%' : '') + (p.pcts.acuerdo > 0 ? ' + Acuerdo ' + p.pcts.acuerdo + '%' : '') + ' = ' + p.suma_pct.toFixed(1) + '%</p>';
+                html += '<p style="font-size:11px;color:#aaa;">Desglose: Margen ' + fmtMoney(p.margen_goodies_monto) + ' | Log ' + fmtMoney(p.logistico_monto) + ' | IIBB ' + fmtMoney(p.iibb_monto) + ' | Fin ' + fmtMoney(p.financiero_monto) + ' | Com ' + fmtMoney(p.comision_monto) + (p.otro_costo_monto > 0 ? ' | Otro ' + fmtMoney(p.otro_costo_monto) : '') + (p.acuerdo_monto > 0 ? ' | Acuerdo ' + fmtMoney(p.acuerdo_monto) : '') + '</p>';
+                // Paso 2
+                html += '<p style="margin-top:8px;"><strong style="color:#ff9800;">Paso 2 — Factura Goodies</strong></p>';
+                html += '<p>' + fmtMoney(p.precio_neto_goodies) + ' + IVA ' + fmtMoney(p.precio_neto_goodies * r.iva_pct / 100) + (r.imp_interno_pct > 0 ? ' + Imp.Int ' + fmtMoney(p.precio_neto_goodies * r.imp_interno_pct / 100) : '') + ' = <strong>' + fmtMoney(p.factura_goodies) + '</strong></p>';
+                // Paso 3
+                if (p.pct_margen_cliente > 0) {
+                    html += '<p style="margin-top:8px;"><strong style="color:#ff9800;">Paso 3 — Distribuidor</strong> (margen gross-up ' + p.pct_margen_cliente + '%)</p>';
+                    html += '<p>Su costo = Neto Goodies + Imp.Int = ' + fmtMoney(p.costo_cliente) + '</p>';
+                    html += '<p>Su precio neto = ' + fmtMoney(p.costo_cliente) + ' ÷ (1 - ' + p.pct_margen_cliente + '%) = <strong>' + fmtMoney(p.precio_neto_cliente) + '</strong></p>';
+                    html += '<p>Factura Distribuidor = ' + fmtMoney(p.precio_neto_cliente) + ' + IVA = <strong>' + fmtMoney(p.factura_cliente) + '</strong></p>';
                 }
-                if (p.pvp_estimado) {
-                    html += '<p>PVP Estimado: <strong style="color:#4CAF50;">' + fmtMoney(p.pvp_estimado) + '</strong></p>';
+                // Paso 4
+                if (p.pct_markup_trad > 0) {
+                    html += '<p style="margin-top:8px;"><strong style="color:#ff9800;">Paso 4 — Tradicional</strong> (markup ' + p.pct_markup_trad + '%)</p>';
+                    html += '<p>Su costo = ' + fmtMoney(p.costo_trad) + (p.pct_margen_cliente > 0 ? ' (Neto del Distribuidor)' : ' (Neto Goodies + Imp.Int)') + '</p>';
+                    html += '<p>Su precio neto = ' + fmtMoney(p.costo_trad) + ' × (1 + ' + p.pct_markup_trad + '%) = <strong>' + fmtMoney(p.precio_neto_trad) + '</strong></p>';
                 }
+                // PVP
+                html += '<p style="margin-top:8px;"><strong style="color:#4CAF50;">PVP Estimado: ' + (p.pvp_estimado ? fmtMoney(p.pvp_estimado) : '-') + '</strong>';
+                if (p.precio_neto_trad) html += ' <small>(' + fmtMoney(p.precio_neto_trad) + ' + IVA ' + r.iva_pct + '%)</small>';
+                html += '</p>';
                 html += '</div>';
             });
             html += '</div>';
@@ -3813,12 +3844,24 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
 
     function exportarPrecios() {
         if (!ultimosResultadosPrecios || !ultimosResultadosPrecios.length) { alert('Primero calculá los precios'); return; }
+        const hayDistribuidor = ultimosResultadosPrecios.some(r => r.precios.some(p => p.pct_margen_cliente > 0));
+        const hayTradicional = ultimosResultadosPrecios.some(r => r.precios.some(p => p.pct_markup_trad > 0));
         const wsData = [['Código', 'Nombre', 'Proveedor', 'Rubro', 'Costo Neto', 'IVA%', 'Imp.Int%']];
         const listas = ultimosResultadosPrecios[0].precios.map(p => p.lista_nombre);
-        listas.forEach(l => { wsData[0].push(l + ' - Neto Goodies', l + ' - Factura', l + ' - PVP Est.'); });
+        listas.forEach(l => {
+            wsData[0].push(l + ' - Neto Goodies', l + ' - Fact. Goodies');
+            if (hayDistribuidor) wsData[0].push(l + ' - Neto Distrib.');
+            if (hayTradicional) wsData[0].push(l + ' - Neto Trad.');
+            wsData[0].push(l + ' - PVP Est.');
+        });
         ultimosResultadosPrecios.forEach(r => {
             const row = [r.codigo_goodies, r.nombre, r.proveedor || '', r.rubro || '', r.costo_neto, r.iva_pct, r.imp_interno_pct];
-            r.precios.forEach(p => { row.push(p.precio_neto_goodies, p.factura_goodies, p.pvp_estimado || ''); });
+            r.precios.forEach(p => {
+                row.push(p.precio_neto_goodies, p.factura_goodies);
+                if (hayDistribuidor) row.push(p.precio_neto_cliente || '');
+                if (hayTradicional) row.push(p.precio_neto_trad || '');
+                row.push(p.pvp_estimado || '');
+            });
             wsData.push(row);
         });
         const wb = XLSX.utils.book_new();
