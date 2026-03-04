@@ -38,7 +38,7 @@ function parsearExcelCatalogo(buffer) {
             iva_porcentaje: parsePct(row['% IVA'] || row['iva_porcentaje']),
             estadistica_porcentaje: parsePct(row['% Estadística'] || row['estadistica_porcentaje']),
             proveedor_activo: row['Proveedor Activo'] !== undefined ? String(row['Proveedor Activo']).toUpperCase().trim() !== 'NO' : null,
-            empresa_fabrica_activa: row['Empresa Fábrica Activa'] !== undefined ? String(row['Empresa Fábrica Activa']).toUpperCase().trim() !== 'NO' : null,
+            empresa_fabrica_activa: (row['Empresa Fábrica Activa'] !== undefined || row['Fabrica Activa'] !== undefined) ? String(row['Empresa Fábrica Activa'] || row['Fabrica Activa']).toUpperCase().trim() !== 'NO' : null,
             habilitado: row['Artículo Activo'] !== undefined ? String(row['Artículo Activo']).toUpperCase().trim() !== 'NO' : null,
             unidades_por_caja: row['Und/Caja'] !== undefined ? parseFloat(row['Und/Caja']) || null : null,
             ultimo_valor_origen: row['Último Valor Origen'] !== undefined ? parseFloat(row['Último Valor Origen']) || null : null,
