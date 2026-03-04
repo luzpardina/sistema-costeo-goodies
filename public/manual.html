@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual de Usuario — Sistema de Costeo GOODIES</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #0d0d1a;
+            color: #e0e0e0;
+            line-height: 1.7;
+        }
+        .manual-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: #12121e;
+            border-right: 1px solid #333;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            overflow-y: auto;
+            padding: 20px 0;
+            z-index: 100;
+        }
+        .sidebar h2 {
+            color: #4fc3f7;
+            padding: 0 20px 15px;
+            font-size: 16px;
+            border-bottom: 1px solid #333;
+            margin-bottom: 10px;
+        }
+        .sidebar .version {
+            color: #666;
+            font-size: 11px;
+            padding: 0 20px 15px;
+        }
+        .sidebar a {
+            display: block;
+            padding: 8px 20px;
+            color: #aaa;
+            text-decoration: none;
+            font-size: 13px;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+        .sidebar a:hover, .sidebar a.active {
+            color: #fff;
+            background: rgba(79,195,247,0.1);
+            border-left-color: #4fc3f7;
+        }
+        .sidebar .section-title {
+            color: #4CAF50;
+            font-weight: bold;
+            padding: 15px 20px 5px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        /* Content */
+        .content {
+            margin-left: 280px;
+            padding: 40px 60px;
+            max-width: 900px;
+            flex: 1;
+        }
+        .content h1 {
+            color: #4fc3f7;
+            font-size: 28px;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #4fc3f7;
+        }
+        .content h2 {
+            color: #4CAF50;
+            font-size: 22px;
+            margin: 35px 0 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #333;
+        }
+        .content h3 {
+            color: #ff9800;
+            font-size: 17px;
+            margin: 25px 0 10px;
+        }
+        .content h4 {
+            color: #ce93d8;
+            font-size: 15px;
+            margin: 20px 0 8px;
+        }
+        .content p { margin-bottom: 12px; }
+        .content ul, .content ol {
+            margin: 10px 0 15px 25px;
+        }
+        .content li { margin-bottom: 6px; }
+        .formula {
+            background: #1a1a2e;
+            border: 1px solid #444;
+            border-left: 4px solid #4fc3f7;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 0 6px 6px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #4fc3f7;
+            overflow-x: auto;
+        }
+        .tip {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid #4CAF50;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin: 15px 0;
+            font-size: 13px;
+        }
+        .tip::before { content: '💡 '; }
+        .warning {
+            background: rgba(255, 152, 0, 0.1);
+            border: 1px solid #ff9800;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin: 15px 0;
+            font-size: 13px;
+        }
+        .warning::before { content: '⚠️ '; }
+        .important {
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid #f44336;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin: 15px 0;
+            font-size: 13px;
+        }
+        .important::before { content: '🔴 '; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 13px;
+        }
+        th {
+            background: #1e1e2f;
+            color: #4fc3f7;
+            padding: 10px 12px;
+            text-align: left;
+            border: 1px solid #333;
+        }
+        td {
+            padding: 8px 12px;
+            border: 1px solid #333;
+        }
+        tr:nth-child(even) { background: rgba(255,255,255,0.03); }
+        code {
+            background: #1a1a2e;
+            color: #4fc3f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+        .back-btn {
+            position: fixed;
+            top: 15px;
+            right: 20px;
+            background: #4fc3f7;
+            color: #000;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 200;
+            text-decoration: none;
+        }
+        .back-btn:hover { background: #81d4fa; }
+        .updated {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 30px;
+        }
+        .screenshot-placeholder {
+            background: #1a1a2e;
+            border: 1px dashed #444;
+            padding: 20px;
+            text-align: center;
+            color: #555;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .content { margin-left: 0; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-btn">← Volver al Sistema</a>
+    
+    <div class="manual-container">
+        <nav class="sidebar">
+            <h2>📘 Manual de Usuario</h2>
+            <div class="version" id="manualVersion">Versión 2.0 — Marzo 2026</div>
+            
+            <div class="section-title">General</div>
+            <a href="#intro">Introducción</a>
+            <a href="#estructura">Estructura del Sistema</a>
+            <a href="#acceso">Acceso y Login</a>
+            
+            <div class="section-title">Módulo COMEX</div>
+            <a href="#comex-overview">Visión General</a>
+            <a href="#comex-costeo">Crear / Editar Costeo</a>
+            <a href="#comex-datos">1. Datos Generales</a>
+            <a href="#comex-base">2. Base Aduana</a>
+            <a href="#comex-articulos">3. Artículos</a>
+            <a href="#comex-gastos">4. Gastos</a>
+            <a href="#comex-calculo">Cálculo y Resultado</a>
+            <a href="#comex-comparativo">Comparativo</a>
+            <a href="#comex-revaluacion">Revaluación</a>
+            <a href="#comex-ultimocosto">Último Costo</a>
+
+            <div class="section-title">Catálogo Maestro</div>
+            <a href="#catalogo">Catálogo de Artículos</a>
+            <a href="#catalogo-importar">Importar / Exportar</a>
+            <a href="#catalogo-estados">Estados Activo/Inactivo</a>
+
+            <div class="section-title">Módulo COMERCIAL</div>
+            <a href="#comercial-listas">Listas de Precios</a>
+            <a href="#comercial-acuerdos">Acuerdos Comerciales</a>
+            <a href="#comercial-precios">Cálculo de Precios</a>
+            <a href="#comercial-margenes">Cálculo de Márgenes</a>
+            <a href="#comercial-simulador">Simulador de Descuento</a>
+
+            <div class="section-title">Módulo CONTABLE</div>
+            <a href="#contable">Valuación de Inventarios</a>
+
+            <div class="section-title">Referencia</div>
+            <a href="#formulas">Fórmulas de Cálculo</a>
+            <a href="#glosario">Glosario</a>
+            <a href="#changelog">Historial de Cambios</a>
+        </nav>
+
+        <main class="content">
+            <!-- ========================================= -->
+            <section id="intro">
+                <h1>Manual de Usuario — Sistema de Costeo GOODIES</h1>
+                <p class="updated">Última actualización: 4 de Marzo de 2026</p>
+                <p>
+                    El Sistema de Costeo GOODIES es una aplicación web desarrollada para gestionar el costeo de importaciones, 
+                    cálculo de precios de venta, márgenes comerciales y valuación de inventarios de GOODIES S.A.
+                </p>
+                <p>
+                    El sistema reemplaza al antiguo sistema HTML de planillas individuales por una base de datos centralizada 
+                    que permite comparaciones, revaluaciones y análisis comercial integrado.
+                </p>
+            </section>
+
+            <!-- ========================================= -->
+            <section id="estructura">
+                <h2>Estructura del Sistema</h2>
+                <p>El sistema se organiza en 4 módulos accesibles mediante pestañas:</p>
+                <table>
+                    <tr><th>Módulo</th><th>Función</th><th>Usuarios típicos</th></tr>
+                    <tr><td><strong>COMEX</strong></td><td>Costeos de importación, revaluaciones, comparativos</td><td>Ariana, Luz</td></tr>
+                    <tr><td><strong>COMERCIAL</strong></td><td>Listas de precios, márgenes, simulación de descuentos</td><td>Carlos</td></tr>
+                    <tr><td><strong>CONTABLE</strong></td><td>Valuación de inventarios vs costeo</td><td>Ana</td></tr>
+                    <tr><td><strong>ADMIN</strong></td><td>Configuración, usuarios, manual</td><td>Administrador</td></tr>
+                </table>
+            </section>
+
+            <!-- ========================================= -->
+            <section id="acceso">
+                <h2>Acceso al Sistema</h2>
+                <p>Se accede mediante usuario y contraseña en la pantalla de login. Cada usuario tiene asignado un rol que determina qué puede ver y modificar.</p>
+                <div class="tip">Si olvidaste tu contraseña, contactá al administrador del sistema para que la reinicie.</div>
+            </section>
+
+            <!-- ========================================= -->
+            <!-- MÓDULO COMEX -->
+            <!-- ========================================= -->
+            <section id="comex-overview">
+                <h1>Módulo COMEX</h1>
+                <p>
+                    Este módulo gestiona todo el proceso de costeo de importaciones: desde la carga de datos del legajo 
+                    hasta el cálculo final del costo unitario en pesos por artículo, incluyendo derechos, impuestos y gastos.
+                </p>
+
+                <h3>Flujo general de trabajo</h3>
+                <ol>
+                    <li><strong>Crear costeo</strong> (carga manual o importar Excel)</li>
+                    <li><strong>Completar datos</strong>: artículos, tipos de cambio, gastos</li>
+                    <li><strong>Calcular</strong>: el sistema aplica derechos, estadística, IVA, imp. internos, ANMAT y prorratea gastos</li>
+                    <li><strong>Comparar</strong>: presupuesto vs definitivo o distintos costeos entre sí</li>
+                    <li><strong>Revaluar</strong>: recalcular con tipo de cambio actualizado</li>
+                </ol>
+            </section>
+
+            <section id="comex-costeo">
+                <h2>Crear / Editar un Costeo</h2>
+                <p>Desde la pantalla principal de COMEX tenés dos opciones:</p>
+                <ul>
+                    <li><strong>+ Carga Manual:</strong> abre el formulario en blanco para crear un costeo paso a paso</li>
+                    <li><strong>Editar (lápiz):</strong> en cualquier costeo existente del listado</li>
+                </ul>
+                <div class="warning">
+                    Si editás y guardás un costeo que ya estaba <strong>calculado</strong>, el sistema automáticamente lo vuelve a estado <strong>"borrador"</strong>. 
+                    Tenés que volver a calcularlo para que los costos se actualicen.
+                </div>
+            </section>
+
+            <section id="comex-datos">
+                <h3>Paso 1: Datos Generales</h3>
+                <table>
+                    <tr><th>Campo</th><th>Descripción</th></tr>
+                    <tr><td>Nombre del Costeo</td><td>Identificador libre (ej: "PREGO Marzo 2026")</td></tr>
+                    <tr><td>Proveedor de Origen</td><td>Empresa que provee la mercadería (se sincroniza al catálogo maestro)</td></tr>
+                    <tr><td>Empresa Intermediaria</td><td>La fábrica real si hay intermediario. Se registra en el catálogo como "Empresa Fábrica"</td></tr>
+                    <tr><td>Moneda Principal</td><td>USD, EUR o GBP — moneda de la factura del proveedor</td></tr>
+                    <tr><td>Monto Factura</td><td>Total de la factura del proveedor en moneda principal</td></tr>
+                    <tr><td>Tipos de Cambio</td><td>TC USD, EUR, GBP vigentes al momento del despacho</td></tr>
+                    <tr><td>Fecha Despacho / Nro. Despacho</td><td>Datos del despacho aduanero</td></tr>
+                    <tr><td>FOB / Flete / Seguro</td><td>Componentes del valor CIF en sus respectivas monedas</td></tr>
+                </table>
+
+                <div class="tip">
+                    Al guardar, si el Proveedor de Origen o la Empresa Fábrica difieren de lo que está en el catálogo maestro, 
+                    el sistema te pregunta si querés actualizar el catálogo. Así se mantienen sincronizados.
+                </div>
+
+                <h4>Costeos Consolidados</h4>
+                <p>
+                    Para embarques que incluyen mercadería de múltiples proveedores en un solo contenedor, 
+                    activá la opción "Es Consolidado" y cargá los sub-proveedores con sus FOB y volúmenes/pesos individuales.
+                </p>
+                <p>El sistema permite prorratear gastos por:</p>
+                <ul>
+                    <li><strong>FOB:</strong> proporcional al valor FOB de cada proveedor</li>
+                    <li><strong>Volumen (m³):</strong> proporcional al espacio que ocupa</li>
+                    <li><strong>Peso (kg):</strong> proporcional al peso</li>
+                </ul>
+            </section>
+
+            <section id="comex-base">
+                <h3>Paso 2: Base Aduana</h3>
+                <p>
+                    Este paso define los valores sobre los que se calculan los derechos de importación e impuestos. 
+                    Los valores se completan automáticamente a partir de los datos generales.
+                </p>
+                <div class="formula">
+                    Valor en Aduana = FOB + Flete + Seguro (todo convertido a ARS al TC del despacho)
+                </div>
+            </section>
+
+            <section id="comex-articulos">
+                <h3>Paso 3: Artículos</h3>
+                <p>Cada artículo del costeo incluye:</p>
+                <table>
+                    <tr><th>Campo</th><th>Descripción</th></tr>
+                    <tr><td>Código Goodies</td><td>Código del catálogo maestro — al ingresarlo, autocompleta nombre, derechos, imp. internos</td></tr>
+                    <tr><td>Código Proveedor</td><td>Código que usa el proveedor/fábrica</td></tr>
+                    <tr><td>Nombre</td><td>Descripción del artículo</td></tr>
+                    <tr><td>Cajas / Und. por Caja</td><td>Cantidad importada y presentación</td></tr>
+                    <tr><td>Valor Fábrica</td><td>Precio unitario de la fábrica (si hay intermediario)</td></tr>
+                    <tr><td>Valor Origen</td><td>Precio unitario del proveedor de origen</td></tr>
+                    <tr><td>% Derecho</td><td>Porcentaje de derechos de importación (del catálogo)</td></tr>
+                    <tr><td>% Imp. Interno</td><td>Porcentaje de impuesto interno (del catálogo)</td></tr>
+                    <tr><td>ANMAT</td><td>Si aplica tasa ANMAT (por defecto sí)</td></tr>
+                    <tr><td>Grupo</td><td>Para agrupar artículos en consolidados</td></tr>
+                </table>
+
+                <h4>Alertas de nombre</h4>
+                <p>
+                    Si el nombre del artículo en el costeo difiere del nombre en el catálogo maestro, 
+                    aparece una alerta naranja. Esto es informativo — los nombres pueden variar entre 
+                    la factura del proveedor y el catálogo interno.
+                </p>
+                <div class="tip">Usá el botón "✕ Limpiar alertas" para descartar las advertencias de nombre una vez revisadas.</div>
+
+                <h4>Valor Origen vs Valor Fábrica</h4>
+                <p>Cuando hay intermediario (el proveedor no es la fábrica):</p>
+                <ul>
+                    <li><strong>Valor Fábrica:</strong> lo que cobra la fábrica real</li>
+                    <li><strong>Valor Origen:</strong> lo que cobra el intermediario (mayor que el de fábrica)</li>
+                </ul>
+                <div class="formula">
+                    Valor Origen = Valor Fábrica ÷ 0.97 (cuando hay intermediario, por margen del 3%)
+                </div>
+            </section>
+
+            <section id="comex-gastos">
+                <h3>Paso 4: Gastos</h3>
+                <p>Los gastos se dividen en dos categorías conceptuales:</p>
+                
+                <h4>Gastos para Base Aduana (Tabla 4)</h4>
+                <p>
+                    Estos gastos se suman al valor CIF para calcular la base sobre la que se aplican derechos e impuestos. 
+                    Son gastos que la aduana considera parte del costo de la mercadería.
+                </p>
+
+                <h4>Gastos Reales (Tabla 5)</h4>
+                <p>
+                    Son los gastos efectivos que paga Goodies: despachante, terminal, flete interno, etc. 
+                    Estos se prorratean entre los artículos para llegar al costo unitario neto final.
+                </p>
+
+                <p>Cada gasto tiene los siguientes campos:</p>
+                <table>
+                    <tr><th>Campo</th><th>Descripción</th></tr>
+                    <tr><td>Descripción</td><td>Concepto del gasto</td></tr>
+                    <tr><td>Proveedor del Gasto</td><td>Quién lo cobra</td></tr>
+                    <tr><td>Nro. Comprobante</td><td>Factura o "ESTIMADO" si es presupuesto</td></tr>
+                    <tr><td>Moneda / Monto</td><td>En qué moneda y cuánto</td></tr>
+                    <tr><td>Recargo %</td><td>Porcentaje adicional (ej: IVA del gasto)</td></tr>
+                    <tr><td>No Contable</td><td>Marcar si el gasto no debe incluirse en valuaciones contables</td></tr>
+                    <tr><td>Prorratear</td><td>Método: por FOB, volumen, peso o no prorratear</td></tr>
+                </table>
+
+                <div class="warning">
+                    Los gastos marcados como "No Contable" se excluyen cuando se hace una revaluación con la opción "Tomar solo costos contables" activada.
+                </div>
+            </section>
+
+            <section id="comex-calculo">
+                <h2>Cálculo del Costeo</h2>
+                <p>Al presionar "Calcular", el sistema ejecuta el siguiente proceso para cada artículo:</p>
+
+                <h4>1. Base Imponible</h4>
+                <div class="formula">
+                    Base Imponible = (FOB unitario × TC) + gastos de aduana prorrateados
+                </div>
+
+                <h4>2. Derechos de Importación</h4>
+                <div class="formula">
+                    Derechos = Base Imponible × % Derechos del artículo
+                </div>
+                <div class="tip">Los artículos con 0% de derechos también quedan exentos de tasa de estadística.</div>
+
+                <h4>3. Tasa de Estadística</h4>
+                <div class="formula">
+                    Estadística = Base Imponible × % Estadística (solo si % Derechos &gt; 0)
+                </div>
+
+                <h4>4. IVA</h4>
+                <div class="formula">
+                    IVA = (Base Imponible + Derechos + Estadística) × 21%<br>
+                    IVA Adicional = (Base Imponible + Derechos + Estadística) × 20%
+                </div>
+
+                <h4>5. Impuesto Interno</h4>
+                <div class="formula">
+                    Imp. Interno = (Base Imponible + Derechos + Estadística) × % Imp. Interno del artículo
+                </div>
+
+                <h4>6. Tasa ANMAT</h4>
+                <p>Se aplica solo si el artículo tiene ANMAT activado. Es un monto fijo por despacho que se prorratea.</p>
+
+                <h4>7. Costo Unitario Neto</h4>
+                <div class="formula">
+                    Costo Neto = Base Imponible + Derechos + Estadística + Gastos Reales prorrateados
+                    <br><small>(Sin IVA ni Imp. Internos — esos son pass-through)</small>
+                </div>
+
+                <h4>8. Costo Unitario con Impuestos</h4>
+                <div class="formula">
+                    Costo c/Imp = Costo Neto + IVA + IVA Adic. + Imp. Interno + ANMAT
+                </div>
+
+                <h3>Indicadores de Estado</h3>
+                <table>
+                    <tr><th>Indicador</th><th>Significado</th></tr>
+                    <tr><td style="color:#4CAF50;">✔ Calculado</td><td>El costeo fue calculado y los costos son actuales</td></tr>
+                    <tr><td style="color:#ff9800;">⚠ Borrador</td><td>No calculado o fue modificado después de calcular — los costos pueden estar desactualizados</td></tr>
+                </table>
+            </section>
+
+            <section id="comex-comparativo">
+                <h2>Comparativo de Costeos</h2>
+                <p>
+                    Permite comparar 2 costeos lado a lado (ej: presupuesto vs definitivo, o dos proveedores distintos).
+                </p>
+                <ol>
+                    <li>Seleccioná exactamente 2 costeos en la lista usando los checkboxes</li>
+                    <li>Presioná "Comparar Seleccionados"</li>
+                    <li>El sistema muestra las diferencias con columna <strong>Dif%</strong> para cada valor</li>
+                </ol>
+                <p>Los colores de la columna Dif% indican la magnitud de la diferencia.</p>
+            </section>
+
+            <section id="comex-revaluacion">
+                <h2>Revaluación de Costos</h2>
+                <p>
+                    Permite recalcular un costeo existente con un tipo de cambio diferente, 
+                    sin modificar el costeo original. Útil para:
+                </p>
+                <ul>
+                    <li>Actualizar costos por variación del dólar</li>
+                    <li>Análisis de margen con TC actual</li>
+                    <li>Valuación contable a fecha de cierre</li>
+                </ul>
+
+                <h4>Opciones de revaluación</h4>
+                <table>
+                    <tr><th>Opción</th><th>Descripción</th></tr>
+                    <tr><td>Motivo</td><td>Revaluación Contable, Análisis de Margen, Actualización Costos de Reposición, Otro</td></tr>
+                    <tr><td>Especificar Detalle</td><td>Campo libre para agregar contexto (ej: "TC cierre Enero 2026")</td></tr>
+                    <tr><td>Solo costos contables</td><td>Excluye gastos marcados como "No Contable"</td></tr>
+                    <tr><td>Nuevo TC USD/EUR/GBP</td><td>Tipos de cambio para la revaluación</td></tr>
+                </table>
+            </section>
+
+            <section id="comex-ultimocosto">
+                <h2>Último Costo por Artículo</h2>
+                <p>
+                    Tabla que muestra el costo unitario neto más reciente de cada artículo, 
+                    tomado del último costeo calculado (definitivo) ordenado por fecha de despacho.
+                </p>
+                <p>Incluye filtros por Proveedor, Empresa Fábrica y Marca.</p>
+                <div class="important">
+                    Solo se muestran artículos cuyo proveedor, fábrica y artículo estén activos en el catálogo maestro. 
+                    Si desactivás un proveedor o fábrica, sus artículos dejan de aparecer aquí.
+                </div>
+            </section>
+
+            <!-- ========================================= -->
+            <!-- CATÁLOGO -->
+            <!-- ========================================= -->
+            <section id="catalogo">
+                <h1>Catálogo Maestro de Artículos</h1>
+                <p>
+                    Base de datos centralizada con todos los artículos de Goodies. Es la fuente de verdad para 
+                    códigos, nombres, porcentajes de derechos/impuestos y datos del proveedor.
+                </p>
+                <p>Se encuentra en la sección COMEX, en la tarjeta "Catálogo de Artículos".</p>
+            </section>
+
+            <section id="catalogo-importar">
+                <h2>Importar / Exportar Catálogo</h2>
+
+                <h3>Exportar (Descargar)</h3>
+                <p>El botón "📥 Descargar Catálogo" genera un Excel con TODOS los artículos (activos e inactivos), con formato profesional y filtros automáticos.</p>
+
+                <h3>Importar (Subir)</h3>
+                <p>El botón "📤 Subir Catálogo" permite actualizar el catálogo desde un Excel. El proceso es:</p>
+                <ol>
+                    <li>Seleccionás el archivo Excel</li>
+                    <li>El sistema <strong>previsualiza</strong> los cambios: cuántos artículos nuevos, cuántos con datos que cambian, cuántos sin cambios</li>
+                    <li>Si hay campos que cambian (ej: un porcentaje de derechos diferente), te muestra el detalle</li>
+                    <li>Solo si confirmás, se aplican los cambios</li>
+                </ol>
+
+                <h4>Columnas del Excel del catálogo</h4>
+                <table>
+                    <tr><th>Columna</th><th>Obligatoria</th><th>Descripción</th></tr>
+                    <tr><td>Cod. Goodies</td><td>Sí</td><td>Código único del artículo</td></tr>
+                    <tr><td>Nombre</td><td>Sí</td><td>Nombre completo</td></tr>
+                    <tr><td>Proveedor de Origen *</td><td>No</td><td>Nombre del proveedor</td></tr>
+                    <tr><td>Nombre Empresa Fábrica</td><td>No</td><td>Fábrica real</td></tr>
+                    <tr><td>Marca</td><td>No</td><td>Marca comercial</td></tr>
+                    <tr><td>Rubro</td><td>No</td><td>Categoría: Almacén, Bebidas, Frescos, etc.</td></tr>
+                    <tr><td>% Derechos</td><td>No</td><td>Porcentaje (ej: 20 o 0.20)</td></tr>
+                    <tr><td>% Imp. Internos</td><td>No</td><td>Porcentaje</td></tr>
+                    <tr><td>% IVA</td><td>No</td><td>Porcentaje (21 o 0.21)</td></tr>
+                    <tr><td>% Estadística</td><td>No</td><td>Porcentaje</td></tr>
+                    <tr><td>Proveedor Activo</td><td>No</td><td>SI o NO</td></tr>
+                    <tr><td>Fabrica Activa</td><td>No</td><td>SI o NO</td></tr>
+                    <tr><td>Artículo Activo</td><td>No</td><td>SI o NO</td></tr>
+                </table>
+                <div class="tip">Los porcentajes se aceptan tanto en formato decimal (0.20) como entero (20). El sistema los convierte automáticamente.</div>
+            </section>
+
+            <section id="catalogo-estados">
+                <h2>Estados Activo / Inactivo</h2>
+                <p>Hay tres niveles de activación independientes:</p>
+                <table>
+                    <tr><th>Estado</th><th>Efecto cuando es "NO"</th></tr>
+                    <tr><td><strong>Proveedor Activo</strong></td><td>Todos los artículos de ese proveedor se ocultan de dropdowns, costeos y cálculos comerciales</td></tr>
+                    <tr><td><strong>Fábrica Activa</strong></td><td>Los artículos de esa fábrica se ocultan</td></tr>
+                    <tr><td><strong>Artículo Activo</strong></td><td>Ese artículo individual se oculta</td></tr>
+                </table>
+                <div class="warning">Desactivar un proveedor o fábrica afecta a TODOS los artículos que tengan ese proveedor/fábrica asignado.</div>
+                <p>En el Excel descargado, los artículos inactivos aparecen en gris.</p>
+            </section>
+
+            <!-- ========================================= -->
+            <!-- MÓDULO COMERCIAL -->
+            <!-- ========================================= -->
+            <section id="comercial-listas">
+                <h1>Módulo COMERCIAL</h1>
+                <h2>Listas de Precios</h2>
+                <p>
+                    Cada lista de precios representa un canal de venta con sus propios parámetros de costos y márgenes. 
+                    Las listas definidas actualmente son:
+                </p>
+                <ul>
+                    <li><strong>Distribuidor:</strong> Goodies → Distribuidor → Tradicional → Público</li>
+                    <li><strong>Tradicional:</strong> Goodies → Cliente directo → Público</li>
+                    <li><strong>Jumbo / Coto / Carrefour:</strong> Supermercados (con acuerdos comerciales)</li>
+                    <li><strong>MercadoLibre:</strong> Venta directa online</li>
+                    <li><strong>Tienda Goodies:</strong> Venta directa en local propio</li>
+                </ul>
+
+                <h3>Parámetros de cada lista</h3>
+                <table>
+                    <tr><th>Parámetro</th><th>Descripción</th></tr>
+                    <tr><td>% Logístico</td><td>Costo de distribución/flete</td></tr>
+                    <tr><td>% IIBB</td><td>Ingresos Brutos</td></tr>
+                    <tr><td>% Financiero</td><td>Costo financiero (plazos de pago)</td></tr>
+                    <tr><td>% Comisión</td><td>Comisión comercial</td></tr>
+                    <tr><td>% Margen Goodies</td><td>Margen propio de Goodies sobre su precio de venta</td></tr>
+                    <tr><td>% Margen Cliente de Goodies</td><td>Margen que aplica el cliente directo de Goodies (ej: distribuidor cobra 35%)</td></tr>
+                    <tr><td>% Markup Cliente Trad.</td><td>Markup del último eslabón (ej: el almacén que le vende al público)</td></tr>
+                    <tr><td>% Otro Costo</td><td>Cualquier costo adicional no contemplado arriba</td></tr>
+                    <tr><td>Observación</td><td>Nota libre</td></tr>
+                </table>
+
+                <div class="tip">
+                    Las listas se editan inline: hacé clic en el ícono de lápiz para habilitar la edición de los porcentajes directamente en la tabla.
+                </div>
+            </section>
+
+            <section id="comercial-acuerdos">
+                <h2>Acuerdos Comerciales</h2>
+                <p>
+                    Los acuerdos comerciales son descuentos adicionales que se aplican por lista + rubro. 
+                    Por ejemplo: Jumbo puede tener un acuerdo del 10% para el rubro "Almacén" pero 15% para "Bebidas".
+                </p>
+                <p>Cada acuerdo tiene rubros asignables (multi-selección) desde el catálogo maestro.</p>
+            </section>
+
+            <section id="comercial-precios">
+                <h2>Cálculo de Precios (Costo → Precio de Venta)</h2>
+                <p>
+                    Calcula el precio al que Goodies debe vender cada artículo para cubrir todos sus costos 
+                    y obtener el margen deseado. Es la <strong>dirección A</strong> del cálculo comercial.
+                </p>
+
+                <h3>Fórmula principal (Gross-Up)</h3>
+                <div class="formula">
+                    Precio Neto Goodies = Costo Neto ÷ (1 - Σ%)
+                    <br><br>
+                    Donde Σ% = % Margen Goodies + % Logístico + % IIBB + % Financiero + % Comisión + % Otro Costo + % Acuerdo
+                </div>
+
+                <h4>Ejemplo numérico</h4>
+                <p>Costo Neto = $100, Margen Goodies = 30%, Logístico = 5%, IIBB = 3.5%</p>
+                <div class="formula">
+                    Σ% = 30 + 5 + 3.5 = 38.5%
+                    <br>
+                    Precio Neto Goodies = $100 ÷ (1 - 0.385) = $100 ÷ 0.615 = $162.60
+                    <br><br>
+                    Verificación:
+                    <br>$162.60 × 30% = $48.78 (margen Goodies)
+                    <br>$162.60 × 5% = $8.13 (logístico)
+                    <br>$162.60 × 3.5% = $5.69 (IIBB)
+                    <br>Total deducciones = $62.60 → Queda $100.00 ✓
+                </div>
+
+                <h4>¿Por qué gross-up y no markup?</h4>
+                <p>
+                    El gross-up garantiza que todos los porcentajes se calculan sobre el precio de venta (no sobre el costo). 
+                    Así, los ingresos netos después de deducir TODOS los porcentajes dan exactamente el costo original.
+                </p>
+
+                <h3>Cadena de precios</h3>
+                <p>El sistema calcula toda la cadena:</p>
+                <ol>
+                    <li><strong>Precio Neto Goodies</strong>: lo que Goodies cobra sin impuestos</li>
+                    <li><strong>Factura Goodies</strong>: Precio Neto + IVA 21% + Imp. Internos (si corresponde)</li>
+                    <li><strong>Precio del cliente</strong>: El distribuidor/super aplica su margen (% Margen Cliente de Goodies)</li>
+                    <li><strong>PVP Estimado</strong>: Precio al público final (si hay % Markup Cliente Trad.)</li>
+                </ol>
+
+                <div class="important">
+                    <strong>Impuesto Interno:</strong> es pass-through para Goodies (lo paga en aduana y lo cobra al facturar). 
+                    Pero para el distribuidor/super es COSTO, se suma a su base para calcular su precio de venta.
+                </div>
+
+                <h3>Cómo usarlo</h3>
+                <ol>
+                    <li>Tildá las listas que querés calcular (checkboxes en la sección Listas de Precios)</li>
+                    <li>Hacé clic en "📦 Cargar Artículos" para traer los últimos costos</li>
+                    <li>Filtrá por proveedor o marca si querés</li>
+                    <li>Seleccioná/deseleccioná artículos con los checkboxes</li>
+                    <li>Presioná "💲 Calcular Precios"</li>
+                </ol>
+                <div class="tip">Hacé clic en "Ver desglose detallado" debajo de los resultados para ver paso a paso cómo se calculó cada precio.</div>
+            </section>
+
+            <section id="comercial-margenes">
+                <h2>Cálculo de Márgenes (PVP → Margen)</h2>
+                <p>
+                    Operación inversa: dado un PVP (precio de venta al público) o precio actual, 
+                    calcula cuánto margen le queda a Goodies en cada lista. Es la <strong>dirección B</strong>.
+                </p>
+
+                <h3>Proceso inverso</h3>
+                <p>El sistema desanda la cadena de precios:</p>
+                <ol>
+                    <li>PVP → quitar IVA → Precio Neto final</li>
+                    <li>Si hay markup tradicional → desandar</li>
+                    <li>Si hay margen cliente → desandar</li>
+                    <li>Quitar imp. internos → Precio Neto Goodies</li>
+                    <li>Deducir gastos (logístico, IIBB, financiero, comisión, otro, acuerdo) → Ingreso Neto</li>
+                    <li>Margen Goodies = (Ingreso Neto - Costo Neto) / Costo Neto × 100</li>
+                </ol>
+
+                <h3>Colores de margen</h3>
+                <table>
+                    <tr><th>Color</th><th>Margen</th></tr>
+                    <tr><td style="color:#f44336;">Rojo</td><td>Menor a 10% (peligro)</td></tr>
+                    <tr><td style="color:#ff9800;">Naranja</td><td>Entre 10% y 20% (ajustado)</td></tr>
+                    <tr><td style="color:#4CAF50;">Verde</td><td>Mayor a 20% (saludable)</td></tr>
+                </table>
+
+                <h3>Cómo usarlo</h3>
+                <ol>
+                    <li>Tildá las listas que querés analizar</li>
+                    <li>Cargá artículos del catálogo</li>
+                    <li>Ingresá el PVP manualmente o subí un Excel con la columna PVP</li>
+                    <li>Presioná "📊 Calcular Márgenes"</li>
+                </ol>
+            </section>
+
+            <section id="comercial-simulador">
+                <h2>Simulador de Descuento (Break-Even)</h2>
+                <p>
+                    Calcula el descuento máximo que Goodies puede otorgar si el cliente 
+                    promete aumentar el volumen de compra, sin perder rentabilidad total.
+                </p>
+                <div class="formula">
+                    Ganancia actual = (Precio - Costo) × Cantidad
+                    <br>
+                    Con descuento D% y volumen +V%:
+                    <br>
+                    Nueva Ganancia = (Precio × (1-D) - Costo) × Cantidad × (1+V)
+                    <br><br>
+                    Para break-even (salir igual):
+                    <br>
+                    D máx = 1 - (Costo + Margen÷(1+V)) ÷ Precio
+                </div>
+                <p>El sistema muestra escenarios con +10%, +20% y +30% de volumen.</p>
+            </section>
+
+            <!-- ========================================= -->
+            <!-- MÓDULO CONTABLE -->
+            <!-- ========================================= -->
+            <section id="contable">
+                <h1>Módulo CONTABLE</h1>
+                <h2>Valuación de Inventarios</h2>
+                <p>
+                    Permite comparar los costos registrados en el sistema contable (Centum) contra 
+                    los costos calculados por el sistema de costeo, para detectar diferencias y calcular ajustes.
+                </p>
+                <h3>Flujo de trabajo</h3>
+                <ol>
+                    <li>Subí el Excel de inventario exportado desde Centum</li>
+                    <li>Seleccioná una revaluación del sistema para comparar</li>
+                    <li>El sistema genera la comparación artículo por artículo</li>
+                    <li>Exportá el reporte con las diferencias</li>
+                </ol>
+            </section>
+
+            <!-- ========================================= -->
+            <!-- REFERENCIA -->
+            <!-- ========================================= -->
+            <section id="formulas">
+                <h1>Referencia de Fórmulas</h1>
+
+                <h3>Costeo de Importación</h3>
+                <div class="formula">
+                    CIF ARS = (FOB + Flete + Seguro) × TC correspondiente<br>
+                    Base Imponible = CIF ARS + Gastos Aduana prorrateados<br>
+                    Derechos = Base × % Derechos<br>
+                    Estadística = Base × % Estadística (solo si Derechos &gt; 0)<br>
+                    IVA = (Base + Derechos + Estadística) × 21%<br>
+                    Costo Neto = Base + Derechos + Estadística + Gastos Reales prorrateados
+                </div>
+
+                <h3>Precio de Venta (Gross-Up)</h3>
+                <div class="formula">
+                    Precio Neto Goodies = Costo Neto ÷ (1 - Σ%)<br>
+                    Factura Goodies = Precio Neto × (1 + IVA%) + Precio Neto × Imp.Int.%<br>
+                    Costo Cliente = Precio Neto + Imp. Internos<br>
+                    Precio Cliente = Costo Cliente ÷ (1 - % Margen Cliente)<br>
+                    PVP = Precio Cliente × (1 + % Markup Trad.) × (1 + IVA%)
+                </div>
+
+                <h3>Margen Inverso (desde PVP)</h3>
+                <div class="formula">
+                    Precio Neto Final = PVP ÷ (1 + IVA%)<br>
+                    Desandar Markup Trad. → Desandar Margen Cliente → Quitar Imp. Internos<br>
+                    = Precio Neto Goodies<br>
+                    Ingreso Neto = Precio Neto × (1 - Σ% gastos)<br>
+                    Margen Goodies = (Ingreso Neto - Costo Neto) ÷ Costo Neto × 100
+                </div>
+
+                <h3>Simulador Break-Even</h3>
+                <div class="formula">
+                    D máx = 1 - (Costo + Margen_unitario ÷ (1 + V%)) ÷ Precio
+                </div>
+            </section>
+
+            <section id="glosario">
+                <h2>Glosario</h2>
+                <table>
+                    <tr><th>Término</th><th>Definición</th></tr>
+                    <tr><td><strong>FOB</strong></td><td>Free On Board — valor de la mercadería puesta en el barco/avión, sin flete ni seguro</td></tr>
+                    <tr><td><strong>CIF</strong></td><td>Cost, Insurance and Freight — FOB + Flete + Seguro</td></tr>
+                    <tr><td><strong>TC</strong></td><td>Tipo de Cambio (pesos por unidad de moneda extranjera)</td></tr>
+                    <tr><td><strong>Base Imponible</strong></td><td>Valor sobre el que se calculan derechos e impuestos aduaneros</td></tr>
+                    <tr><td><strong>Derechos de Importación</strong></td><td>Arancel que cobra la aduana, % sobre la base imponible</td></tr>
+                    <tr><td><strong>Tasa de Estadística</strong></td><td>Tasa adicional de aduana, solo aplica si hay derechos</td></tr>
+                    <tr><td><strong>Imp. Interno</strong></td><td>Impuesto interno — pass-through para Goodies, costo para el siguiente eslabón</td></tr>
+                    <tr><td><strong>ANMAT</strong></td><td>Tasa de la Administración Nacional de Medicamentos, Alimentos y Tecnología Médica</td></tr>
+                    <tr><td><strong>Costo Neto</strong></td><td>Costo del artículo sin IVA ni imp. internos, incluyendo gastos prorrateados</td></tr>
+                    <tr><td><strong>Gross-Up</strong></td><td>Fórmula para calcular precio de venta: Costo ÷ (1 - Σ%)</td></tr>
+                    <tr><td><strong>Markup</strong></td><td>Recargo sobre el costo: Costo × (1 + %)</td></tr>
+                    <tr><td><strong>Pass-through</strong></td><td>Costo que Goodies paga y traslada sin absorber (ej: imp. internos)</td></tr>
+                    <tr><td><strong>Prorrateo</strong></td><td>Distribución de un gasto entre artículos según criterio (FOB, volumen, peso)</td></tr>
+                    <tr><td><strong>Revaluación</strong></td><td>Recálculo de costos con nuevo tipo de cambio</td></tr>
+                    <tr><td><strong>Consolidado</strong></td><td>Embarque con mercadería de múltiples proveedores en un contenedor</td></tr>
+                </table>
+            </section>
+
+            <section id="changelog">
+                <h2>Historial de Cambios</h2>
+                
+                <h3>Marzo 2026 — v2.0</h3>
+                <ul>
+                    <li>Módulo COMERCIAL: Listas de precios con edición inline, acuerdos comerciales por rubro</li>
+                    <li>Cálculo de Precios (Costo → Precio) con fórmula gross-up</li>
+                    <li>Cálculo de Márgenes (PVP → Margen) con cadena inversa completa</li>
+                    <li>Simulador de Descuento Break-Even</li>
+                    <li>Catálogo Maestro: columna "Empresa Fábrica Activa", 3 niveles de activación</li>
+                    <li>Comparativo limitado a 2 costeos con columna Dif% limpia</li>
+                    <li>Revaluación: campo detalle siempre visible, checkbox "Solo contables"</li>
+                    <li>Sincronización Proveedor/Fábrica entre costeo y catálogo con confirmación</li>
+                    <li>Reseteo automático de estado "calculado" al modificar un costeo</li>
+                    <li>Dropdowns filtrados por estados activos (proveedor, fábrica, artículo)</li>
+                    <li>Excel catálogo con formato profesional (ExcelJS)</li>
+                </ul>
+
+                <h3>Febrero 2026 — v1.5</h3>
+                <ul>
+                    <li>Migración a PostgreSQL + Railway</li>
+                    <li>Catálogo de artículos con importación masiva</li>
+                    <li>Costeos consolidados con prorrateo</li>
+                    <li>Módulo CONTABLE: valuación de inventarios</li>
+                    <li>Botón "Definitivo" para duplicar costeos</li>
+                    <li>Exportación Excel con formato corporativo</li>
+                    <li>Tips colapsables de ayuda</li>
+                </ul>
+
+                <h3>Enero 2026 — v1.0</h3>
+                <ul>
+                    <li>Versión inicial del sistema</li>
+                    <li>Carga manual y cálculo de costeos</li>
+                    <li>Revaluación con nuevo TC</li>
+                    <li>Último costo por artículo</li>
+                </ul>
+            </section>
+
+            <div style="margin-top:60px; padding:20px; background:#12121e; border-radius:8px; text-align:center; color:#666;">
+                <p>Sistema de Costeo GOODIES S.A. — Manual v2.0</p>
+                <p>Desarrollado con asistencia de Claude (Anthropic)</p>
+                <p style="margin-top:10px;">Para soporte técnico, contactar al administrador del sistema.</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Highlight active section in sidebar on scroll
+        const sections = document.querySelectorAll('section[id]');
+        const navLinks = document.querySelectorAll('.sidebar a');
+        
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - 100;
+                if (window.scrollY >= sectionTop) {
+                    current = section.getAttribute('id');
+                }
+            });
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Smooth scroll
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    </script>
+</body>
+</html>
