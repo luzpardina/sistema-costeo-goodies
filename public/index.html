@@ -204,11 +204,13 @@
                         <datalist id="listaMarcas"></datalist>
                     </div>
                     <div class="filtro-grupo">
-                        <label>Tipo</label>
+                        <label>Estado</label>
                         <select id="filtroTipo" onchange="aplicarFiltros()">
                             <option value="">Todos</option>
                             <option value="definitivo">Definitivo</option>
                             <option value="presupuesto">Presupuesto</option>
+                            <option value="calculado">✔ Calculado</option>
+                            <option value="no_calculado">⚠ No Calculado</option>
                         </select>
                     </div>
                     <button class="btn btn-secondary" onclick="limpiarFiltros()">Limpiar</button>
@@ -1692,6 +1694,8 @@ async function cargarCosteos() {
             if (marca) filtrados = filtrados.filter(c => (c.marcas && c.marcas.toLowerCase().includes(marca)) || (c.articulos_nombres && c.articulos_nombres.toLowerCase().includes(marca)));
             if (tipo === 'definitivo') filtrados = filtrados.filter(c => esDefinitivo(c));
             else if (tipo === 'presupuesto') filtrados = filtrados.filter(c => !esDefinitivo(c));
+            else if (tipo === 'calculado') filtrados = filtrados.filter(c => c.estado === 'calculado');
+            else if (tipo === 'no_calculado') filtrados = filtrados.filter(c => c.estado !== 'calculado');
             costeosFiltrados = filtrados;
             renderizarTabla(filtrados);
             actualizarAccionesMasivas();
@@ -3880,7 +3884,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         const hayDistribuidor = resultados.some(r => r.precios.some(p => p.pct_margen_cliente > 0));
         const hayTradicional = resultados.some(r => r.precios.some(p => p.pct_markup_trad > 0));
         const hayCadena = resultados.some(r => r.precios.some(p => p.tiene_acuerdos_cadena));
-        const colsPorLista = 2 + (hayCadena ? 2 : 0) + (hayDistribuidor ? 1 : 0) + (hayTradicional ? 1 : 0) + 1;
+        const colsPorLista = 3 + (hayCadena ? 2 : 0) + (hayDistribuidor ? 1 : 0) + (hayTradicional ? 1 : 0) + 1;
 
         html += '<div class="table-container" style="overflow-x:auto;"><table style="font-size:11px;">';
         html += '<thead><tr style="background:#2a2a3e;">';
@@ -3895,6 +3899,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         html += '<th style="position:sticky;left:0;background:#1e1e2f;z-index:2;"></th><th></th>';
         listas.forEach(() => {
             html += '<th style="text-align:right;border-left:2px solid #555;">Neto Goodies</th>';
+            html += '<th style="text-align:right;color:#ff9800;">CM $</th>';
             if (hayCadena) html += '<th style="text-align:right;color:#ce93d8;">Bruto Acord.</th>';
             html += '<th style="text-align:right;">Fact. Goodies</th>';
             if (hayCadena) html += '<th style="text-align:right;color:#4CAF50;">Neto Real</th>';
@@ -3911,6 +3916,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             r.precios.forEach(p => {
                 const margenColor = (p.pcts.margen_goodies || 0) >= 20 ? '#4CAF50' : '#ff9800';
                 html += '<td style="text-align:right;border-left:2px solid #555;">' + fmtMoney(p.precio_neto_goodies) + '<br><small style="color:' + margenColor + ';">MG:' + (p.pcts.margen_goodies||0).toFixed(0) + '%</small></td>';
+                html += '<td style="text-align:right;color:#ff9800;font-weight:bold;">' + fmtMoney(p.margen_goodies_monto) + '</td>';
                 if (hayCadena) {
                     html += '<td style="text-align:right;">' + (p.tiene_acuerdos_cadena ? fmtMoney(p.precio_bruto_acordado) + '<br><small style="color:#ce93d8;">+' + p.pct_acuerdo_cadena_total + '%</small>' : '<small style="color:#555;">-</small>') + '</td>';
                 }
@@ -4001,7 +4007,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         const wsData = [['Código', 'Nombre', 'Proveedor', 'Rubro', 'Costo Neto', 'IVA%', 'Imp.Int%']];
         const listas = ultimosResultadosPrecios[0].precios.map(p => p.lista_nombre);
         listas.forEach(l => {
-            wsData[0].push(l + ' - Neto Goodies');
+            wsData[0].push(l + ' - Neto Goodies', l + ' - CM $');
             if (hayCadena) wsData[0].push(l + ' - Bruto Acord.', l + ' - Neto Real');
             wsData[0].push(l + ' - Fact. Goodies');
             if (hayDistribuidor) wsData[0].push(l + ' - Neto Super/Dist.');
@@ -4011,7 +4017,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         ultimosResultadosPrecios.forEach(r => {
             const row = [r.codigo_goodies, r.nombre, r.proveedor || '', r.rubro || '', r.costo_neto, r.iva_pct, r.imp_interno_pct];
             r.precios.forEach(p => {
-                row.push(p.precio_neto_goodies);
+                row.push(p.precio_neto_goodies, p.margen_goodies_monto);
                 if (hayCadena) row.push(p.tiene_acuerdos_cadena ? p.precio_bruto_acordado : '', p.tiene_acuerdos_cadena ? p.neto_real_goodies : p.precio_neto_goodies);
                 row.push(p.factura_goodies);
                 if (hayDistribuidor) row.push(p.precio_neto_cliente || '');
