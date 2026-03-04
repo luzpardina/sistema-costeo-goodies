@@ -47,20 +47,28 @@ router.get('/listar', auth, async (req, res) => {
         const todosCodigos = [...new Set(costeos.flatMap(c => (c.articulos || []).map(a => a.codigo_goodies).filter(Boolean)))];
         const catalogoItems = todosCodigos.length > 0 ? await CatalogoArticulo.findAll({
             where: { codigo_goodies: { [Op.in]: todosCodigos } },
-            attributes: ['codigo_goodies', 'marca'],
+            attributes: ['codigo_goodies', 'marca', 'empresa_fabrica'],
             raw: true
         }) : [];
         const marcaPorCodigo = {};
-        catalogoItems.forEach(ci => { if (ci.marca) marcaPorCodigo[ci.codigo_goodies] = ci.marca; });
+        const fabricaPorCodigo = {};
+        catalogoItems.forEach(ci => { 
+            if (ci.marca) marcaPorCodigo[ci.codigo_goodies] = ci.marca;
+            if (ci.empresa_fabrica) fabricaPorCodigo[ci.codigo_goodies] = ci.empresa_fabrica;
+        });
 
         const lista = costeos.map(c => {
             const marcasSet = new Set();
-            (c.articulos || []).forEach(a => { if (marcaPorCodigo[a.codigo_goodies]) marcasSet.add(marcaPorCodigo[a.codigo_goodies]); });
+            const fabricasSet = new Set();
+            (c.articulos || []).forEach(a => { 
+                if (marcaPorCodigo[a.codigo_goodies]) marcasSet.add(marcaPorCodigo[a.codigo_goodies]);
+                if (fabricaPorCodigo[a.codigo_goodies]) fabricasSet.add(fabricaPorCodigo[a.codigo_goodies]);
+            });
             return {
                 id: c.id,
                 nombre_costeo: c.nombre_costeo,
                 proveedor: c.proveedor,
-                empresa_fabrica: c.empresa_intermediaria || '',
+                empresa_fabrica: [...fabricasSet].join(', ') || c.empresa_intermediaria || '',
                 marcas: [...marcasSet].join(', '),
                 moneda_principal: c.moneda_principal,
                 fecha_factura: c.fecha_factura,

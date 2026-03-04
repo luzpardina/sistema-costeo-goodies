@@ -3,7 +3,7 @@ const { Op } = require('sequelize');
 
 class RevaluacionService {
 
-    static async generarRevaluacion(usuarioId, costeoIds, tcNuevoUSD, tcNuevoEUR, tcNuevoGBP, motivo) {
+    static async generarRevaluacion(usuarioId, costeoIds, tcNuevoUSD, tcNuevoEUR, tcNuevoGBP, motivo, soloContable = false) {
         
         // 1. Obtener artículos a revaluar
         // NO filtrar por usuario_id para incluir costeos de todo el equipo
@@ -152,8 +152,8 @@ class RevaluacionService {
             // Gastos varios prorrateados con nuevos TC
             let totalGastosVarNuevoPesos = 0;
             for (const g of gastosVarios) {
-                // Si es Revaluación Contable, excluir gastos no contables
-                if (motivo === 'Revaluación Contable' && g.no_contable) continue;
+                // Si se activó "solo contable", excluir gastos no contables
+                if (soloContable && g.no_contable) continue;
                 
                 const montoOrig = parseFloat(g.monto) || 0;
                 const monedaG = (g.moneda || 'USD').toUpperCase();
