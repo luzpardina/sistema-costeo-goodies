@@ -383,9 +383,9 @@
                         <label style="font-size:10px;color:#888;">Tipo</label>
                         <select id="acuerdoTipo" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;font-size:12px;">
                             <option value="flat">Flat (s/Precio bruto)</option>
-                            <option value="desc_oc">Descuento en OC</option>
-                            <option value="nota_credito">Nota de Crédito</option>
-                            <option value="factura_cliente">Factura del Cliente</option>
+                            <option value="desc_oc">Dscto en OC</option>
+                            <option value="nota_credito">NC x Acuerdos/Logística</option>
+                            <option value="factura_cliente">Fact. Cli x Logística</option>
                         </select>
                     </div>
                     <div style="display:flex;flex-direction:column;gap:2px;">
@@ -395,10 +395,10 @@
                     <div style="display:flex;flex-direction:column;gap:2px;">
                         <label style="font-size:10px;color:#888;">Base de cálculo</label>
                         <select id="acuerdoBase" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;font-size:12px;">
-                            <option value="bruto">Precio bruto</option>
-                            <option value="neto_post_desc_oc">Neto post Desc. OC</option>
-                            <option value="neto_post_nota_credito">Neto post NC</option>
-                            <option value="neto_post_factura_cliente">Neto post Fact. Cliente</option>
+                            <option value="bruto">Sobre Precio Acordado</option>
+                            <option value="neto_post_desc_oc">Sobre Neto post OC</option>
+                            <option value="neto_post_nota_credito">Sobre Neto post NC</option>
+                            <option value="neto_post_factura_cliente">Sobre Neto post Fact.Cli</option>
                         </select>
                     </div>
                     <button class="btn btn-primary" onclick="agregarAcuerdo()" style="padding:6px 15px;">+ Agregar</button>
@@ -3651,15 +3651,15 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
 
     const TIPO_ACUERDO_LABELS = {
         'flat': 'Flat (s/Bruto)',
-        'desc_oc': 'Desc. en OC',
-        'nota_credito': 'Nota de Crédito',
-        'factura_cliente': 'Fact. del Cliente'
+        'desc_oc': 'Dscto en OC',
+        'nota_credito': 'NC x Acuerdos/Logística',
+        'factura_cliente': 'Fact. Cli x Logística'
     };
     const BASE_CALCULO_LABELS = {
-        'bruto': 'Precio bruto',
-        'neto_post_desc_oc': 'Neto post OC',
-        'neto_post_nota_credito': 'Neto post NC',
-        'neto_post_factura_cliente': 'Neto post Fact.Cli.'
+        'bruto': 'Sobre Precio Acordado',
+        'neto_post_desc_oc': 'Sobre Neto post OC',
+        'neto_post_nota_credito': 'Sobre Neto post NC',
+        'neto_post_factura_cliente': 'Sobre Neto post Fact.Cli'
     };
 
     function renderAcuerdos() {
@@ -3670,7 +3670,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             const editing = a._editing;
             const rubrosArr = (a.rubros || '').split(',').filter(r => r.trim());
             const tipoLabel = TIPO_ACUERDO_LABELS[a.tipo_acuerdo] || 'Flat (s/Bruto)';
-            const baseLabel = BASE_CALCULO_LABELS[a.base_calculo] || 'Precio bruto';
+            const baseLabel = BASE_CALCULO_LABELS[a.base_calculo] || 'Sobre Precio Acordado';
             const orden = a.orden || 1;
 
             if (editing) {
@@ -3685,15 +3685,15 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                     <td><input type="number" step="0.1" style="${editSt}width:60px;" value="${a.pct_acuerdo}" id="ed_acuerdo_pct_${a.id}"></td>
                     <td><select style="${editSt}" id="ed_acuerdo_tipo_${a.id}">
                         <option value="flat" ${a.tipo_acuerdo==='flat'?'selected':''}>Flat (s/Bruto)</option>
-                        <option value="desc_oc" ${a.tipo_acuerdo==='desc_oc'?'selected':''}>Desc. en OC</option>
-                        <option value="nota_credito" ${a.tipo_acuerdo==='nota_credito'?'selected':''}>Nota de Crédito</option>
-                        <option value="factura_cliente" ${a.tipo_acuerdo==='factura_cliente'?'selected':''}>Fact. del Cliente</option>
+                        <option value="desc_oc" ${a.tipo_acuerdo==='desc_oc'?'selected':''}>Dscto en OC</option>
+                        <option value="nota_credito" ${a.tipo_acuerdo==='nota_credito'?'selected':''}>NC x Acuerdos/Logística</option>
+                        <option value="factura_cliente" ${a.tipo_acuerdo==='factura_cliente'?'selected':''}>Fact. Cli x Logística</option>
                     </select></td>
                     <td><input type="number" min="1" max="10" style="${editSt}width:40px;" value="${orden}" id="ed_acuerdo_orden_${a.id}"></td>
                     <td><select style="${editSt}" id="ed_acuerdo_base_${a.id}">
-                        <option value="bruto" ${a.base_calculo==='bruto'?'selected':''}>Precio bruto</option>
-                        <option value="neto_post_desc_oc" ${a.base_calculo==='neto_post_desc_oc'?'selected':''}>Neto post OC</option>
-                        <option value="neto_post_nota_credito" ${a.base_calculo==='neto_post_nota_credito'?'selected':''}>Neto post NC</option>
+                        <option value="bruto" ${a.base_calculo==='bruto'?'selected':''}>Sobre Precio Acordado</option>
+                        <option value="neto_post_desc_oc" ${a.base_calculo==='neto_post_desc_oc'?'selected':''}>Sobre Neto post OC</option>
+                        <option value="neto_post_nota_credito" ${a.base_calculo==='neto_post_nota_credito'?'selected':''}>Sobre Neto post NC</option>
                         <option value="neto_post_factura_cliente" ${a.base_calculo==='neto_post_factura_cliente'?'selected':''}>Neto post Fact.Cli.</option>
                     </select></td>
                     <td style="max-width:250px;">${rubrosCheckboxes || '<span style="color:#888;">Sin rubros</span>'}</td>
@@ -3980,8 +3980,8 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 html += '<p style="font-size:11px;color:#aaa;">Desglose: Margen ' + fmtMoney(p.margen_goodies_monto) + ' | Log ' + fmtMoney(p.logistico_monto) + ' | IIBB ' + fmtMoney(p.iibb_monto) + ' | Fin ' + fmtMoney(p.financiero_monto) + ' | Com ' + fmtMoney(p.comision_monto) + (p.otro_costo_monto > 0 ? ' | Otro ' + fmtMoney(p.otro_costo_monto) : '') + (p.acuerdo_flat_monto > 0 ? ' | Acuerdo(flat) ' + fmtMoney(p.acuerdo_flat_monto) : '') + '</p>';
                 // Paso 1b: Acuerdos cadena
                 if (p.tiene_acuerdos_cadena) {
-                    const TIPO_LABELS = {desc_oc:'Desc. en OC',nota_credito:'Nota de Crédito',factura_cliente:'Fact. del Cliente'};
-                    const BASE_LABELS = {bruto:'Bruto',neto_post_desc_oc:'Post OC',neto_post_nota_credito:'Post NC',neto_post_factura_cliente:'Post Fact.Cli.'};
+                    const TIPO_LABELS = {desc_oc:'Dscto en OC',nota_credito:'NC x Acuerdos/Logística',factura_cliente:'Fact. Cli x Logística'};
+                    const BASE_LABELS = {bruto:'Precio Acordado',neto_post_desc_oc:'Post OC',neto_post_nota_credito:'Post NC',neto_post_factura_cliente:'Post Fact.Cli'};
                     html += '<p style="margin-top:8px;"><strong style="color:#ce93d8;">Paso 1b — Acuerdos en Cadena</strong> (Σ ' + p.pct_acuerdo_cadena_total + '% → gross-up segunda capa)</p>';
                     html += '<p>Precio Bruto Acordado = ' + fmtMoney(p.precio_neto_goodies) + ' ÷ (1 - ' + p.pct_acuerdo_cadena_total + '%) = <strong>' + fmtMoney(p.precio_bruto_acordado) + '</strong></p>';
                     html += '<table style="font-size:11px;margin:5px 0;width:100%;"><tr style="color:#aaa;"><th>Orden</th><th>Tipo</th><th>%</th><th>Base</th><th>Base $</th><th>Monto</th><th>Neto post</th></tr>';
