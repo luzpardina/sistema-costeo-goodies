@@ -164,7 +164,7 @@ router.get('/ultimos-costos', auth, async (req, res) => {
         const codigos = resultado.map(r => r.codigo_goodies);
         const catItems = codigos.length > 0 ? await CatalogoArticulo.findAll({
             where: { codigo_goodies: { [Op.in]: codigos } },
-            attributes: ['codigo_goodies', 'marca', 'empresa_fabrica'],
+            attributes: ['codigo_goodies', 'marca', 'empresa_fabrica', 'rubro', 'iva_porcentaje', 'imp_interno_porcentaje'],
             raw: true
         }) : [];
         const catMap = {};
@@ -173,6 +173,9 @@ router.get('/ultimos-costos', auth, async (req, res) => {
             const cat = catMap[r.codigo_goodies];
             r.marca = cat ? (cat.marca || '') : '';
             r.empresa_fabrica = cat ? (cat.empresa_fabrica || '') : '';
+            r.rubro = cat ? (cat.rubro || '') : '';
+            r.iva_porcentaje = cat ? (parseFloat(cat.iva_porcentaje) || 0.21) : 0.21;
+            r.imp_interno_porcentaje = cat ? (parseFloat(cat.imp_interno_porcentaje) || 0) : 0;
         });
 
         res.json(resultado);

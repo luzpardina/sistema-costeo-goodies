@@ -370,10 +370,40 @@
                 </div>
             </div>
 
-            <!-- CÁLCULO DE MÁRGENES -->
+            <!-- CÁLCULO DE PRECIOS (Costo → Precio) -->
             <div class="card" style="grid-column: 1 / -1;">
-                <h3>📊 Cálculo de Márgenes (Multi-Lista)</h3>
-                <p style="color:#aaa;margin-bottom:15px;">Ingresá el PVP de cada artículo y calculá el margen para TODAS las listas simultáneamente.</p>
+                <h3>💲 Cálculo de Precios (Costo → Precio de Venta)</h3>
+                <p style="color:#aaa;margin-bottom:15px;">Calcula el Precio Neto Goodies, factura y PVP estimado para cada lista a partir del costo del artículo.</p>
+                <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+                    <input type="text" id="filtroPrecioTexto" placeholder="🔍 Buscar por código o nombre..." oninput="filtrarArticulosPrecios()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px 12px;border-radius:5px;width:250px;">
+                    <select id="filtroPrecioProveedor" onchange="filtrarArticulosPrecios()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                        <option value="">Todos los proveedores</option>
+                    </select>
+                    <select id="filtroPrecioMarca" onchange="filtrarArticulosPrecios()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                        <option value="">Todas las marcas</option>
+                    </select>
+                </div>
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                    <button class="btn btn-secondary" onclick="cargarArticulosParaPrecios()">📦 Cargar Artículos</button>
+                    <button class="btn btn-primary" onclick="calcularPrecios()">💲 Calcular Precios</button>
+                    <button class="btn btn-success" onclick="exportarPrecios()">📥 Exportar Excel</button>
+                </div>
+                <div class="table-container" style="max-height:300px;overflow-y:auto;">
+                    <table style="font-size:12px;">
+                        <thead><tr>
+                            <th><input type="checkbox" id="selectAllPrecios" onchange="toggleSelectAllPrecios()"></th>
+                            <th>Código</th><th>Nombre</th><th>Proveedor</th><th>Rubro</th><th>Costo Neto</th><th>IVA%</th><th>Imp.Int%</th>
+                        </tr></thead>
+                        <tbody id="articulosPreciosBody"></tbody>
+                    </table>
+                </div>
+                <div id="resultadoPrecios" style="margin-top:20px;"></div>
+            </div>
+
+            <!-- CÁLCULO DE MÁRGENES (PVP → Margen) -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <h3>📊 Cálculo de Margen (PVP → Margen Goodies)</h3>
+                <p style="color:#aaa;margin-bottom:15px;">Ingresá el PVP actual de cada artículo para calcular el margen real de Goodies en cada lista.</p>
                 <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
                     <input type="text" id="filtroMargenTexto" placeholder="🔍 Buscar por código o nombre..." oninput="filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px 12px;border-radius:5px;width:250px;">
                     <select id="filtroMargenProveedor" onchange="filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
@@ -3561,6 +3591,177 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
     }
 
     // =============================================
+    // MÓDULO COMERCIAL - CÁLCULO DE PRECIOS (Costo → Precio)
+    // =============================================
+    let articulosPrecios = [];
+    let articulosPreciosTodos = [];
+    let preciosSeleccionados = new Set();
+    let ultimosResultadosPrecios = null;
+
+    async function cargarArticulosParaPrecios() {
+        try {
+            const resp = await fetch(API_URL + '/api/costeos/ultimos-costos', { headers: { 'Authorization': 'Bearer ' + token } });
+            const data = await resp.json();
+            if (!Array.isArray(data)) throw new Error('Datos inválidos');
+
+            articulosPreciosTodos = data.map(a => ({
+                codigo_goodies: a.codigo_goodies || a.codigo,
+                nombre: a.nombre,
+                proveedor: a.proveedor || '',
+                marca: a.marca || '',
+                rubro: a.rubro || '',
+                costo_neto: parseFloat(a.costo_neto || a.costo_unitario_neto_ars) || 0,
+                iva_pct: a.iva_porcentaje ? (parseFloat(a.iva_porcentaje) * 100) : 21,
+                imp_interno_pct: a.imp_interno_porcentaje ? (parseFloat(a.imp_interno_porcentaje) * 100) : 0
+            })).filter(a => a.costo_neto > 0);
+
+            const proveedores = [...new Set(articulosPreciosTodos.map(a => a.proveedor).filter(p => p))].sort();
+            const marcas = [...new Set(articulosPreciosTodos.map(a => a.marca).filter(m => m))].sort();
+            document.getElementById('filtroPrecioProveedor').innerHTML = '<option value="">Todos los proveedores</option>' + proveedores.map(p => '<option>' + p + '</option>').join('');
+            document.getElementById('filtroPrecioMarca').innerHTML = '<option value="">Todas las marcas</option>' + marcas.map(m => '<option>' + m + '</option>').join('');
+
+            preciosSeleccionados = new Set(articulosPreciosTodos.map(a => a.codigo_goodies));
+            articulosPrecios = [...articulosPreciosTodos];
+            renderArticulosPrecios();
+            alert('✅ ' + articulosPrecios.length + ' artículos con costo cargados');
+        } catch(e) { alert('Error: ' + e.message); console.error(e); }
+    }
+
+    function filtrarArticulosPrecios() {
+        const texto = (document.getElementById('filtroPrecioTexto').value || '').toLowerCase();
+        const proveedor = document.getElementById('filtroPrecioProveedor').value;
+        const marca = document.getElementById('filtroPrecioMarca').value;
+        articulosPrecios = articulosPreciosTodos.filter(a => {
+            return (!texto || a.codigo_goodies.toLowerCase().includes(texto) || a.nombre.toLowerCase().includes(texto)) &&
+                   (!proveedor || a.proveedor === proveedor) &&
+                   (!marca || a.marca === marca);
+        });
+        renderArticulosPrecios();
+    }
+
+    function toggleSelectAllPrecios() {
+        const checked = document.getElementById('selectAllPrecios').checked;
+        if (checked) articulosPrecios.forEach(a => preciosSeleccionados.add(a.codigo_goodies));
+        else articulosPrecios.forEach(a => preciosSeleccionados.delete(a.codigo_goodies));
+        renderArticulosPrecios();
+    }
+
+    function renderArticulosPrecios() {
+        const body = document.getElementById('articulosPreciosBody');
+        if (!body) return;
+        body.innerHTML = articulosPrecios.map(a => {
+            const chk = preciosSeleccionados.has(a.codigo_goodies) ? 'checked' : '';
+            return '<tr>' +
+                '<td><input type="checkbox" ' + chk + ' onchange="preciosSeleccionados.has(\'' + a.codigo_goodies + '\') ? preciosSeleccionados.delete(\'' + a.codigo_goodies + '\') : preciosSeleccionados.add(\'' + a.codigo_goodies + '\')"></td>' +
+                '<td>' + a.codigo_goodies + '</td><td>' + a.nombre + '</td><td>' + a.proveedor + '</td><td>' + a.rubro + '</td>' +
+                '<td style="text-align:right;font-weight:bold;">$' + a.costo_neto.toFixed(2) + '</td>' +
+                '<td style="text-align:center;">' + a.iva_pct.toFixed(0) + '%</td>' +
+                '<td style="text-align:center;">' + (a.imp_interno_pct > 0 ? a.imp_interno_pct.toFixed(0) + '%' : '-') + '</td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    async function calcularPrecios() {
+        const codigos = [...preciosSeleccionados];
+        if (codigos.length === 0) { alert('Seleccioná al menos un artículo'); return; }
+
+        try {
+            const resp = await fetch(API_URL + '/api/comercial/calcular-precios', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ codigos })
+            });
+            const resultados = await resp.json();
+            ultimosResultadosPrecios = resultados;
+            renderResultadoPrecios(resultados);
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    function renderResultadoPrecios(resultados) {
+        const div = document.getElementById('resultadoPrecios');
+        if (!div || !resultados.length) { if(div) div.innerHTML = '<p style="color:#ff9800;">No hay resultados.</p>'; return; }
+
+        const listas = resultados[0].precios.map(p => p.lista_nombre);
+        const fmtMoney = v => '$' + (parseFloat(v)||0).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+        let html = '<h4 style="color:#4CAF50;margin:10px 0;">Resultados: Precio Neto Goodies → PVP estimado por lista</h4>';
+        html += '<div class="table-container" style="overflow-x:auto;"><table style="font-size:11px;">';
+        html += '<thead><tr style="background:#2a2a3e;">';
+        html += '<th style="position:sticky;left:0;background:#2a2a3e;z-index:2;">Artículo</th>';
+        html += '<th style="text-align:right;">Costo Neto</th>';
+        listas.forEach(l => {
+            html += '<th colspan="3" style="text-align:center;border-left:2px solid #555;">' + l + '</th>';
+        });
+        html += '</tr>';
+        html += '<tr style="background:#1e1e2f;font-size:10px;">';
+        html += '<th style="position:sticky;left:0;background:#1e1e2f;z-index:2;"></th><th></th>';
+        listas.forEach(() => {
+            html += '<th style="text-align:right;border-left:2px solid #555;">Neto Goodies</th>';
+            html += '<th style="text-align:right;">Factura</th>';
+            html += '<th style="text-align:right;">PVP Est.</th>';
+        });
+        html += '</tr></thead><tbody>';
+
+        resultados.forEach(r => {
+            html += '<tr>';
+            html += '<td style="position:sticky;left:0;background:#12121e;z-index:1;"><strong>' + r.codigo_goodies + '</strong><br><small style="color:#aaa;">' + (r.nombre||'').substring(0,30) + '</small></td>';
+            html += '<td style="text-align:right;font-weight:bold;">' + fmtMoney(r.costo_neto) + '</td>';
+            r.precios.forEach(p => {
+                const margenColor = (p.pcts.margen_goodies || 0) >= 20 ? '#4CAF50' : '#ff9800';
+                html += '<td style="text-align:right;border-left:2px solid #555;">' + fmtMoney(p.precio_neto_goodies) + '<br><small style="color:' + margenColor + ';">MG:' + (p.pcts.margen_goodies||0).toFixed(0) + '% Σ:' + p.suma_pct.toFixed(0) + '%</small></td>';
+                html += '<td style="text-align:right;">' + fmtMoney(p.factura_goodies) + '</td>';
+                html += '<td style="text-align:right;font-weight:bold;">' + (p.pvp_estimado ? fmtMoney(p.pvp_estimado) : '-') + '</td>';
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+
+        // Detalle expandible por artículo
+        html += '<details style="margin-top:15px;"><summary style="cursor:pointer;color:#4fc3f7;font-weight:bold;">📋 Ver desglose detallado del primer artículo</summary>';
+        if (resultados.length > 0) {
+            const r = resultados[0];
+            html += '<div style="margin-top:10px;padding:10px;background:#1e1e2f;border-radius:6px;">';
+            html += '<p><strong>' + r.codigo_goodies + '</strong> — ' + r.nombre + '</p>';
+            html += '<p>Costo Neto: <strong>' + fmtMoney(r.costo_neto) + '</strong> | IVA: ' + r.iva_pct + '% | Imp.Int: ' + r.imp_interno_pct + '%</p>';
+            r.precios.forEach(p => {
+                html += '<div style="margin-top:10px;padding:8px;background:#12121e;border-radius:4px;border-left:3px solid #4CAF50;">';
+                html += '<p style="font-weight:bold;color:#4fc3f7;">' + p.lista_nombre + ' (Σ%: ' + p.suma_pct.toFixed(1) + '%)</p>';
+                html += '<p>Fórmula: ' + fmtMoney(r.costo_neto) + ' / (1 - ' + p.suma_pct.toFixed(1) + '%) = <strong>' + fmtMoney(p.precio_neto_goodies) + '</strong></p>';
+                html += '<p style="font-size:11px;color:#aaa;">Margen Goodies: ' + fmtMoney(p.margen_goodies_monto) + ' (' + (p.pcts.margen_goodies||0) + '%) | Log: ' + fmtMoney(p.logistico_monto) + ' | IIBB: ' + fmtMoney(p.iibb_monto) + ' | Fin: ' + fmtMoney(p.financiero_monto) + ' | Com: ' + fmtMoney(p.comision_monto) + (p.otro_costo_monto > 0 ? ' | Otro: ' + fmtMoney(p.otro_costo_monto) : '') + (p.acuerdo_monto > 0 ? ' | Acuerdo: ' + fmtMoney(p.acuerdo_monto) : '') + '</p>';
+                html += '<p>Factura Goodies: ' + fmtMoney(p.precio_neto_goodies) + ' + IVA ' + fmtMoney(p.precio_neto_goodies * r.iva_pct / 100) + (r.imp_interno_pct > 0 ? ' + Int ' + fmtMoney(p.precio_neto_goodies * r.imp_interno_pct / 100) : '') + ' = <strong>' + fmtMoney(p.factura_goodies) + '</strong></p>';
+                if (p.precio_neto_cliente) {
+                    html += '<p>Costo cliente: ' + fmtMoney(p.costo_cliente) + ' → Margen cliente ' + p.pct_margen_cliente + '% → Neto cliente: ' + fmtMoney(p.precio_neto_cliente) + '</p>';
+                }
+                if (p.pvp_estimado) {
+                    html += '<p>PVP Estimado: <strong style="color:#4CAF50;">' + fmtMoney(p.pvp_estimado) + '</strong></p>';
+                }
+                html += '</div>';
+            });
+            html += '</div>';
+        }
+        html += '</details>';
+
+        div.innerHTML = html;
+    }
+
+    function exportarPrecios() {
+        if (!ultimosResultadosPrecios || !ultimosResultadosPrecios.length) { alert('Primero calculá los precios'); return; }
+        const wsData = [['Código', 'Nombre', 'Proveedor', 'Rubro', 'Costo Neto', 'IVA%', 'Imp.Int%']];
+        const listas = ultimosResultadosPrecios[0].precios.map(p => p.lista_nombre);
+        listas.forEach(l => { wsData[0].push(l + ' - Neto Goodies', l + ' - Factura', l + ' - PVP Est.'); });
+        ultimosResultadosPrecios.forEach(r => {
+            const row = [r.codigo_goodies, r.nombre, r.proveedor || '', r.rubro || '', r.costo_neto, r.iva_pct, r.imp_interno_pct];
+            r.precios.forEach(p => { row.push(p.precio_neto_goodies, p.factura_goodies, p.pvp_estimado || ''); });
+            wsData.push(row);
+        });
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(wb, ws, 'Precios');
+        XLSX.writeFile(wb, 'Precios_Goodies_' + new Date().toISOString().split('T')[0] + '.xlsx');
+    }
+
+    // =============================================
     // MÓDULO COMERCIAL - CÁLCULO MÁRGENES
     // =============================================
     let articulosPvp = [];
@@ -3576,9 +3777,10 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 proveedor: a.proveedor || '',
                 empresa_fabrica: a.empresa_fabrica || '',
                 marca: a.marca || '',
-                costo_neto: parseFloat(a.costo_unitario_neto_ars || a.costo_neto) || 0,
+                rubro: a.rubro || '',
+                costo_neto: parseFloat(a.costo_neto || a.costo_unitario_neto_ars) || 0,
                 pvp: 0
-            }));
+            })).filter(a => a.costo_neto > 0);
             const proveedores = [...new Set(articulosPvpTodos.map(a => a.proveedor).filter(p => p))].sort();
             const fabricantes = [...new Set(articulosPvpTodos.map(a => a.empresa_fabrica).filter(f => f))].sort();
             const marcas = [...new Set(articulosPvpTodos.map(a => a.marca).filter(m => m))].sort();
@@ -3696,15 +3898,35 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         if (!div || !resultados.length) return;
 
         const listas = resultados[0].margenes.map(m => m.lista_nombre);
-        let html = '<div class="table-container" style="overflow-x:auto;"><table><thead><tr><th>Código</th><th>Nombre</th><th>Costo Neto</th><th>PVP</th>';
-        listas.forEach(l => { html += '<th style="text-align:center;">' + l + '</th>'; });
+        const fmtMoney = v => '$' + (parseFloat(v)||0).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+        let html = '<h4 style="color:#ff9800;margin:10px 0;">Margen Goodies real por lista (desde PVP)</h4>';
+        html += '<div class="table-container" style="overflow-x:auto;"><table style="font-size:11px;">';
+        html += '<thead><tr style="background:#2a2a3e;">';
+        html += '<th style="position:sticky;left:0;background:#2a2a3e;z-index:2;">Artículo</th>';
+        html += '<th style="text-align:right;">Costo Neto</th>';
+        html += '<th style="text-align:right;">PVP</th>';
+        listas.forEach(l => {
+            html += '<th colspan="2" style="text-align:center;border-left:2px solid #555;">' + l + '</th>';
+        });
+        html += '</tr>';
+        html += '<tr style="background:#1e1e2f;font-size:10px;">';
+        html += '<th style="position:sticky;left:0;background:#1e1e2f;z-index:2;"></th><th></th><th></th>';
+        listas.forEach(() => {
+            html += '<th style="text-align:right;border-left:2px solid #555;">Ingreso Neto</th>';
+            html += '<th style="text-align:right;">Margen %</th>';
+        });
         html += '</tr></thead><tbody>';
 
         resultados.forEach(r => {
-            html += '<tr><td>' + r.codigo_goodies + '</td><td>' + r.nombre + '</td><td>$' + r.costo_neto.toFixed(2) + '</td><td>$' + r.pvp.toFixed(2) + '</td>';
+            html += '<tr>';
+            html += '<td style="position:sticky;left:0;background:#12121e;z-index:1;"><strong>' + r.codigo_goodies + '</strong><br><small style="color:#aaa;">' + (r.nombre||'').substring(0,30) + '</small></td>';
+            html += '<td style="text-align:right;">' + fmtMoney(r.costo_neto) + '</td>';
+            html += '<td style="text-align:right;font-weight:bold;">' + fmtMoney(r.pvp) + '</td>';
             r.margenes.forEach(m => {
                 const color = m.margen_pct < 10 ? '#f44336' : m.margen_pct < 20 ? '#ff9800' : '#4CAF50';
-                html += '<td style="text-align:center;color:' + color + ';font-weight:bold;">' + m.margen_pct.toFixed(1) + '%<br><span style="font-size:10px;color:#888;">Neto: $' + m.ingreso_neto.toFixed(0) + '</span></td>';
+                html += '<td style="text-align:right;border-left:2px solid #555;">' + fmtMoney(m.ingreso_neto) + '<br><small style="color:#aaa;">Neto: ' + fmtMoney(m.precio_neto_goodies) + '</small></td>';
+                html += '<td style="text-align:center;color:' + color + ';font-weight:bold;font-size:14px;">' + m.margen_pct.toFixed(1) + '%</td>';
             });
             html += '</tr>';
         });
