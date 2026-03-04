@@ -233,6 +233,7 @@
             <a href="#comercial-listas">Listas de Precios</a>
             <a href="#comercial-acuerdos">Acuerdos Comerciales</a>
             <a href="#comercial-precios">Cálculo de Precios</a>
+            <a href="#comercial-precios-super">Precios Supermercados</a>
             <a href="#comercial-margenes">Cálculo de Márgenes</a>
             <a href="#comercial-simulador">Simulador de Descuento</a>
 
@@ -597,26 +598,32 @@
                     Las listas definidas actualmente son:
                 </p>
                 <ul>
-                    <li><strong>Distribuidor:</strong> Goodies → Distribuidor → Tradicional → Público</li>
-                    <li><strong>Tradicional:</strong> Goodies → Cliente directo → Público</li>
-                    <li><strong>Jumbo / Coto / Carrefour:</strong> Supermercados (con acuerdos comerciales)</li>
+                    <li><strong>Distribuidor:</strong> Goodies → Distribuidor (margen gross-up) → Tradicional (markup) → Público</li>
+                    <li><strong>Tradicional:</strong> Goodies → Cliente directo (markup) → Público</li>
+                    <li><strong>Jumbo / Coto / Carrefour:</strong> Supermercados (con acuerdos comerciales en cadena)</li>
                     <li><strong>MercadoLibre:</strong> Venta directa online</li>
                     <li><strong>Tienda Goodies:</strong> Venta directa en local propio</li>
                 </ul>
 
-                <h3>Parámetros de cada lista</h3>
+                <h3>Parámetros de cada lista (en orden de la tabla)</h3>
                 <table>
                     <tr><th>Parámetro</th><th>Descripción</th></tr>
+                    <tr><td>% Margen Goodies</td><td>Margen propio de Goodies (gross-up sobre su precio de venta)</td></tr>
                     <tr><td>% Logístico</td><td>Costo de distribución/flete</td></tr>
-                    <tr><td>% IIBB</td><td>Ingresos Brutos</td></tr>
                     <tr><td>% Financiero</td><td>Costo financiero (plazos de pago)</td></tr>
                     <tr><td>% Comisión</td><td>Comisión comercial</td></tr>
-                    <tr><td>% Margen Goodies</td><td>Margen propio de Goodies sobre su precio de venta</td></tr>
-                    <tr><td>% Margen Cliente de Goodies</td><td>Margen que aplica el cliente directo de Goodies (ej: distribuidor cobra 35%)</td></tr>
-                    <tr><td>% Markup Cliente Trad.</td><td>Markup del último eslabón (ej: el almacén que le vende al público)</td></tr>
+                    <tr><td>% IIBB</td><td>Ingresos Brutos</td></tr>
                     <tr><td>% Otro Costo</td><td>Cualquier costo adicional no contemplado arriba</td></tr>
+                    <tr><td>% Margen Cliente de Goodies</td><td>Margen que aplica el cliente directo de Goodies (ej: distribuidor 35%, super 35%). Calcula por gross-up.</td></tr>
+                    <tr><td>% Markup Cliente Trad.</td><td>Markup del último eslabón minorista (ej: almacén). Calcula por markup directo (Costo × (1+%)).</td></tr>
                     <tr><td>Observación</td><td>Nota libre</td></tr>
                 </table>
+
+                <div class="warning">
+                    <strong>Diferencia entre Margen y Markup:</strong> El Distribuidor calcula por <em>margen gross-up</em> 
+                    (Precio = Costo ÷ (1 - %)), mientras que el Tradicional calcula por <em>markup directo</em> 
+                    (Precio = Costo × (1 + %)). Un margen de 35% y un markup de 35% dan precios diferentes.
+                </div>
 
                 <div class="tip">
                     Las listas se editan inline: hacé clic en el ícono de lápiz para habilitar la edición de los porcentajes directamente en la tabla.
@@ -626,24 +633,56 @@
             <section id="comercial-acuerdos">
                 <h2>Acuerdos Comerciales</h2>
                 <p>
-                    Los acuerdos comerciales son descuentos adicionales que se aplican por lista + rubro. 
-                    Por ejemplo: Jumbo puede tener un acuerdo del 10% para el rubro "Almacén" pero 15% para "Bebidas".
+                    Los acuerdos comerciales son descuentos que Goodies otorga a supermercados u otros clientes, 
+                    configurables por lista + rubro. Un mismo cliente puede tener múltiples líneas de acuerdo 
+                    (ej: Jumbo tiene un acuerdo por OC, otro por NC, y otro por factura del cliente).
                 </p>
-                <p>Cada acuerdo tiene rubros asignables (multi-selección) desde el catálogo maestro.</p>
+
+                <h3>Campos de cada acuerdo</h3>
+                <table>
+                    <tr><th>Campo</th><th>Descripción</th></tr>
+                    <tr><td><strong>Lista</strong></td><td>A qué cliente aplica (Jumbo, Coto, Carrefour...)</td></tr>
+                    <tr><td><strong>Categoría</strong></td><td>Frescos, Almacén, Bebidas u Otros</td></tr>
+                    <tr><td><strong>% Acuerdo</strong></td><td>Porcentaje del acuerdo</td></tr>
+                    <tr><td><strong>Tipo</strong></td><td>Cómo se instrumenta:
+                        <ul>
+                            <li style="color:#4CAF50;"><strong>Flat:</strong> se suma al Σ% de Goodies (una sola capa de gross-up)</li>
+                            <li style="color:#4fc3f7;"><strong>Desc. en OC:</strong> descuento en la orden de compra / factura de Goodies</li>
+                            <li style="color:#ff9800;"><strong>Nota de Crédito:</strong> Goodies emite NC posterior</li>
+                            <li style="color:#f44336;"><strong>Factura del Cliente:</strong> el super factura a Goodies</li>
+                        </ul>
+                    </td></tr>
+                    <tr><td><strong>Orden</strong></td><td>Secuencia de aplicación (1, 2, 3...)</td></tr>
+                    <tr><td><strong>Base de Cálculo</strong></td><td>Sobre qué valor se calcula el porcentaje:
+                        <ul>
+                            <li><strong>Precio bruto:</strong> el precio bruto acordado (antes de cualquier descuento)</li>
+                            <li><strong>Neto post OC:</strong> el neto después de aplicar el descuento en OC</li>
+                            <li><strong>Neto post NC:</strong> el neto después de aplicar la NC</li>
+                            <li><strong>Neto post Fact. Cliente:</strong> el neto después de la factura del cliente</li>
+                        </ul>
+                    </td></tr>
+                    <tr><td><strong>Rubros</strong></td><td>A qué rubros aplica. Si no se especifica ninguno, aplica a todos.</td></tr>
+                </table>
+
+                <div class="tip">
+                    Para el cálculo de precios, el sistema toma TODAS las líneas de acuerdo que correspondan a una lista. 
+                    Por ejemplo, si Jumbo tiene 3 líneas (OC 11%, NC 5%, Fact.Cli 2%), las tres se aplican en secuencia.
+                </div>
             </section>
 
             <section id="comercial-precios">
                 <h2>Cálculo de Precios (Costo → Precio de Venta)</h2>
                 <p>
                     Calcula el precio al que Goodies debe vender cada artículo para cubrir todos sus costos 
-                    y obtener el margen deseado. Es la <strong>dirección A</strong> del cálculo comercial.
+                    y obtener el margen deseado. El sistema maneja dos caminos según el tipo de lista.
                 </p>
 
-                <h3>Fórmula principal (Gross-Up)</h3>
+                <h3>Camino A — Listas sin acuerdos en cadena (Distribuidor, Tradicional, ML, Tienda)</h3>
+                <p>Una sola capa de gross-up:</p>
                 <div class="formula">
                     Precio Neto Goodies = Costo Neto ÷ (1 - Σ%)
                     <br><br>
-                    Donde Σ% = % Margen Goodies + % Logístico + % IIBB + % Financiero + % Comisión + % Otro Costo + % Acuerdo
+                    Donde Σ% = % Margen Goodies + % Logístico + % Financiero + % Comisión + % IIBB + % Otro Costo + % Acuerdos Flat
                 </div>
 
                 <h4>Ejemplo numérico</h4>
@@ -651,7 +690,7 @@
                 <div class="formula">
                     Σ% = 30 + 5 + 3.5 = 38.5%
                     <br>
-                    Precio Neto Goodies = $100 ÷ (1 - 0.385) = $100 ÷ 0.615 = $162.60
+                    Precio Neto Goodies = $100 ÷ (1 - 0.385) = $100 ÷ 0.615 = <strong>$162.60</strong>
                     <br><br>
                     Verificación:
                     <br>$162.60 × 30% = $48.78 (margen Goodies)
@@ -666,18 +705,19 @@
                     Así, los ingresos netos después de deducir TODOS los porcentajes dan exactamente el costo original.
                 </p>
 
-                <h3>Cadena de precios</h3>
-                <p>El sistema calcula toda la cadena:</p>
-                <ol>
-                    <li><strong>Precio Neto Goodies</strong>: lo que Goodies cobra sin impuestos</li>
-                    <li><strong>Factura Goodies</strong>: Precio Neto + IVA 21% + Imp. Internos (si corresponde)</li>
-                    <li><strong>Precio del cliente</strong>: El distribuidor/super aplica su margen (% Margen Cliente de Goodies)</li>
-                    <li><strong>PVP Estimado</strong>: Precio al público final (si hay % Markup Cliente Trad.)</li>
-                </ol>
+                <h3>Cadena completa de precios (hasta 5 eslabones)</h3>
+                <table>
+                    <tr><th>Paso</th><th>Concepto</th><th>Fórmula</th></tr>
+                    <tr><td>1</td><td><strong>Precio Neto Goodies</strong></td><td>Costo Neto ÷ (1 - Σ%)</td></tr>
+                    <tr><td>2</td><td><strong>Factura Goodies</strong></td><td>Neto + IVA 21% + Imp. Internos</td></tr>
+                    <tr><td>3</td><td><strong>Distribuidor</strong> (gross-up)</td><td>Su costo (Neto + Int.) ÷ (1 - % Margen Cliente)</td></tr>
+                    <tr><td>4</td><td><strong>Tradicional</strong> (markup)</td><td>Su costo × (1 + % Markup Trad.)</td></tr>
+                    <tr><td>5</td><td><strong>PVP Estimado</strong></td><td>Neto Tradicional + IVA</td></tr>
+                </table>
 
                 <div class="important">
                     <strong>Impuesto Interno:</strong> es pass-through para Goodies (lo paga en aduana y lo cobra al facturar). 
-                    Pero para el distribuidor/super es COSTO, se suma a su base para calcular su precio de venta.
+                    Para el siguiente eslabón (distribuidor o super) ES costo: se suma a su base de cálculo.
                 </div>
 
                 <h3>Cómo usarlo</h3>
@@ -688,7 +728,74 @@
                     <li>Seleccioná/deseleccioná artículos con los checkboxes</li>
                     <li>Presioná "💲 Calcular Precios"</li>
                 </ol>
-                <div class="tip">Hacé clic en "Ver desglose detallado" debajo de los resultados para ver paso a paso cómo se calculó cada precio.</div>
+                <div class="tip">Hacé clic en "Ver desglose detallado" debajo de los resultados para ver paso a paso cómo se calculó cada precio, con fórmulas y montos intermedios.</div>
+            </section>
+
+            <section id="comercial-precios-super">
+                <h2>Cálculo de Precios — Supermercados (acuerdos en cadena)</h2>
+                <p>
+                    Cuando una lista tiene acuerdos comerciales de tipo OC, NC o Factura del Cliente (no Flat), 
+                    el sistema aplica una <strong>segunda capa de gross-up</strong> encima del Precio Neto Goodies.
+                </p>
+
+                <h3>Lógica de dos capas</h3>
+
+                <h4>Capa 1 — Gross-up de Goodies</h4>
+                <div class="formula">
+                    Precio Neto Goodies = Costo Neto ÷ (1 - Σ% costos Goodies)
+                    <br><small>Σ% = Margen + Logístico + IIBB + Financiero + Comisión + Otro + Acuerdos Flat</small>
+                </div>
+                <p>Este es el precio que Goodies necesita cobrar realmente (neto de todos los descuentos).</p>
+
+                <h4>Capa 2 — Gross-up de acuerdos</h4>
+                <div class="formula">
+                    Precio Bruto Acordado = Precio Neto Goodies ÷ (1 - Σ% acuerdos cadena)
+                </div>
+                <p>
+                    Este es el precio que se acuerda formalmente entre Goodies y el super. 
+                    Incluye los acuerdos que luego se descuentan de distintas formas.
+                </p>
+
+                <h3>Ejemplo completo (Jumbo)</h3>
+                <p>Costo = $100, Margen Goodies = 35%, Acuerdos = OC 11% + NC 5% + Fact.Cli 2% = 18%</p>
+
+                <div class="formula">
+                    <strong>Capa 1:</strong> $100 ÷ (1 - 0.35) = <strong>$153.85</strong> (Precio Neto Goodies)
+                    <br><br>
+                    <strong>Capa 2:</strong> $153.85 ÷ (1 - 0.18) = <strong>$187.62</strong> (Precio Bruto Acordado)
+                </div>
+
+                <h4>Aplicación de los acuerdos</h4>
+                <table>
+                    <tr><th>Orden</th><th>Tipo</th><th>%</th><th>Base</th><th>Monto</th><th>Neto post</th></tr>
+                    <tr><td>1</td><td style="color:#4fc3f7;">Desc. en OC</td><td>11%</td><td>$187.62 (Bruto)</td><td>-$20.64</td><td>$166.98</td></tr>
+                    <tr><td>2</td><td style="color:#ff9800;">Nota de Crédito</td><td>5%</td><td>$187.62 (Bruto)</td><td>-$9.38</td><td>$157.60</td></tr>
+                    <tr><td>3</td><td style="color:#f44336;">Fact. del Cliente</td><td>2%</td><td>$187.62 (Bruto)</td><td>-$3.75</td><td>$153.85</td></tr>
+                </table>
+
+                <h4>Qué pasa con la plata</h4>
+                <table>
+                    <tr><th>Concepto</th><th>Monto</th><th>Notas</th></tr>
+                    <tr><td>Goodies factura</td><td>$166.98</td><td>Bruto $187.62 menos desc. OC $20.64</td></tr>
+                    <tr><td>Goodies emite NC</td><td>-$9.38</td><td>Nota de crédito posterior</td></tr>
+                    <tr><td>Super factura a Goodies</td><td>-$3.75</td><td>Factura del cliente</td></tr>
+                    <tr><td><strong>Neto real Goodies</strong></td><td><strong>$153.85 ✓</strong></td><td>= Precio Neto Goodies de la Capa 1</td></tr>
+                </table>
+
+                <h4>El super calcula su precio</h4>
+                <div class="formula">
+                    Base super = Precio Bruto Acordado + Imp. Internos = $187.62
+                    <br>
+                    Con margen super 35% (gross-up): $187.62 ÷ (1 - 0.35) = $288.64 + IVA = PVP
+                    <br><br>
+                    Margen punta a punta super: ($288.64 - $153.85) / $288.64 = 47%
+                </div>
+
+                <div class="warning">
+                    Cada acuerdo tiene una "Base de Cálculo" configurable. En el ejemplo los 3 se calculan sobre el Bruto ($187.62), 
+                    pero se puede configurar para que se calculen sobre el neto del paso anterior (en cadena secuencial). 
+                    Por ejemplo: NC sobre "Neto post OC" haría que el 5% se aplique sobre $166.98 en vez de $187.62.
+                </div>
             </section>
 
             <section id="comercial-margenes">
@@ -698,15 +805,15 @@
                     calcula cuánto margen le queda a Goodies en cada lista. Es la <strong>dirección B</strong>.
                 </p>
 
-                <h3>Proceso inverso</h3>
-                <p>El sistema desanda la cadena de precios:</p>
+                <h3>Proceso inverso (desandando la cadena)</h3>
+                <p>El sistema desanda la cadena de precios paso a paso:</p>
                 <ol>
-                    <li>PVP → quitar IVA → Precio Neto final</li>
-                    <li>Si hay markup tradicional → desandar</li>
-                    <li>Si hay margen cliente → desandar</li>
-                    <li>Quitar imp. internos → Precio Neto Goodies</li>
-                    <li>Deducir gastos (logístico, IIBB, financiero, comisión, otro, acuerdo) → Ingreso Neto</li>
-                    <li>Margen Goodies = (Ingreso Neto - Costo Neto) / Costo Neto × 100</li>
+                    <li><strong>PVP → quitar IVA</strong> → Precio Neto final</li>
+                    <li>Si hay markup tradicional → <strong>desandar markup</strong>: Neto ÷ (1 + %)</li>
+                    <li>Si hay margen cliente (distrib/super) → <strong>desandar gross-up</strong>: Neto × (1 - %)</li>
+                    <li><strong>Quitar imp. internos</strong> → Precio Neto Goodies puro</li>
+                    <li><strong>Deducir gastos</strong> (logístico, IIBB, financiero, comisión, otro, acuerdo) → Ingreso Neto</li>
+                    <li><strong>Margen Goodies</strong> = (Ingreso Neto - Costo Neto) / Costo Neto × 100</li>
                 </ol>
 
                 <h3>Colores de margen</h3>
@@ -781,13 +888,26 @@
                     Costo Neto = Base + Derechos + Estadística + Gastos Reales prorrateados
                 </div>
 
-                <h3>Precio de Venta (Gross-Up)</h3>
+                <h3>Precio de Venta — Listas sin acuerdos cadena (Gross-Up)</h3>
                 <div class="formula">
                     Precio Neto Goodies = Costo Neto ÷ (1 - Σ%)<br>
-                    Factura Goodies = Precio Neto × (1 + IVA%) + Precio Neto × Imp.Int.%<br>
-                    Costo Cliente = Precio Neto + Imp. Internos<br>
-                    Precio Cliente = Costo Cliente ÷ (1 - % Margen Cliente)<br>
-                    PVP = Precio Cliente × (1 + % Markup Trad.) × (1 + IVA%)
+                    Σ% = Margen + Logístico + Financiero + Comisión + IIBB + Otro + Acuerdos Flat<br><br>
+                    Factura Goodies = Neto × (1 + IVA%) + Neto × Imp.Int.%<br>
+                    Costo Distribuidor = Neto Goodies + Imp. Internos<br>
+                    Neto Distribuidor = Costo ÷ (1 - % Margen Cliente) [gross-up]<br>
+                    Neto Tradicional = Costo × (1 + % Markup Trad.) [markup]<br>
+                    PVP = Neto Tradicional × (1 + IVA%)
+                </div>
+
+                <h3>Precio de Venta — Supermercados (dos capas de gross-up)</h3>
+                <div class="formula">
+                    Capa 1: Precio Neto Goodies = Costo Neto ÷ (1 - Σ% gastos)<br>
+                    Capa 2: Precio Bruto Acordado = Neto Goodies ÷ (1 - Σ% acuerdos cadena)<br><br>
+                    Goodies factura = Bruto - Desc. OC<br>
+                    Neto real Goodies = Facturado - NC - Fact.Cliente = Precio Neto Goodies ✓<br><br>
+                    Base super = Bruto Acordado + Imp. Internos<br>
+                    Neto Super = Base ÷ (1 - % Margen Super) [gross-up]<br>
+                    PVP = Neto Super × (1 + IVA%)
                 </div>
 
                 <h3>Margen Inverso (desde PVP)</h3>
@@ -824,6 +944,13 @@
                     <tr><td><strong>Prorrateo</strong></td><td>Distribución de un gasto entre artículos según criterio (FOB, volumen, peso)</td></tr>
                     <tr><td><strong>Revaluación</strong></td><td>Recálculo de costos con nuevo tipo de cambio</td></tr>
                     <tr><td><strong>Consolidado</strong></td><td>Embarque con mercadería de múltiples proveedores en un contenedor</td></tr>
+                    <tr><td><strong>Acuerdo Flat</strong></td><td>Acuerdo comercial que se suma al Σ% de Goodies (una sola capa de gross-up)</td></tr>
+                    <tr><td><strong>Acuerdo en Cadena</strong></td><td>Acuerdo que genera una segunda capa de gross-up. Se descuenta mediante OC, NC o factura del cliente</td></tr>
+                    <tr><td><strong>Precio Bruto Acordado</strong></td><td>Precio acordado con el super antes de aplicar descuentos (Neto Goodies ÷ (1 - Σ% acuerdos))</td></tr>
+                    <tr><td><strong>Desc. en OC</strong></td><td>Descuento aplicado en la orden de compra / factura. Reduce el monto que Goodies factura</td></tr>
+                    <tr><td><strong>NC (Nota de Crédito)</strong></td><td>Goodies emite nota de crédito posterior al super. Reduce el cobro neto</td></tr>
+                    <tr><td><strong>Factura del Cliente</strong></td><td>El super factura a Goodies por servicios. Reduce el cobro neto</td></tr>
+                    <tr><td><strong>Neto Real Goodies</strong></td><td>Lo que Goodies cobra realmente después de todos los acuerdos. Debe coincidir con el Precio Neto Goodies</td></tr>
                 </table>
             </section>
 
@@ -832,8 +959,11 @@
                 
                 <h3>Marzo 2026 — v2.0</h3>
                 <ul>
-                    <li>Módulo COMERCIAL: Listas de precios con edición inline, acuerdos comerciales por rubro</li>
-                    <li>Cálculo de Precios (Costo → Precio) con fórmula gross-up</li>
+                    <li>Módulo COMERCIAL: Listas de precios con edición inline, orden de columnas rediseñado</li>
+                    <li>Acuerdos Comerciales: tipo (Flat/Desc.OC/NC/Fact.Cliente), orden, base de cálculo flexible</li>
+                    <li>Cálculo de Precios con dos caminos: listas simples (una capa gross-up) y supermercados (dos capas)</li>
+                    <li>Cadena completa: Neto Goodies → Bruto Acordado → Factura → Distribuidor (gross-up) → Tradicional (markup) → PVP</li>
+                    <li>Desglose paso a paso con tabla de acuerdos, montos intermedios y verificación de neto real</li>
                     <li>Cálculo de Márgenes (PVP → Margen) con cadena inversa completa</li>
                     <li>Simulador de Descuento Break-Even</li>
                     <li>Catálogo Maestro: columna "Empresa Fábrica Activa", 3 niveles de activación</li>
@@ -843,6 +973,7 @@
                     <li>Reseteo automático de estado "calculado" al modificar un costeo</li>
                     <li>Dropdowns filtrados por estados activos (proveedor, fábrica, artículo)</li>
                     <li>Excel catálogo con formato profesional (ExcelJS)</li>
+                    <li>Manual de usuario online accesible desde ADMIN</li>
                 </ul>
 
                 <h3>Febrero 2026 — v1.5</h3>
