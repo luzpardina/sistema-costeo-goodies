@@ -3825,10 +3825,11 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
 
         let html = '<h4 style="color:#4CAF50;margin:10px 0;">Resultados: Cadena de Precios por Lista</h4>';
 
-        // Detectar si alguna lista tiene distribuidor o tradicional
+        // Detectar si alguna lista tiene distribuidor, tradicional o acuerdos cadena
         const hayDistribuidor = resultados.some(r => r.precios.some(p => p.pct_margen_cliente > 0));
         const hayTradicional = resultados.some(r => r.precios.some(p => p.pct_markup_trad > 0));
-        const colsPorLista = 2 + (hayDistribuidor ? 1 : 0) + (hayTradicional ? 1 : 0) + 1; // Neto + Fact + [Distrib] + [Trad] + PVP
+        const hayCadena = resultados.some(r => r.precios.some(p => p.tiene_acuerdos_cadena));
+        const colsPorLista = 2 + (hayCadena ? 2 : 0) + (hayDistribuidor ? 1 : 0) + (hayTradicional ? 1 : 0) + 1;
 
         html += '<div class="table-container" style="overflow-x:auto;"><table style="font-size:11px;">';
         html += '<thead><tr style="background:#2a2a3e;">';
@@ -3843,8 +3844,10 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         html += '<th style="position:sticky;left:0;background:#1e1e2f;z-index:2;"></th><th></th>';
         listas.forEach(() => {
             html += '<th style="text-align:right;border-left:2px solid #555;">Neto Goodies</th>';
+            if (hayCadena) html += '<th style="text-align:right;color:#ce93d8;">Bruto Acord.</th>';
             html += '<th style="text-align:right;">Fact. Goodies</th>';
-            if (hayDistribuidor) html += '<th style="text-align:right;">Neto Distrib.</th>';
+            if (hayCadena) html += '<th style="text-align:right;color:#4CAF50;">Neto Real</th>';
+            if (hayDistribuidor) html += '<th style="text-align:right;">Neto Super/Dist.</th>';
             if (hayTradicional) html += '<th style="text-align:right;">Neto Trad.</th>';
             html += '<th style="text-align:right;color:#4CAF50;">PVP Est.</th>';
         });
@@ -3857,7 +3860,13 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             r.precios.forEach(p => {
                 const margenColor = (p.pcts.margen_goodies || 0) >= 20 ? '#4CAF50' : '#ff9800';
                 html += '<td style="text-align:right;border-left:2px solid #555;">' + fmtMoney(p.precio_neto_goodies) + '<br><small style="color:' + margenColor + ';">MG:' + (p.pcts.margen_goodies||0).toFixed(0) + '%</small></td>';
+                if (hayCadena) {
+                    html += '<td style="text-align:right;">' + (p.tiene_acuerdos_cadena ? fmtMoney(p.precio_bruto_acordado) + '<br><small style="color:#ce93d8;">+' + p.pct_acuerdo_cadena_total + '%</small>' : '<small style="color:#555;">-</small>') + '</td>';
+                }
                 html += '<td style="text-align:right;">' + fmtMoney(p.factura_goodies) + '</td>';
+                if (hayCadena) {
+                    html += '<td style="text-align:right;">' + (p.tiene_acuerdos_cadena ? '<span style="color:#4CAF50;font-weight:bold;">' + fmtMoney(p.neto_real_goodies) + '</span>' : fmtMoney(p.precio_neto_goodies)) + '</td>';
+                }
                 if (hayDistribuidor) {
                     html += '<td style="text-align:right;">' + (p.precio_neto_cliente ? fmtMoney(p.precio_neto_cliente) + '<br><small style="color:#aaa;">mg:' + p.pct_margen_cliente + '%</small>' : '<small style="color:#555;">-</small>') + '</td>';
                 }
@@ -3884,22 +3893,40 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 // Paso 1
                 html += '<p style="margin-top:8px;"><strong style="color:#ff9800;">Paso 1 — Precio Neto Goodies</strong> (gross-up)</p>';
                 html += '<p>Fórmula: ' + fmtMoney(r.costo_neto) + ' ÷ (1 - ' + p.suma_pct.toFixed(1) + '%) = <strong>' + fmtMoney(p.precio_neto_goodies) + '</strong></p>';
-                html += '<p style="font-size:11px;color:#aaa;">Σ% = MG ' + (p.pcts.margen_goodies||0) + '% + Log ' + (p.pcts.logistico||0) + '% + IIBB ' + (p.pcts.iibb||0) + '% + Fin ' + (p.pcts.financiero||0) + '% + Com ' + (p.pcts.comision||0) + '%' + (p.pcts.otro_costo > 0 ? ' + Otro ' + p.pcts.otro_costo + '%' : '') + (p.pcts.acuerdo > 0 ? ' + Acuerdo ' + p.pcts.acuerdo + '%' : '') + ' = ' + p.suma_pct.toFixed(1) + '%</p>';
-                html += '<p style="font-size:11px;color:#aaa;">Desglose: Margen ' + fmtMoney(p.margen_goodies_monto) + ' | Log ' + fmtMoney(p.logistico_monto) + ' | IIBB ' + fmtMoney(p.iibb_monto) + ' | Fin ' + fmtMoney(p.financiero_monto) + ' | Com ' + fmtMoney(p.comision_monto) + (p.otro_costo_monto > 0 ? ' | Otro ' + fmtMoney(p.otro_costo_monto) : '') + (p.acuerdo_monto > 0 ? ' | Acuerdo ' + fmtMoney(p.acuerdo_monto) : '') + '</p>';
+                html += '<p style="font-size:11px;color:#aaa;">Σ% = MG ' + (p.pcts.margen_goodies||0) + '% + Log ' + (p.pcts.logistico||0) + '% + IIBB ' + (p.pcts.iibb||0) + '% + Fin ' + (p.pcts.financiero||0) + '% + Com ' + (p.pcts.comision||0) + '%' + (p.pcts.otro_costo > 0 ? ' + Otro ' + p.pcts.otro_costo + '%' : '') + (p.pct_acuerdo_flat > 0 ? ' + Acuerdo(flat) ' + p.pct_acuerdo_flat + '%' : '') + ' = ' + p.suma_pct.toFixed(1) + '%</p>';
+                html += '<p style="font-size:11px;color:#aaa;">Desglose: Margen ' + fmtMoney(p.margen_goodies_monto) + ' | Log ' + fmtMoney(p.logistico_monto) + ' | IIBB ' + fmtMoney(p.iibb_monto) + ' | Fin ' + fmtMoney(p.financiero_monto) + ' | Com ' + fmtMoney(p.comision_monto) + (p.otro_costo_monto > 0 ? ' | Otro ' + fmtMoney(p.otro_costo_monto) : '') + (p.acuerdo_flat_monto > 0 ? ' | Acuerdo(flat) ' + fmtMoney(p.acuerdo_flat_monto) : '') + '</p>';
+                // Paso 1b: Acuerdos cadena
+                if (p.tiene_acuerdos_cadena) {
+                    const TIPO_LABELS = {desc_oc:'Desc. en OC',nota_credito:'Nota de Crédito',factura_cliente:'Fact. del Cliente'};
+                    const BASE_LABELS = {bruto:'Bruto',neto_post_desc_oc:'Post OC',neto_post_nota_credito:'Post NC',neto_post_factura_cliente:'Post Fact.Cli.'};
+                    html += '<p style="margin-top:8px;"><strong style="color:#ce93d8;">Paso 1b — Acuerdos en Cadena</strong> (Σ ' + p.pct_acuerdo_cadena_total + '% → gross-up segunda capa)</p>';
+                    html += '<p>Precio Bruto Acordado = ' + fmtMoney(p.precio_neto_goodies) + ' ÷ (1 - ' + p.pct_acuerdo_cadena_total + '%) = <strong>' + fmtMoney(p.precio_bruto_acordado) + '</strong></p>';
+                    html += '<table style="font-size:11px;margin:5px 0;width:100%;"><tr style="color:#aaa;"><th>Orden</th><th>Tipo</th><th>%</th><th>Base</th><th>Base $</th><th>Monto</th><th>Neto post</th></tr>';
+                    p.detalle_acuerdos_cadena.forEach(d => {
+                        const tipoColor = d.tipo === 'desc_oc' ? '#4fc3f7' : d.tipo === 'nota_credito' ? '#ff9800' : '#f44336';
+                        html += '<tr><td>' + d.orden + '</td><td style="color:' + tipoColor + ';">' + (TIPO_LABELS[d.tipo]||d.tipo) + '</td><td>' + d.pct + '%</td><td style="font-size:10px;">' + (BASE_LABELS[d.base_calculo]||d.base_calculo) + '</td><td>' + fmtMoney(d.base_valor) + '</td><td style="color:#f44336;">-' + fmtMoney(d.monto) + '</td><td>' + fmtMoney(d.neto_post) + '</td></tr>';
+                    });
+                    html += '</table>';
+                    html += '<p style="font-size:12px;">Goodies factura: <strong>' + fmtMoney(p.precio_facturado_goodies) + '</strong> (bruto - desc. OC)</p>';
+                    if (p.total_nc > 0) html += '<p style="font-size:11px;color:#ff9800;">NC a emitir: -' + fmtMoney(p.total_nc) + '</p>';
+                    if (p.total_fact_cli > 0) html += '<p style="font-size:11px;color:#f44336;">Fact. del cliente: -' + fmtMoney(p.total_fact_cli) + '</p>';
+                    html += '<p style="font-size:12px;">Neto real Goodies: <strong style="color:#4CAF50;">' + fmtMoney(p.neto_real_goodies) + '</strong> <small>(= ' + fmtMoney(p.precio_neto_goodies) + ' verificación ✓)</small></p>';
+                }
                 // Paso 2
                 html += '<p style="margin-top:8px;"><strong style="color:#ff9800;">Paso 2 — Factura Goodies</strong></p>';
-                html += '<p>' + fmtMoney(p.precio_neto_goodies) + ' + IVA ' + fmtMoney(p.precio_neto_goodies * r.iva_pct / 100) + (r.imp_interno_pct > 0 ? ' + Imp.Int ' + fmtMoney(p.precio_neto_goodies * r.imp_interno_pct / 100) : '') + ' = <strong>' + fmtMoney(p.factura_goodies) + '</strong></p>';
+                html += '<p>' + fmtMoney(p.precio_facturado_goodies || p.precio_neto_goodies) + ' + IVA ' + fmtMoney((p.precio_facturado_goodies || p.precio_neto_goodies) * r.iva_pct / 100) + (r.imp_interno_pct > 0 ? ' + Imp.Int ' + fmtMoney((p.precio_facturado_goodies || p.precio_neto_goodies) * r.imp_interno_pct / 100) : '') + ' = <strong>' + fmtMoney(p.factura_goodies) + '</strong></p>';
                 // Paso 3
                 if (p.pct_margen_cliente > 0) {
-                    html += '<p style="margin-top:8px;"><strong style="color:#ff9800;">Paso 3 — Distribuidor</strong> (margen gross-up ' + p.pct_margen_cliente + '%)</p>';
-                    html += '<p>Su costo = Neto Goodies + Imp.Int = ' + fmtMoney(p.costo_cliente) + '</p>';
+                    const labelCliente = p.tiene_acuerdos_cadena ? 'Super' : 'Distribuidor';
+                    const labelBase = p.tiene_acuerdos_cadena ? 'Bruto Acordado + Imp.Int' : 'Neto Goodies + Imp.Int';
+                    html += '<p style="margin-top:8px;"><strong style="color:#ff9800;">Paso 3 — ' + labelCliente + '</strong> (margen gross-up ' + p.pct_margen_cliente + '%)</p>';
+                    html += '<p>Su costo = ' + labelBase + ' = ' + fmtMoney(p.costo_cliente) + '</p>';
                     html += '<p>Su precio neto = ' + fmtMoney(p.costo_cliente) + ' ÷ (1 - ' + p.pct_margen_cliente + '%) = <strong>' + fmtMoney(p.precio_neto_cliente) + '</strong></p>';
-                    html += '<p>Factura Distribuidor = ' + fmtMoney(p.precio_neto_cliente) + ' + IVA = <strong>' + fmtMoney(p.factura_cliente) + '</strong></p>';
                 }
                 // Paso 4
                 if (p.pct_markup_trad > 0) {
                     html += '<p style="margin-top:8px;"><strong style="color:#ff9800;">Paso 4 — Tradicional</strong> (markup ' + p.pct_markup_trad + '%)</p>';
-                    html += '<p>Su costo = ' + fmtMoney(p.costo_trad) + (p.pct_margen_cliente > 0 ? ' (Neto del Distribuidor)' : ' (Neto Goodies + Imp.Int)') + '</p>';
+                    html += '<p>Su costo = ' + fmtMoney(p.costo_trad) + '</p>';
                     html += '<p>Su precio neto = ' + fmtMoney(p.costo_trad) + ' × (1 + ' + p.pct_markup_trad + '%) = <strong>' + fmtMoney(p.precio_neto_trad) + '</strong></p>';
                 }
                 // PVP
@@ -3919,18 +3946,23 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         if (!ultimosResultadosPrecios || !ultimosResultadosPrecios.length) { alert('Primero calculá los precios'); return; }
         const hayDistribuidor = ultimosResultadosPrecios.some(r => r.precios.some(p => p.pct_margen_cliente > 0));
         const hayTradicional = ultimosResultadosPrecios.some(r => r.precios.some(p => p.pct_markup_trad > 0));
+        const hayCadena = ultimosResultadosPrecios.some(r => r.precios.some(p => p.tiene_acuerdos_cadena));
         const wsData = [['Código', 'Nombre', 'Proveedor', 'Rubro', 'Costo Neto', 'IVA%', 'Imp.Int%']];
         const listas = ultimosResultadosPrecios[0].precios.map(p => p.lista_nombre);
         listas.forEach(l => {
-            wsData[0].push(l + ' - Neto Goodies', l + ' - Fact. Goodies');
-            if (hayDistribuidor) wsData[0].push(l + ' - Neto Distrib.');
+            wsData[0].push(l + ' - Neto Goodies');
+            if (hayCadena) wsData[0].push(l + ' - Bruto Acord.', l + ' - Neto Real');
+            wsData[0].push(l + ' - Fact. Goodies');
+            if (hayDistribuidor) wsData[0].push(l + ' - Neto Super/Dist.');
             if (hayTradicional) wsData[0].push(l + ' - Neto Trad.');
             wsData[0].push(l + ' - PVP Est.');
         });
         ultimosResultadosPrecios.forEach(r => {
             const row = [r.codigo_goodies, r.nombre, r.proveedor || '', r.rubro || '', r.costo_neto, r.iva_pct, r.imp_interno_pct];
             r.precios.forEach(p => {
-                row.push(p.precio_neto_goodies, p.factura_goodies);
+                row.push(p.precio_neto_goodies);
+                if (hayCadena) row.push(p.tiene_acuerdos_cadena ? p.precio_bruto_acordado : '', p.tiene_acuerdos_cadena ? p.neto_real_goodies : p.precio_neto_goodies);
+                row.push(p.factura_goodies);
                 if (hayDistribuidor) row.push(p.precio_neto_cliente || '');
                 if (hayTradicional) row.push(p.precio_neto_trad || '');
                 row.push(p.pvp_estimado || '');
