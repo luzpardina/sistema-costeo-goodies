@@ -160,25 +160,42 @@ router.get('/ultimos-costos', auth, async (req, res) => {
             };
         });
 
-        // Enriquecer con marca y empresa_fabrica del catálogo
+        // Enriquecer con datos del catálogo y filtrar inactivos
         const codigos = resultado.map(r => r.codigo_goodies);
         const catItems = codigos.length > 0 ? await CatalogoArticulo.findAll({
             where: { codigo_goodies: { [Op.in]: codigos } },
-            attributes: ['codigo_goodies', 'marca', 'empresa_fabrica', 'rubro', 'iva_porcentaje', 'imp_interno_porcentaje'],
+            attributes: ['codigo_goodies', 'proveedor', 'empresa_fabrica', 'marca', 'rubro', 'iva_porcentaje', 'imp_interno_porcentaje', 'proveedor_activo', 'habilitado'],
             raw: true
         }) : [];
         const catMap = {};
         catItems.forEach(ci => { catMap[ci.codigo_goodies] = ci; });
         resultado.forEach(r => {
             const cat = catMap[r.codigo_goodies];
-            r.marca = cat ? (cat.marca || '') : '';
-            r.empresa_fabrica = cat ? (cat.empresa_fabrica || '') : '';
-            r.rubro = cat ? (cat.rubro || '') : '';
-            r.iva_porcentaje = cat ? (parseFloat(cat.iva_porcentaje) || 0.21) : 0.21;
-            r.imp_interno_porcentaje = cat ? (parseFloat(cat.imp_interno_porcentaje) || 0) : 0;
+            if (cat) {
+                // Usar proveedor y empresa_fabrica del catálogo (datos maestros)
+                r.proveedor = cat.proveedor || r.proveedor || '';
+                r.empresa_fabrica = cat.empresa_fabrica || '';
+                r.marca = cat.marca || '';
+                r.rubro = cat.rubro || '';
+                r.iva_porcentaje = parseFloat(cat.iva_porcentaje) || 0.21;
+                r.imp_interno_porcentaje = parseFloat(cat.imp_interno_porcentaje) || 0;
+                r.proveedor_activo = cat.proveedor_activo !== false;
+                r.articulo_activo = cat.habilitado !== false;
+            } else {
+                r.marca = '';
+                r.empresa_fabrica = '';
+                r.rubro = '';
+                r.iva_porcentaje = 0.21;
+                r.imp_interno_porcentaje = 0;
+                r.proveedor_activo = true;
+                r.articulo_activo = true;
+            }
         });
 
-        res.json(resultado);
+        // Filtrar: solo artículos con proveedor activo y artículo activo
+        const resultadoFiltrado = resultado.filter(r => r.proveedor_activo && r.articulo_activo);
+
+        res.json(resultadoFiltrado);
     } catch (error) {
         console.error('Error al obtener ultimos costos:', error);
         res.status(500).json({ error: 'Error al obtener ultimos costos' });
