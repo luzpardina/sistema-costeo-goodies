@@ -1155,7 +1155,7 @@ let todosLosArticulos = [];
                     '<td style="color:' + colorDifCosto + ';font-weight:bold;">' + (art.diferencia_pct !== null ? (art.diferencia_pct > 0 ? '+' : '') + art.diferencia_pct.toFixed(2) + '%' : '-') + '</td>' +
                     '<td>' + formatearFecha(art.fecha_despacho) + '</td>' +
                     '<td>' + (art.nombre_costeo || '-') + '</td>' +
-                    '<td><button class="btn btn-secondary btn-sm" onclick="verDetalleArticulo(\'' + art.codigo_goodies + '\')">Ver</button></td>' +
+                    '<td><button class="btn btn-secondary btn-sm" onclick="verDetalleArticulo(\'' + art.codigo_goodies + '\')">Ver</button> <button class="btn btn-sm" style="background:#2a2a3e;border:1px solid #4fc3f7;color:#4fc3f7;" onclick="verHistorial(\'' + art.codigo_goodies + '\')" title="Ver historial de costos">📈</button></td>' +
                     '</tr>';
             }).join('');
         }
@@ -4789,7 +4789,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                         if (a.ultimo_costo) html += '<span style="color:#4CAF50;font-weight:bold;">' + fmtMoney(a.ultimo_costo) + '</span>';
                         else html += '<span style="color:#666;">Sin costo</span>';
                         html += '</div></div>';
-                        html += '<div style="font-size:11px;color:#888;margin-top:2px;">' + a.proveedor + (a.empresa_fabrica ? ' → ' + a.empresa_fabrica : '') + (a.marca ? ' | ' + a.marca : '') + ' <span style="color:' + actColor + ';">' + (a.activo ? '● Activo' : '● Inactivo') + '</span></div>';
+                        html += '<div style="font-size:11px;color:#888;margin-top:2px;">' + a.proveedor + (a.empresa_fabrica ? ' → ' + a.empresa_fabrica : '') + (a.marca ? ' | ' + a.marca : '') + ' <span style="color:' + actColor + ';">' + (a.activo ? '● Activo' : '● Inactivo') + '</span> <button onclick="event.stopPropagation();verHistorial(\'' + a.codigo_goodies + '\')" style="background:#2a2a3e;border:1px solid #555;color:#4fc3f7;padding:1px 6px;border-radius:3px;cursor:pointer;font-size:10px;margin-left:5px;">📈 Historial</button></div>';
                         // Detalle expandible
                         html += '<div class="busq-detalle" style="display:none;margin-top:6px;padding:6px;background:#12121e;border-radius:4px;font-size:11px;">';
                         if (a.ultimo_costeo_nombre) html += '<p style="color:#aaa;">Último costeo: <strong style="color:#fff;">' + a.ultimo_costeo_nombre + '</strong> (' + fmtFecha(a.ultimo_costeo_fecha) + ')</p>';
@@ -4834,6 +4834,72 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
     function cerrarBuscador() {
         document.getElementById('buscadorResultados').style.display = 'none';
         document.getElementById('buscadorGlobal').value = '';
+    }
+
+    // =============================================
+    // HISTORIAL DE PRECIOS POR ARTÍCULO
+    // =============================================
+    async function verHistorial(codigo) {
+        cerrarBuscador();
+        document.getElementById('modalHistorial').style.display = 'block';
+        document.getElementById('historialTitulo').textContent = '📈 Historial de Costos — ' + codigo;
+        document.getElementById('historialContenido').innerHTML = '<p style="color:#888;">Cargando...</p>';
+        try {
+            const resp = await fetch(API_URL + '/api/costeos/historial/' + encodeURIComponent(codigo), { headers: { 'Authorization': 'Bearer ' + token } });
+            const data = await resp.json();
+            if (data.error) { document.getElementById('historialContenido').innerHTML = '<p style="color:#f44336;">Error: ' + data.error + '</p>'; return; }
+            const fmtMoney = v => '$' + (parseFloat(v)||0).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+            const fmtFecha = f => f ? new Date(f).toLocaleDateString('es-AR') : '-';
+
+            let html = '<p><strong>' + data.nombre + '</strong> | Proveedor: ' + (data.proveedor || '-') + (data.marca ? ' | Marca: ' + data.marca : '') + '</p>';
+
+            if (!data.historial || data.historial.length === 0) {
+                html += '<p style="color:#888;margin-top:15px;">No hay costeos con fecha de despacho para este artículo.</p>';
+            } else {
+                // Mini gráfico de barras con CSS
+                const costos = data.historial.map(h => h.costo_neto);
+                const maxCosto = Math.max(...costos);
+
+                html += '<div style="margin:15px 0;padding:10px;background:#12121e;border-radius:6px;">';
+                html += '<div style="display:flex;align-items:flex-end;gap:3px;height:120px;padding:0 5px;">';
+                data.historial.forEach(h => {
+                    const pct = maxCosto > 0 ? (h.costo_neto / maxCosto) * 100 : 0;
+                    const estColor = h.estado === 'calculado' ? '#4CAF50' : '#ff9800';
+                    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;" title="' + h.costeo_nombre + ': ' + fmtMoney(h.costo_neto) + '">';
+                    html += '<span style="font-size:9px;color:#aaa;margin-bottom:2px;">' + fmtMoney(h.costo_neto) + '</span>';
+                    html += '<div style="width:100%;max-width:60px;background:' + estColor + ';border-radius:3px 3px 0 0;height:' + Math.max(pct, 5) + '%;min-height:4px;"></div>';
+                    html += '<span style="font-size:8px;color:#666;margin-top:2px;text-align:center;line-height:1;">' + fmtFecha(h.fecha_despacho).replace(/\//g, '/') + '</span>';
+                    html += '</div>';
+                });
+                html += '</div></div>';
+
+                // Tabla detalle
+                html += '<table style="width:100%;font-size:12px;margin-top:10px;"><thead><tr style="background:#2a2a3e;">';
+                html += '<th>Fecha Despacho</th><th>Costeo</th><th>Estado</th><th>TC USD</th><th>FOB Unit.</th><th style="text-align:right;">Costo Neto</th><th style="text-align:right;">Var %</th>';
+                html += '</tr></thead><tbody>';
+                data.historial.forEach((h, i) => {
+                    const estColor = h.estado === 'calculado' ? '#4CAF50' : '#ff9800';
+                    let varPct = '';
+                    if (i > 0 && data.historial[i-1].costo_neto > 0) {
+                        const diff = ((h.costo_neto - data.historial[i-1].costo_neto) / data.historial[i-1].costo_neto) * 100;
+                        const diffColor = diff > 0 ? '#f44336' : diff < 0 ? '#4CAF50' : '#aaa';
+                        varPct = '<span style="color:' + diffColor + ';">' + (diff > 0 ? '+' : '') + diff.toFixed(1) + '%</span>';
+                    }
+                    html += '<tr>';
+                    html += '<td>' + fmtFecha(h.fecha_despacho) + '</td>';
+                    html += '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + h.costeo_nombre + '">' + h.costeo_nombre + '</td>';
+                    html += '<td style="color:' + estColor + ';">' + (h.estado === 'calculado' ? '✔' : '⚠') + '</td>';
+                    html += '<td>' + (h.tc_usd || '-') + '</td>';
+                    html += '<td>' + (h.moneda || 'USD') + ' ' + h.fob_unitario.toFixed(2) + '</td>';
+                    html += '<td style="text-align:right;font-weight:bold;">' + fmtMoney(h.costo_neto) + '</td>';
+                    html += '<td style="text-align:right;">' + varPct + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+            }
+
+            document.getElementById('historialContenido').innerHTML = html;
+        } catch(e) { document.getElementById('historialContenido').innerHTML = '<p style="color:#f44336;">Error: ' + e.message + '</p>'; }
     }
 
     // Cerrar buscador al hacer clic fuera
@@ -4922,6 +4988,16 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             <button onclick="document.getElementById('consolidadoCompModal').style.display='none'" style="background:none; border:none; color:#fff; font-size:24px; cursor:pointer;">&times;</button>
         </div>
         <div id="comparativoModalBody"></div>
+    </div>
+</div>
+<!-- Modal Historial de Precios -->
+<div id="modalHistorial" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:2000;overflow:auto;">
+    <div style="background:#1e1e1e;margin:40px auto;padding:25px;max-width:900px;border-radius:10px;border:1px solid #444;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+            <h3 style="color:#4fc3f7;margin:0;" id="historialTitulo">📈 Historial de Costos</h3>
+            <button onclick="document.getElementById('modalHistorial').style.display='none'" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+        </div>
+        <div id="historialContenido" style="color:#ccc;"></div>
     </div>
 </div>
 </body>

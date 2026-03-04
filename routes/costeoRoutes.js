@@ -117,6 +117,50 @@ router.get('/buscar', auth, async (req, res) => {
     }
 });
 
+// Historial de costos de un artículo
+router.get('/historial/:codigo', auth, async (req, res) => {
+    try {
+        const { Op } = require('sequelize');
+        const codigo = req.params.codigo;
+
+        const articulos = await ArticuloCosteo.findAll({
+            where: { codigo_goodies: { [Op.iLike]: codigo } },
+            include: [{
+                model: Costeo, as: 'costeo',
+                attributes: ['id', 'nombre_costeo', 'estado', 'fecha_despacho', 'proveedor', 'tc_usd', 'tc_eur', 'tc_gbp', 'moneda_principal']
+            }],
+            order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'ASC']]
+        });
+
+        const historial = articulos.filter(a => a.costeo && a.costeo.fecha_despacho).map(a => ({
+            costeo_id: a.costeo.id,
+            costeo_nombre: a.costeo.nombre_costeo,
+            estado: a.costeo.estado,
+            fecha_despacho: a.costeo.fecha_despacho,
+            proveedor: a.costeo.proveedor,
+            moneda: a.costeo.moneda_principal,
+            tc_usd: parseFloat(a.costeo.tc_usd) || 0,
+            fob_unitario: parseFloat(a.valor_proveedor_origen) || parseFloat(a.valor_unitario_origen) || 0,
+            costo_neto: parseFloat(a.costo_unitario_neto_ars) || 0,
+            unidades: parseInt(a.unidades_totales) || 0
+        }));
+
+        // Datos del catálogo
+        const catalogo = await CatalogoArticulo.findOne({ where: { codigo_goodies: { [Op.iLike]: codigo } } });
+
+        res.json({
+            codigo_goodies: codigo,
+            nombre: catalogo ? catalogo.nombre : (articulos[0] ? articulos[0].nombre : codigo),
+            proveedor: catalogo ? catalogo.proveedor : '',
+            marca: catalogo ? catalogo.marca : '',
+            historial
+        });
+    } catch (error) {
+        console.error('Error obteniendo historial:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Listar costeos
 router.get('/listar', auth, async (req, res) => {
     try {
