@@ -17,6 +17,11 @@ const generarToken = (usuario) => {
 // Registro de usuario
 const register = async (req, res) => {
     try {
+        // Solo admins pueden registrar usuarios
+        if (req.usuario && req.usuario.rol !== 'admin') {
+            return res.status(403).json({ error: 'Solo los administradores pueden crear usuarios' });
+        }
+
         const { email, password, nombre, rol, empresa_id } = req.body;
 
         // Verificar si el usuario ya existe
