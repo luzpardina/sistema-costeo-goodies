@@ -72,6 +72,74 @@ const CAJAS_ML = {
     grande:  { largo: 45, ancho: 35, alto: 25, label: 'Grande (45×35×25)' }
 };
 
+// === COLECTA / ENVÍOS FULL / CORREO / DESPACHO (precio × peso detallado) ===
+const COLECTA_COSTOS = {
+    precios: [
+        { min: 0, max: 15999 },
+        { min: 16000, max: 23999 },
+        { min: 24000, max: 32999 },
+    ],
+    pesos: [
+        { min: 0, max: 0.3, label: 'Hasta 0,3 kg' },
+        { min: 0.3, max: 0.5, label: '0,3 a 0,5 kg' },
+        { min: 0.5, max: 1, label: '0,5 a 1 kg' },
+        { min: 1, max: 1.5, label: '1 a 1,5 kg' },
+        { min: 1.5, max: 2, label: '1,5 a 2 kg' },
+        { min: 2, max: 3, label: '2 a 3 kg' },
+        { min: 3, max: 4, label: '3 a 4 kg' },
+        { min: 4, max: 5, label: '4 a 5 kg' },
+        { min: 5, max: 8, label: '5 a 8 kg' },
+        { min: 8, max: 10, label: '8 a 10 kg' },
+        { min: 10, max: 13, label: '10 a 13 kg' },
+        { min: 13, max: 15, label: '13 a 15 kg' },
+        { min: 15, max: 20, label: '15 a 20 kg' },
+        { min: 20, max: 25, label: '20 a 25 kg' },
+        { min: 25, max: 30, label: '25 a 30 kg' },
+        { min: 30, max: 40, label: '30 a 40 kg' },
+        { min: 40, max: 50, label: '40 a 50 kg' },
+        { min: 50, max: 60, label: '50 a 60 kg' },
+        { min: 60, max: 70, label: '60 a 70 kg' },
+        { min: 70, max: 80, label: '70 a 80 kg' },
+        { min: 80, max: 90, label: '80 a 90 kg' },
+        { min: 90, max: 100, label: '90 a 100 kg' },
+        { min: 100, max: 120, label: '100 a 120 kg' },
+        { min: 120, max: 140, label: '120 a 140 kg' },
+        { min: 140, max: 160, label: '140 a 160 kg' },
+        { min: 160, max: 180, label: '160 a 180 kg' },
+        { min: 180, max: 9999, label: 'Más de 180 kg' },
+    ],
+    // costos[peso_idx][precio_idx]
+    costos: [
+        [1230, 2455, 2925],
+        [1240, 2465, 2925],
+        [1255, 2465, 2940],
+        [1265, 2490, 2950],
+        [1275, 2500, 2965],
+        [1290, 2575, 3050],
+        [1310, 2620, 3100],
+        [1365, 2735, 3240],
+        [1395, 2790, 3305],
+        [1420, 2850, 3445],
+        [1450, 2850, 3510],
+        [1470, 2920, 3510],
+        [1470, 2965, 3570],
+        [1475, 2990, 3600],
+        [1490, 3010, 3625],
+        [1515, 3035, 3650],
+        [1525, 3055, 3680],
+        [1535, 3080, 3705],
+        [1545, 3105, 3735],
+        [1580, 3125, 3760],
+        [1630, 3150, 3790],
+        [1640, 3170, 3815],
+        [1655, 3195, 3845],
+        [1665, 3220, 3870],
+        [1675, 3240, 3900],
+        [1685, 3265, 3925],
+        [1705, 3285, 3950],
+    ]
+};
+
 /**
  * Calcular peso volumétrico
  * Fórmula ML: (largo_cm × ancho_cm × alto_cm) / 4000
@@ -131,6 +199,28 @@ function costoFijoML(precio, pesoKg, canal, esEsencial) {
             precio_rango: `$${tabla.precios[precioIdx].min}-$${tabla.precios[precioIdx].max}`,
             tipo: tipoLabel,
             detalle: `Full Súper (${tipoLabel}): $${costo} [${tabla.pesos[pesoIdx].label}, ${tabla.precios[precioIdx].min}-${tabla.precios[precioIdx].max}]`
+        };
+    }
+
+    if (canal === 'colecta') {
+        const precioIdx = COLECTA_COSTOS.precios.findIndex(r => precio >= r.min && precio <= r.max);
+        const pesoIdx = COLECTA_COSTOS.pesos.findIndex(r => pesoKg >= r.min && pesoKg < r.max);
+
+        if (precioIdx === -1 || pesoIdx === -1) {
+            return { costo: 0, detalle: 'Fuera de rango' };
+        }
+
+        const costo = COLECTA_COSTOS.costos[pesoIdx][precioIdx];
+        const tope = precio * 0.25;
+        const costoFinal = Math.min(costo, tope);
+
+        return {
+            costo: costoFinal,
+            costo_tabla: costo,
+            tope_aplicado: costoFinal < costo,
+            peso_rango: COLECTA_COSTOS.pesos[pesoIdx].label,
+            precio_rango: `$${COLECTA_COSTOS.precios[precioIdx].min}-$${COLECTA_COSTOS.precios[precioIdx].max}`,
+            detalle: `Colecta: $${costo} [${COLECTA_COSTOS.pesos[pesoIdx].label}, ${COLECTA_COSTOS.precios[precioIdx].min}-${COLECTA_COSTOS.precios[precioIdx].max}]`
         };
     }
 
@@ -297,5 +387,5 @@ function round(v) {
 
 module.exports = {
     costoFijoML, calcularML, calcularMLConCaja, precioSugeridoML, pesoVolumetrico, pesoEfectivo,
-    FLEX_COSTOS, FULL_SUPER_ESENCIALES, FULL_SUPER_RESTO, COMISION_ML_DEFAULT, CAJAS_ML
+    FLEX_COSTOS, FULL_SUPER_ESENCIALES, FULL_SUPER_RESTO, COLECTA_COSTOS, COMISION_ML_DEFAULT, CAJAS_ML
 };

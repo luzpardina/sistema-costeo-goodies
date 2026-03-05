@@ -236,3 +236,25 @@ describe('ML - Cálculo completo', () => {
         expect(r.envio_gratis_obligatorio).toBe(true);
     });
 });
+
+describe('ML - Costo fijo Colecta', () => {
+    test('Producto $10.000, 0.8kg → $1.255', () => {
+        const r = mlService.costoFijoML(10000, 0.8, 'colecta', false);
+        expect(r.costo).toBe(1255);
+    });
+
+    test('Producto $20.000, 3.5kg → $2.620', () => {
+        const r = mlService.costoFijoML(20000, 3.5, 'colecta', false);
+        expect(r.costo).toBe(2620);
+    });
+
+    test('Producto $28.000, 10kg → $3.510', () => {
+        const r = mlService.costoFijoML(28000, 10.5, 'colecta', false);
+        expect(r.costo).toBe(3510);
+    });
+
+    test('Colecta >= $33.000 → $0', () => {
+        const r = mlService.costoFijoML(35000, 5, 'colecta', false);
+        expect(r.costo).toBe(0);
+    });
+});

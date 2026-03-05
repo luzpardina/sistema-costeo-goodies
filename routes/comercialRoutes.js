@@ -809,6 +809,7 @@ router.get('/ml/tablas', auth, (req, res) => {
         flex: mlService.FLEX_COSTOS,
         full_super_esenciales: mlService.FULL_SUPER_ESENCIALES,
         full_super_resto: mlService.FULL_SUPER_RESTO,
+        colecta: mlService.COLECTA_COSTOS,
         cajas: mlService.CAJAS_ML,
         comision_default: mlService.COMISION_ML_DEFAULT,
         vigencia: '12/03/2026',
