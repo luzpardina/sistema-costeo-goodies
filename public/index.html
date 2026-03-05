@@ -708,7 +708,27 @@
             <div class="card">
                 <h3>👥 Usuarios del Sistema</h3>
                 <p style="color:#aaa;margin-bottom:10px;">Roles: admin (acceso total), comex, comercial, contable, visualizador</p>
-                <div id="listaUsuarios" style="color:#ccc;">Próximamente: gestión de usuarios</div>
+                <button class="btn btn-secondary" onclick="cargarUsuarios()" style="margin-bottom:10px;">🔄 Cargar Usuarios</button>
+                <button class="btn btn-primary" onclick="mostrarFormUsuario()" style="margin-bottom:10px;">+ Nuevo Usuario</button>
+                <div id="formNuevoUsuario" style="display:none;margin-bottom:15px;padding:12px;background:#1e1e2f;border-radius:6px;">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+                        <div><label style="font-size:10px;color:#888;">Email *</label><input type="email" id="nuevoUserEmail" placeholder="email@goodies.com" style="background:#12121e;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;font-size:12px;width:180px;"></div>
+                        <div><label style="font-size:10px;color:#888;">Nombre *</label><input type="text" id="nuevoUserNombre" placeholder="Nombre" style="background:#12121e;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;font-size:12px;width:140px;"></div>
+                        <div><label style="font-size:10px;color:#888;">Contraseña *</label><input type="password" id="nuevoUserPass" placeholder="********" style="background:#12121e;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;font-size:12px;width:120px;"></div>
+                        <div><label style="font-size:10px;color:#888;">Rol</label>
+                            <select id="nuevoUserRol" style="background:#12121e;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;font-size:12px;">
+                                <option value="visualizador">Visualizador</option>
+                                <option value="comex">COMEX</option>
+                                <option value="comercial">Comercial</option>
+                                <option value="contable">Contable</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-success" onclick="crearUsuario()" style="font-size:12px;">✅ Crear</button>
+                        <button class="btn btn-secondary" onclick="document.getElementById('formNuevoUsuario').style.display='none'" style="font-size:12px;">Cancelar</button>
+                    </div>
+                </div>
+                <div id="listaUsuarios" style="color:#ccc;font-size:12px;"></div>
             </div>
             <div class="card">
                 <h3>⚙️ Configuración</h3>

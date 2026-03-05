@@ -2,7 +2,59 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { requireRole } = require('../middleware/roles');
-const { AuditoriaLog, ConfigSistema } = require('../models');
+const { AuditoriaLog, ConfigSistema, Usuario } = require('../models');
+const { registrarAuditoria } = require('../utils/auditoria');
+
+// Listar usuarios (solo admins)
+router.get('/usuarios', auth, async (req, res) => {
+    try {
+        const usuarios = await Usuario.findAll({
+            attributes: ['id', 'email', 'nombre', 'rol', 'activo', 'created_at', 'updated_at'],
+            order: [['nombre', 'ASC']]
+        });
+        res.json(usuarios);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Actualizar usuario (rol, activo)
+router.put('/usuarios/:id', auth, async (req, res) => {
+    try {
+        const usuario = await Usuario.findByPk(req.params.id);
+        if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+        
+        const updates = {};
+        if (req.body.rol) updates.rol = req.body.rol;
+        if (req.body.activo !== undefined) updates.activo = req.body.activo;
+        if (req.body.nombre) updates.nombre = req.body.nombre;
+        
+        await usuario.update(updates);
+        await registrarAuditoria(req, 'actualizar', 'usuario', usuario.id, 
+            'Actualizado: ' + usuario.email + ' → ' + JSON.stringify(updates));
+        
+        res.json({ mensaje: 'Usuario actualizado', usuario: { id: usuario.id, email: usuario.email, nombre: usuario.nombre, rol: usuario.rol, activo: usuario.activo } });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Resetear contraseña
+router.put('/usuarios/:id/password', auth, async (req, res) => {
+    try {
+        const usuario = await Usuario.findByPk(req.params.id);
+        if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+        if (!req.body.password) return res.status(400).json({ error: 'Contraseña requerida' });
+        
+        usuario.password_hash = req.body.password;
+        await usuario.save();
+        await registrarAuditoria(req, 'actualizar', 'usuario', usuario.id, 'Password reseteada: ' + usuario.email);
+        
+        res.json({ mensaje: 'Contraseña actualizada' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // Log de auditoría (solo admins)
 router.get('/auditoria', auth, async (req, res) => {

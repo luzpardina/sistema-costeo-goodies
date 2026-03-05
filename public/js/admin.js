@@ -4,6 +4,104 @@
 
 
     // =============================================
+    // ADMIN - GESTIÓN DE USUARIOS
+    // =============================================
+    function mostrarFormUsuario() {
+        var form = document.getElementById('formNuevoUsuario');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        document.getElementById('nuevoUserEmail').value = '';
+        document.getElementById('nuevoUserNombre').value = '';
+        document.getElementById('nuevoUserPass').value = '';
+        document.getElementById('nuevoUserRol').value = 'visualizador';
+    }
+
+    async function crearUsuario() {
+        var email = document.getElementById('nuevoUserEmail').value.trim();
+        var nombre = document.getElementById('nuevoUserNombre').value.trim();
+        var password = document.getElementById('nuevoUserPass').value;
+        var rol = document.getElementById('nuevoUserRol').value;
+        if (!email || !nombre || !password) { alert('Completá email, nombre y contraseña'); return; }
+        if (password.length < 6) { alert('La contraseña debe tener al menos 6 caracteres'); return; }
+        try {
+            var resp = await fetch(API_URL + '/api/auth/register', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, password: password, nombre: nombre, rol: rol })
+            });
+            var data = await resp.json();
+            if (!resp.ok) { alert('Error: ' + (data.error || 'No se pudo crear')); return; }
+            alert('✅ Usuario creado: ' + email + ' (' + rol + ')');
+            document.getElementById('formNuevoUsuario').style.display = 'none';
+            cargarUsuarios();
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function cargarUsuarios() {
+        var div = document.getElementById('listaUsuarios');
+        div.innerHTML = '<p style="color:#888;">Cargando...</p>';
+        try {
+            var resp = await fetch(API_URL + '/api/admin/usuarios', { headers: { 'Authorization': 'Bearer ' + token } });
+            var users = await resp.json();
+            if (!Array.isArray(users) || users.length === 0) { div.innerHTML = '<p>No hay usuarios.</p>'; return; }
+            var ROL_COLORS = { admin: '#f44336', comex: '#4fc3f7', comercial: '#ff9800', contable: '#4CAF50', visualizador: '#888' };
+            var html = '<table style="width:100%;"><thead><tr style="background:#2a2a3e;"><th>Nombre</th><th>Email</th><th>Rol</th><th>Activo</th><th>Acciones</th></tr></thead><tbody>';
+            users.forEach(function(u) {
+                var color = ROL_COLORS[u.rol] || '#aaa';
+                var activo = u.activo !== false;
+                html += '<tr style="' + (activo ? '' : 'opacity:0.5;') + '">';
+                html += '<td>' + (u.nombre || '-') + '</td>';
+                html += '<td>' + u.email + '</td>';
+                html += '<td><select onchange="cambiarRolUsuario(\'' + u.id + '\', this.value)" style="background:#1e1e2f;border:1px solid #444;color:' + color + ';padding:3px;border-radius:3px;font-size:11px;font-weight:bold;">';
+                ['admin', 'comex', 'comercial', 'contable', 'visualizador'].forEach(function(r) {
+                    html += '<option value="' + r + '" ' + (u.rol === r ? 'selected' : '') + '>' + r + '</option>';
+                });
+                html += '</select></td>';
+                html += '<td><button class="btn btn-sm" style="padding:2px 8px;font-size:10px;background:' + (activo ? '#4CAF50' : '#f44336') + ';color:#fff;border:none;border-radius:3px;" onclick="toggleActivoUsuario(\'' + u.id + '\',' + !activo + ')">' + (activo ? '✅ Activo' : '❌ Inactivo') + '</button></td>';
+                html += '<td><button class="btn btn-sm" style="padding:2px 8px;font-size:10px;background:#ff9800;color:#fff;border:none;border-radius:3px;" onclick="resetPasswordUsuario(\'' + u.id + '\',\'' + u.email + '\')">🔑 Reset Pass</button></td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            div.innerHTML = html;
+        } catch(e) { div.innerHTML = '<p style="color:#f44336;">Error: ' + e.message + '</p>'; }
+    }
+
+    async function cambiarRolUsuario(id, rol) {
+        try {
+            await fetch(API_URL + '/api/admin/usuarios/' + id, {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rol: rol })
+            });
+            cargarUsuarios();
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function toggleActivoUsuario(id, activo) {
+        if (!confirm(activo ? '¿Activar este usuario?' : '¿Desactivar este usuario? No podrá loguearse.')) return;
+        try {
+            await fetch(API_URL + '/api/admin/usuarios/' + id, {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ activo: activo })
+            });
+            cargarUsuarios();
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function resetPasswordUsuario(id, email) {
+        var newPass = prompt('Nueva contraseña para ' + email + ' (mín 6 caracteres):');
+        if (!newPass || newPass.length < 6) { alert('Contraseña inválida'); return; }
+        try {
+            await fetch(API_URL + '/api/admin/usuarios/' + id + '/password', {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: newPass })
+            });
+            alert('✅ Contraseña actualizada para ' + email);
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    // =============================================
     // ADMIN - PARÁMETROS DEL SISTEMA
     // =============================================
     async function cargarConfigSistema() {
