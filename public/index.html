@@ -498,10 +498,10 @@
                 <h3>🎯 Simulador de Descuento (Break-Even) <a href="/manual.html#comercial-simulador" target="_blank" style="font-size:12px;color:#4fc3f7;text-decoration:none;font-weight:normal;" title="Ver en el manual">❓</a></h3>
                 <p style="color:#aaa;margin-bottom:15px;">Calculá el descuento máximo que podés ofrecer según diferentes aumentos de volumen.</p>
                 <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
-                    <select id="filtroSimProveedor" onchange="filtrarArticulosSim()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                    <select id="filtroSimProveedor" onchange="cascadaFiltrosSim(); filtrarArticulosSim()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
                         <option value="">Todos los proveedores</option>
                     </select>
-                    <select id="filtroSimFabricante" onchange="filtrarArticulosSim()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
+                    <select id="filtroSimFabricante" onchange="cascadaFiltrosSim(); filtrarArticulosSim()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
                         <option value="">Todas las fábricas</option>
                     </select>
                     <select id="filtroSimMarca" onchange="filtrarArticulosSim()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
@@ -4776,6 +4776,23 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         if (!sel) return;
         sel.innerHTML = '<option value="">Seleccionar...</option>' +
             arts.map(a => '<option value="' + (a.codigo_goodies || a.codigo) + '">' + (a.codigo_goodies || a.codigo) + ' - ' + a.nombre + '</option>').join('');
+    }
+
+    function cascadaFiltrosSim() {
+        const prov = document.getElementById('filtroSimProveedor').value;
+        const fab = document.getElementById('filtroSimFabricante').value;
+
+        let filtradosPorProv = [...articulosSimTodos];
+        if (prov) filtradosPorProv = filtradosPorProv.filter(a => a.proveedor === prov);
+        const fabricas = [...new Set(filtradosPorProv.map(a => a.empresa_fabrica).filter(f => f))].sort();
+        const fabSel = fab;
+        document.getElementById('filtroSimFabricante').innerHTML = '<option value="">Todas las fábricas</option>' + fabricas.map(f => '<option' + (f === fabSel ? ' selected' : '') + '>' + f + '</option>').join('');
+
+        let filtradosPorProvYFab = [...filtradosPorProv];
+        if (fab && fabricas.includes(fab)) filtradosPorProvYFab = filtradosPorProvYFab.filter(a => a.empresa_fabrica === fab);
+        const marcas = [...new Set(filtradosPorProvYFab.map(a => a.marca).filter(m => m))].sort();
+        const marcaSel = document.getElementById('filtroSimMarca').value;
+        document.getElementById('filtroSimMarca').innerHTML = '<option value="">Todas las marcas</option>' + marcas.map(m => '<option' + (m === marcaSel ? ' selected' : '') + '>' + m + '</option>').join('');
     }
 
     function filtrarArticulosSim() {
