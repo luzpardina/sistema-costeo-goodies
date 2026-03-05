@@ -2115,6 +2115,130 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             input.value = '';
         }
 
+        // =============================================
+        // IMPORTAR DATOS LOGÍSTICOS
+        // =============================================
+        var logisticosData = null;
+
+        async function importarDatosLogisticos(input) {
+            var file = input.files[0];
+            if (!file) return;
+            var previewDiv = document.getElementById('logisticosPreview');
+            previewDiv.style.display = 'block';
+            previewDiv.innerHTML = '<p style="color:#888;">Analizando archivo y buscando matches en el catálogo...</p>';
+
+            try {
+                var formData = new FormData();
+                formData.append('archivo', file);
+                var resp = await fetch(API_URL + '/api/maestro/logisticos/preview', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData
+                });
+                var data = await resp.json();
+                if (data.error) { previewDiv.innerHTML = '<p style="color:#f44336;">Error: ' + data.error + '</p>'; input.value = ''; return; }
+
+                logisticosData = data.resultados;
+
+                var html = '<h4 style="color:#ff9800;margin-bottom:8px;">📐 Preview Datos Logísticos (' + data.total + ' artículos)</h4>';
+                html += '<p style="font-size:12px;color:#aaa;">✅ Matched: <strong style="color:#4CAF50;">' + data.matched + '</strong> | ❌ Sin match: <strong style="color:#f44336;">' + data.unmatched + '</strong></p>';
+
+                html += '<div style="max-height:300px;overflow-y:auto;"><table style="width:100%;font-size:11px;">';
+                html += '<thead><tr style="background:#2a2a3e;"><th>Código Prov</th><th>Descripción Depósito</th><th>Peso Kg</th><th>L×A×H cm</th><th>Match →</th><th>Código Goodies</th><th>Nombre Catálogo</th><th>Conf.</th><th>✓</th></tr></thead><tbody>';
+
+                data.resultados.forEach(function(r, i) {
+                    var matchColor = r.match ? (r.confianza >= 80 ? '#4CAF50' : '#ff9800') : '#f44336';
+                    var checked = r.match && r.confianza >= 60 ? 'checked' : '';
+                    html += '<tr style="border-bottom:1px solid #333;">';
+                    html += '<td>' + r.codigo_proveedor + '</td>';
+                    html += '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + r.descripcion + '</td>';
+                    html += '<td>' + (r.pieza_peso_kg || '-') + '</td>';
+                    html += '<td>' + (r.pieza_largo_cm || '-') + '×' + (r.pieza_ancho_cm || '-') + '×' + (r.pieza_alto_cm || '-') + '</td>';
+                    html += '<td style="color:' + matchColor + ';font-size:10px;">' + (r.metodo_match || '❌') + '</td>';
+                    html += '<td>' + (r.match ? '<strong>' + r.match.codigo_goodies + '</strong>' : '<input type="text" placeholder="Buscar..." onkeyup="buscarMatchLogistico(this,' + i + ')" style="width:80px;background:#1e1e2f;border:1px solid #444;color:#fff;padding:2px 4px;font-size:10px;border-radius:3px;">') + '</td>';
+                    html += '<td style="font-size:10px;color:#aaa;">' + (r.match ? r.match.nombre_catalogo.substring(0, 30) : '') + '</td>';
+                    html += '<td style="color:' + matchColor + ';">' + (r.confianza || 0) + '%</td>';
+                    html += '<td><input type="checkbox" class="log-check" data-idx="' + i + '" ' + checked + ' ' + (r.match ? '' : 'disabled') + '></td>';
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table></div>';
+                html += '<div style="margin-top:10px;display:flex;gap:8px;">';
+                html += '<button class="btn btn-success" onclick="aplicarDatosLogisticos()">✅ Aplicar seleccionados al catálogo</button>';
+                html += '<button class="btn btn-secondary" onclick="document.getElementById(\'logisticosPreview\').style.display=\'none\'">Cancelar</button>';
+                html += '</div>';
+
+                previewDiv.innerHTML = html;
+            } catch(e) {
+                previewDiv.innerHTML = '<p style="color:#f44336;">Error: ' + e.message + '</p>';
+            }
+            input.value = '';
+        }
+
+        async function buscarMatchLogistico(input, idx) {
+            var q = input.value.trim();
+            if (q.length < 2) return;
+            try {
+                var resp = await fetch(API_URL + '/api/maestro/logisticos/buscar-catalogo?q=' + encodeURIComponent(q), { headers: { 'Authorization': 'Bearer ' + token } });
+                var arts = await resp.json();
+                if (arts.length > 0) {
+                    // Take first result
+                    logisticosData[idx].match = {
+                        codigo_goodies: arts[0].codigo_goodies,
+                        nombre_catalogo: arts[0].nombre,
+                        proveedor: arts[0].proveedor,
+                        marca: arts[0].marca
+                    };
+                    logisticosData[idx].confianza = 100;
+                    logisticosData[idx].metodo_match = 'manual';
+                    // Refresh the row
+                    var row = input.closest('tr');
+                    var cells = row.querySelectorAll('td');
+                    cells[4].innerHTML = '<span style="color:#2196F3;">manual</span>';
+                    cells[5].innerHTML = '<strong>' + arts[0].codigo_goodies + '</strong>';
+                    cells[6].innerHTML = '<span style="font-size:10px;color:#aaa;">' + arts[0].nombre.substring(0, 30) + '</span>';
+                    cells[7].innerHTML = '<span style="color:#2196F3;">100%</span>';
+                    var cb = cells[8].querySelector('input');
+                    if (cb) { cb.disabled = false; cb.checked = true; }
+                }
+            } catch(e) { /* silently fail */ }
+        }
+
+        async function aplicarDatosLogisticos() {
+            if (!logisticosData) return;
+            var checks = document.querySelectorAll('.log-check:checked');
+            if (checks.length === 0) { alert('Seleccioná al menos un artículo'); return; }
+
+            var matches = [];
+            checks.forEach(function(cb) {
+                var idx = parseInt(cb.dataset.idx);
+                var r = logisticosData[idx];
+                if (r && r.match) {
+                    matches.push({
+                        codigo_goodies: r.match.codigo_goodies,
+                        pieza_peso_kg: r.pieza_peso_kg,
+                        pieza_largo_cm: r.pieza_largo_cm,
+                        pieza_ancho_cm: r.pieza_ancho_cm,
+                        pieza_alto_cm: r.pieza_alto_cm,
+                        confirmar: true
+                    });
+                }
+            });
+
+            if (!confirm('¿Aplicar datos de peso y dimensiones a ' + matches.length + ' artículos del catálogo?')) return;
+
+            try {
+                var resp = await fetch(API_URL + '/api/maestro/logisticos/aplicar', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ matches: matches })
+                });
+                var resultado = await resp.json();
+                alert('✅ Datos logísticos aplicados:\n- Actualizados: ' + resultado.actualizados + '\n- Errores: ' + resultado.errores);
+                document.getElementById('logisticosPreview').style.display = 'none';
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+
         async function descargarCatalogo() {
             try {
                 const res = await fetch(`${window.location.origin}/api/maestro/descargar`, {

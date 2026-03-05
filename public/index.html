@@ -182,6 +182,13 @@
                             <input type="file" accept=".xlsx,.xls" onchange="importarCatalogoMaestro(this)" style="display:none;">
                         </label>
                     </div>
+                    <div style="margin-top:8px;">
+                        <label class="btn btn-warning" style="cursor:pointer; text-align:center; margin:0; width:100%; font-size:12px;" title="Importar datos de peso y dimensiones desde planillas de depósito (matchea por código proveedor o nombre)">
+                            📐 Importar Datos Logísticos (peso/dimensiones)
+                            <input type="file" accept=".xlsx,.xls" onchange="importarDatosLogisticos(this)" style="display:none;">
+                        </label>
+                    </div>
+                    <div id="logisticosPreview" style="display:none;margin-top:10px;"></div>
                 </div>
             </div>
             <div class="card">

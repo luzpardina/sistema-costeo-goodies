@@ -510,4 +510,68 @@ router.get('/log', auth, async (req, res) => {
     }
 });
 
+// =============================================
+// IMPORTAR DATOS LOGÍSTICOS (desde planillas depósito)
+// =============================================
+const logisticosImporter = require('../services/logisticosImporter');
+
+// Paso 1: Subir Excel y ver preview de matches
+router.post('/logisticos/preview', auth, upload.single('archivo'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'No se proporcionó archivo' });
+        const articulos = logisticosImporter.parsearExcelLogistico(req.file.buffer);
+        if (articulos.length === 0) return res.status(400).json({ error: 'No se encontraron artículos en el archivo' });
+        
+        const resultados = await logisticosImporter.matchearConCatalogo(articulos);
+        const matched = resultados.filter(r => r.match);
+        const unmatched = resultados.filter(r => !r.match);
+        
+        res.json({
+            total: articulos.length,
+            matched: matched.length,
+            unmatched: unmatched.length,
+            resultados
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Paso 2: Aplicar los matches confirmados
+router.post('/logisticos/aplicar', auth, async (req, res) => {
+    try {
+        const { matches } = req.body;
+        if (!matches || !Array.isArray(matches)) return res.status(400).json({ error: 'Datos inválidos' });
+        
+        const resultado = await logisticosImporter.aplicarDatosLogisticos(matches);
+        invalidateCache('/api/maestro/');
+        res.json(resultado);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Buscar artículo del catálogo manualmente (para matches fallidos)
+router.get('/logisticos/buscar-catalogo', auth, async (req, res) => {
+    try {
+        const q = (req.query.q || '').trim();
+        if (q.length < 2) return res.json([]);
+        const articulos = await CatalogoArticulo.findAll({
+            where: {
+                [Op.or]: [
+                    { codigo_goodies: { [Op.iLike]: '%' + q + '%' } },
+                    { nombre: { [Op.iLike]: '%' + q + '%' } },
+                    { codigo_elaborador: { [Op.iLike]: '%' + q + '%' } }
+                ],
+                habilitado: true
+            },
+            limit: 10,
+            attributes: ['codigo_goodies', 'nombre', 'proveedor', 'marca']
+        });
+        res.json(articulos);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;
