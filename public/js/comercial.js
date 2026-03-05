@@ -1231,3 +1231,169 @@
         XLSX.utils.book_append_sheet(wb, ws, 'ML Costos');
         XLSX.writeFile(wb, 'ML_Costos_' + new Date().toISOString().split('T')[0] + '.xlsx');
     }
+
+    // =============================================
+    // OPTIMIZADOR DE PRECIOS ML
+    // =============================================
+    var mlOptResultados = null;
+
+    async function optimizarPreciosML() {
+        if (!mlArticulos || mlArticulos.length === 0) {
+            alert('Primero cargá artículos con el botón 📦 Cargar Artículos');
+            return;
+        }
+
+        var artConPrecio = mlArticulos.filter(function(a) { return a.precio_ml > 0 || a.costo_neto > 0; });
+        if (artConPrecio.length === 0) { alert('No hay artículos con datos'); return; }
+
+        var margenObj = parseFloat(document.getElementById('mlMargenObj').value) || 30;
+        var comision = parseFloat(document.getElementById('mlOptComision').value) || 14;
+        var otrosCostos = {
+            pctIIBB: parseFloat(document.getElementById('mlOptIIBB').value) || 0,
+            pctFinanciero: 0,
+            pctLogisticoInterno: 0
+        };
+
+        try {
+            var resp = await fetch(API_URL + '/api/comercial/ml/optimizar', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    articulos: artConPrecio.map(function(a) {
+                        return {
+                            codigo_goodies: a.codigo_goodies,
+                            nombre: a.nombre,
+                            costo_neto: a.costo_neto,
+                            peso_kg: a.peso_kg,
+                            precio_actual_ml: a.precio_ml,
+                            es_esencial: a.es_esencial
+                        };
+                    }),
+                    margen_objetivo: margenObj,
+                    comision_pct: comision,
+                    otros_costos: otrosCostos
+                })
+            });
+            var resultados = await resp.json();
+            mlOptResultados = resultados;
+            renderOptML(resultados, margenObj);
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    function renderOptML(resultados, margenObj) {
+        var div = document.getElementById('resultadoOptML');
+        var fmtM = function(v) { return '$' + (parseFloat(v)||0).toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:0}); };
+        
+        // Filter only articles with costs
+        var conCosto = resultados.filter(function(r) { return r.costo_neto > 0; });
+        var sinCosto = resultados.filter(function(r) { return !r.costo_neto || r.error; });
+        
+        // Stats
+        var okCount = 0, ajusteCount = 0, criticoCount = 0;
+        conCosto.forEach(function(r) {
+            if (!r.canales) return;
+            var mejor = r.canales[Object.keys(r.canales)[0]];
+            Object.values(r.canales).forEach(function(c) { if (c.precio_sugerido < mejor.precio_sugerido) mejor = c; });
+            if (mejor.ajuste_necesario !== null) {
+                if (mejor.ajuste_necesario <= 0) okCount++;
+                else if (mejor.ajuste_pct <= 10) ajusteCount++;
+                else criticoCount++;
+            }
+        });
+
+        var html = '<h4 style="color:#4CAF50;margin-bottom:8px;">🎯 Precios Optimizados — Margen objetivo: ' + margenObj + '%</h4>';
+        
+        if (sinCosto.length > 0) {
+            html += '<p style="color:#ff9800;font-size:12px;margin-bottom:8px;">⚠️ ' + sinCosto.length + ' artículos sin costo de importación (esperando legajos corregidos)</p>';
+        }
+        
+        html += '<p style="font-size:12px;color:#aaa;margin-bottom:10px;">✅ OK: ' + okCount + ' | 🟡 Ajustar: ' + ajusteCount + ' | 🔴 Crítico: ' + criticoCount + '</p>';
+
+        html += '<div class="table-container" style="overflow-x:auto;max-height:400px;"><table style="font-size:11px;">';
+        html += '<thead><tr style="background:#2a2a3e;position:sticky;top:0;">';
+        html += '<th>Artículo</th><th style="text-align:right;">Costo</th><th style="text-align:right;">Precio Actual</th>';
+        html += '<th style="text-align:right;">Mejor Canal</th><th style="text-align:right;">Precio Sugerido</th>';
+        html += '<th style="text-align:right;">Ajuste</th><th style="text-align:center;">Margen Actual</th>';
+        html += '<th>Recomendación</th>';
+        html += '</tr></thead><tbody>';
+
+        conCosto.forEach(function(r) {
+            if (!r.canales) return;
+            
+            var colorAjuste = '#4CAF50';
+            var mejor = r.canales[Object.keys(r.canales)[0]];
+            Object.values(r.canales).forEach(function(c) { if (c.precio_sugerido < mejor.precio_sugerido) mejor = c; });
+            
+            if (mejor.ajuste_necesario > 0 && mejor.ajuste_pct > 10) colorAjuste = '#f44336';
+            else if (mejor.ajuste_necesario > 0) colorAjuste = '#ff9800';
+            
+            var margenActualTxt = '-';
+            var margenColor = '#aaa';
+            if (mejor.margen_actual !== null) {
+                margenActualTxt = mejor.margen_actual.toFixed(1) + '%';
+                margenColor = mejor.margen_actual < 0 ? '#f44336' : mejor.margen_actual < margenObj ? '#ff9800' : '#4CAF50';
+            }
+
+            html += '<tr>';
+            html += '<td><strong>' + r.codigo_goodies + '</strong><br><small style="color:#aaa;">' + (r.nombre||'').substring(0,25) + '</small></td>';
+            html += '<td style="text-align:right;">' + fmtM(r.costo_neto) + '</td>';
+            html += '<td style="text-align:right;">' + (mejor.precio_actual > 0 ? fmtM(mejor.precio_actual) : '<span style="color:#666;">-</span>') + '</td>';
+            html += '<td style="text-align:right;color:#4fc3f7;">' + r.mejor_canal + '</td>';
+            html += '<td style="text-align:right;font-weight:bold;">' + fmtM(r.mejor_precio) + '</td>';
+            html += '<td style="text-align:right;color:' + colorAjuste + ';font-weight:bold;">';
+            if (mejor.ajuste_necesario !== null) {
+                html += (mejor.ajuste_necesario > 0 ? '+' : '') + fmtM(mejor.ajuste_necesario) + '<br><small>' + (mejor.ajuste_pct > 0 ? '+' : '') + mejor.ajuste_pct + '%</small>';
+            } else { html += '-'; }
+            html += '</td>';
+            html += '<td style="text-align:center;color:' + margenColor + ';font-weight:bold;">' + margenActualTxt + '</td>';
+            html += '<td style="font-size:10px;">' + (r.recomendacion || '') + '</td>';
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        
+        // Detail expandable per channel
+        if (conCosto.length > 0 && conCosto[0].canales) {
+            html += '<details style="margin-top:10px;"><summary style="cursor:pointer;color:#4CAF50;font-size:12px;font-weight:bold;">📊 Ver detalle por canal del primer artículo</summary>';
+            html += '<div style="padding:10px;background:#12121e;border-radius:6px;font-size:12px;margin-top:5px;">';
+            var r = conCosto[0];
+            html += '<p><strong>' + r.codigo_goodies + '</strong> — ' + (r.nombre||'') + ' | Costo: ' + fmtM(r.costo_neto) + ' | Peso: ' + r.peso_kg + 'kg</p>';
+            Object.values(r.canales).forEach(function(c) {
+                var isMejor = c.precio_sugerido <= r.mejor_precio + 1;
+                html += '<div style="margin-top:8px;padding:8px;background:' + (isMejor ? '#1b3a1b' : '#1e1e2f') + ';border-radius:4px;">';
+                html += '<strong style="color:#4fc3f7;">' + c.canal + '</strong>' + (isMejor ? ' ⭐ MEJOR' : '') + '<br>';
+                html += 'Precio sugerido: <strong>' + fmtM(c.precio_sugerido) + '</strong> | Costo fijo: ' + fmtM(c.costo_fijo_sugerido) + ' | Comisión: ' + fmtM(c.comision_sugerido) + ' | Total ML: ' + fmtM(c.total_costos_ml_sugerido);
+                if (c.precio_actual > 0) {
+                    html += '<br>Con precio actual (' + fmtM(c.precio_actual) + '): margen <strong style="color:' + (c.margen_actual < 0 ? '#f44336' : '#4CAF50') + ';">' + (c.margen_actual !== null ? c.margen_actual.toFixed(1) + '%' : '-') + '</strong>';
+                }
+                html += '</div>';
+            });
+            html += '</div></details>';
+        }
+
+        div.innerHTML = html;
+    }
+
+    function exportarOptML() {
+        if (!mlOptResultados || !mlOptResultados.length) { alert('Primero optimizá'); return; }
+        var wsData = [['Código', 'Nombre', 'Costo Neto', 'Peso Kg', 'Precio Actual ML',
+            'Mejor Canal', 'Precio Sugerido', 'Ajuste $', 'Ajuste %', 'Margen Actual %',
+            'Precio Flex', 'Precio Full Súper', 'Precio Colecta', 'Recomendación']];
+        mlOptResultados.forEach(function(r) {
+            if (!r.canales) return;
+            var mejor = r.canales[Object.keys(r.canales)[0]];
+            Object.values(r.canales).forEach(function(c) { if (c.precio_sugerido < mejor.precio_sugerido) mejor = c; });
+            wsData.push([
+                r.codigo_goodies, r.nombre, r.costo_neto, r.peso_kg, mejor.precio_actual,
+                r.mejor_canal, r.mejor_precio, mejor.ajuste_necesario, mejor.ajuste_pct, mejor.margen_actual,
+                r.canales.flex ? r.canales.flex.precio_sugerido : '',
+                r.canales.full_super ? r.canales.full_super.precio_sugerido : '',
+                r.canales.full_colecta ? r.canales.full_colecta.precio_sugerido : '',
+                r.recomendacion
+            ]);
+        });
+        var wb = XLSX.utils.book_new();
+        var ws = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(wb, ws, 'Precios Optimizados ML');
+        XLSX.writeFile(wb, 'ML_Precios_Optimizados_' + new Date().toISOString().split('T')[0] + '.xlsx');
+    }

@@ -384,24 +384,113 @@ function calcularMLConCaja(precioVentaUnitario, costoProducto, pesoUnitarioKg, u
 
 /**
  * Calcular precio sugerido para un margen objetivo
+ * Usa método iterativo porque el costo fijo depende del rango de precio
  */
 function precioSugeridoML(costoProducto, pesoKg, canal, esEsencial, comisionPct, margenObjetivoPct, otrosCostos = {}) {
     const comision = comisionPct || COMISION_ML_DEFAULT;
     const totalOtrosPct = (otrosCostos.pctIIBB || 0) + (otrosCostos.pctFinanciero || 0) + (otrosCostos.pctLogisticoInterno || 0);
 
-    // Iterativo: probar precios hasta encontrar el que da el margen objetivo
-    // Empezar con una estimación
+    // Estimación inicial
     let precio = costoProducto * (1 + margenObjetivoPct / 100) / (1 - comision / 100 - totalOtrosPct / 100);
 
-    for (let i = 0; i < 20; i++) {
+    // Iteración para converger (el costo fijo cambia según el rango de precio)
+    for (let i = 0; i < 30; i++) {
         const resultado = calcularML(precio, costoProducto, pesoKg, 0, 0, 0, canal, esEsencial, comisionPct, otrosCostos);
         const diff = resultado.margen_pct - margenObjetivoPct;
-        if (Math.abs(diff) < 0.5) break;
-        // Ajustar precio proporcionalmente
+        if (Math.abs(diff) < 0.3) break;
         precio = precio * (1 + (margenObjetivoPct - resultado.margen_pct) / 200);
     }
 
     return round(precio);
+}
+
+/**
+ * Optimizador completo: dado un artículo, calcular precio sugerido para cada canal
+ * y comparar con precio actual
+ * @param {Object} articulo - { costo_neto, peso_kg, precio_actual_ml, es_esencial }
+ * @param {number} margenObjetivo - % margen deseado sobre costo
+ * @param {number} comisionPct - % comisión ML
+ * @param {Object} otrosCostos - { pctIIBB, pctFinanciero, pctLogisticoInterno }
+ * @returns {Object} análisis por canal + recomendación
+ */
+function optimizarPrecioML(articulo, margenObjetivo, comisionPct, otrosCostos = {}) {
+    const costo = articulo.costo_neto || 0;
+    const peso = articulo.peso_kg || 0;
+    const precioActual = articulo.precio_actual_ml || 0;
+    const esEsencial = articulo.es_esencial || false;
+    
+    if (costo <= 0) return { error: 'Sin costo de importación' };
+    
+    const canales = ['flex', 'full_super', 'full_colecta'];
+    const canalLabels = { flex: 'Flex', full_super: 'Full Súper', full_colecta: 'Full/Colecta' };
+    
+    const resultados = {};
+    let mejorCanal = null;
+    let mejorPrecio = Infinity;
+    
+    for (const canal of canales) {
+        // Precio sugerido para el margen objetivo
+        const precioSugerido = precioSugeridoML(costo, peso, canal, esEsencial, comisionPct, margenObjetivo, otrosCostos);
+        
+        // Si hay precio actual, calcular margen actual
+        let margenActual = null;
+        let resultadoActual = null;
+        if (precioActual > 0) {
+            resultadoActual = calcularML(precioActual, costo, peso, 0, 0, 0, canal, esEsencial, comisionPct, otrosCostos);
+            margenActual = resultadoActual.margen_pct;
+        }
+        
+        // Resultado con precio sugerido
+        const resultadoSugerido = calcularML(precioSugerido, costo, peso, 0, 0, 0, canal, esEsencial, comisionPct, otrosCostos);
+        
+        resultados[canal] = {
+            canal: canalLabels[canal],
+            precio_sugerido: precioSugerido,
+            margen_con_sugerido: resultadoSugerido.margen_pct,
+            costo_fijo_sugerido: resultadoSugerido.costo_fijo.costo,
+            comision_sugerido: resultadoSugerido.comision_monto,
+            total_costos_ml_sugerido: resultadoSugerido.total_costos,
+            // Con precio actual
+            precio_actual: precioActual,
+            margen_actual: margenActual,
+            costo_fijo_actual: resultadoActual ? resultadoActual.costo_fijo.costo : 0,
+            total_costos_ml_actual: resultadoActual ? resultadoActual.total_costos : 0,
+            ingreso_neto_actual: resultadoActual ? resultadoActual.ingreso_neto : 0,
+            // Delta
+            ajuste_necesario: precioActual > 0 ? round(precioSugerido - precioActual) : null,
+            ajuste_pct: precioActual > 0 ? round((precioSugerido - precioActual) / precioActual * 100) : null,
+        };
+        
+        if (precioSugerido < mejorPrecio) {
+            mejorPrecio = precioSugerido;
+            mejorCanal = canal;
+        }
+    }
+    
+    // Recomendación
+    let recomendacion = '';
+    const mejor = resultados[mejorCanal];
+    if (precioActual > 0) {
+        if (mejor.ajuste_necesario <= 0) {
+            recomendacion = `OK — Precio actual cubre margen ${margenObjetivo}% en ${mejor.canal}`;
+        } else if (mejor.ajuste_pct <= 5) {
+            recomendacion = `Ajuste menor: +${mejor.ajuste_pct}% en ${mejor.canal}`;
+        } else if (mejor.ajuste_pct <= 15) {
+            recomendacion = `Ajuste necesario: +${mejor.ajuste_pct}% en ${mejor.canal}`;
+        } else {
+            recomendacion = `⚠️ Ajuste grande: +${mejor.ajuste_pct}% — evaluar pausar`;
+        }
+    }
+    
+    return {
+        costo_neto: costo,
+        peso_kg: peso,
+        margen_objetivo: margenObjetivo,
+        mejor_canal: canalLabels[mejorCanal],
+        mejor_precio: mejorPrecio,
+        canales: resultados,
+        recomendacion
+    };
 }
 
 function round(v) {
@@ -409,6 +498,7 @@ function round(v) {
 }
 
 module.exports = {
-    costoFijoML, calcularML, calcularMLConCaja, precioSugeridoML, pesoVolumetrico, pesoEfectivo,
+    costoFijoML, calcularML, calcularMLConCaja, precioSugeridoML, optimizarPrecioML,
+    pesoVolumetrico, pesoEfectivo,
     FLEX_COSTOS, FULL_SUPER_ESENCIALES, FULL_SUPER_RESTO, COLECTA_COSTOS, COMISION_ML_DEFAULT, CAJAS_ML
 };

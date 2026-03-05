@@ -836,4 +836,65 @@ router.post('/ml/precio-sugerido', auth, (req, res) => {
     }
 });
 
+// Optimizador masivo: calcular precio sugerido para múltiples artículos en los 3 canales
+router.post('/ml/optimizar', auth, async (req, res) => {
+    try {
+        const { articulos, margen_objetivo, comision_pct, otros_costos } = req.body;
+        // articulos = [{ codigo_goodies, precio_actual_ml }]
+        
+        const resultados = [];
+        
+        for (const art of articulos) {
+            let costoNeto = parseFloat(art.costo_neto) || 0;
+            let pesoKg = parseFloat(art.peso_kg) || 0;
+            let nombre = art.nombre || '';
+            let esEsencial = art.es_esencial || false;
+            
+            // Buscar datos del sistema
+            if (art.codigo_goodies) {
+                // Costo del último costeo
+                if (!costoNeto) {
+                    const ultimo = await ArticuloCosteo.findOne({
+                        where: { codigo_goodies: art.codigo_goodies },
+                        include: [{ model: Costeo, as: 'costeo', where: { estado: 'calculado', fecha_despacho: { [Op.ne]: null } } }],
+                        order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'DESC']]
+                    });
+                    costoNeto = ultimo ? parseFloat(ultimo.costo_unitario_neto_ars) || 0 : 0;
+                }
+                
+                // Datos del catálogo
+                const catalogo = await CatalogoArticulo.findOne({ where: { codigo_goodies: art.codigo_goodies } });
+                if (catalogo) {
+                    if (!nombre) nombre = catalogo.nombre || '';
+                    if (!pesoKg) pesoKg = parseFloat(catalogo.peso_unitario_kg) || 0;
+                    if (!art.es_esencial && catalogo.es_esencial_ml) esEsencial = catalogo.es_esencial_ml;
+                }
+            }
+            
+            const optimizado = mlService.optimizarPrecioML(
+                {
+                    costo_neto: costoNeto,
+                    peso_kg: pesoKg,
+                    precio_actual_ml: parseFloat(art.precio_actual_ml) || 0,
+                    es_esencial: esEsencial
+                },
+                parseFloat(margen_objetivo) || 30,
+                parseFloat(comision_pct) || 14,
+                otros_costos || {}
+            );
+            
+            resultados.push({
+                codigo_goodies: art.codigo_goodies || '',
+                nombre,
+                ...optimizado
+            });
+        }
+        
+        res.json(resultados);
+    } catch (error) {
+        console.error('Error optimizando ML:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

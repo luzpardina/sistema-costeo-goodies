@@ -258,3 +258,42 @@ describe('ML - Costo fijo Colecta', () => {
         expect(r.costo).toBe(0);
     });
 });
+
+describe('ML - Optimizador de precios', () => {
+    test('Precio sugerido para margen 30% debe dar ~30%', () => {
+        const precio = mlService.precioSugeridoML(10000, 1, 'flex', false, 14, 30, { pctIIBB: 3.5 });
+        const check = mlService.calcularML(precio, 10000, 1, 0, 0, 0, 'flex', false, 14, { pctIIBB: 3.5 });
+        expect(check.margen_pct).toBeCloseTo(30, 0);
+    });
+
+    test('Optimizador devuelve 3 canales', () => {
+        const result = mlService.optimizarPrecioML(
+            { costo_neto: 10000, peso_kg: 1, precio_actual_ml: 20000, es_esencial: false },
+            30, 14, { pctIIBB: 3.5 }
+        );
+        expect(result.canales).toBeDefined();
+        expect(result.canales.flex).toBeDefined();
+        expect(result.canales.full_super).toBeDefined();
+        expect(result.canales.full_colecta).toBeDefined();
+        expect(result.mejor_canal).toBeDefined();
+        expect(result.mejor_precio).toBeGreaterThan(0);
+    });
+
+    test('Si precio actual cubre margen, ajuste <= 0', () => {
+        const result = mlService.optimizarPrecioML(
+            { costo_neto: 5000, peso_kg: 0.5, precio_actual_ml: 50000, es_esencial: false },
+            30, 14, {}
+        );
+        const mejor = Object.values(result.canales).sort((a,b) => a.precio_sugerido - b.precio_sugerido)[0];
+        expect(mejor.ajuste_necesario).toBeLessThanOrEqual(0);
+    });
+
+    test('Si precio actual es bajo, ajuste > 0', () => {
+        const result = mlService.optimizarPrecioML(
+            { costo_neto: 10000, peso_kg: 1, precio_actual_ml: 12000, es_esencial: false },
+            30, 14, {}
+        );
+        const mejor = Object.values(result.canales).sort((a,b) => a.precio_sugerido - b.precio_sugerido)[0];
+        expect(mejor.ajuste_necesario).toBeGreaterThan(0);
+    });
+});
