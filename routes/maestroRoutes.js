@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const XLSX = require('xlsx');
 const auth = require('../middleware/auth');
-const { CatalogoArticulo } = require('../models');
+const { CatalogoArticulo, CatalogoLog } = require('../models');
 const { Op } = require('sequelize');
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -58,12 +58,23 @@ router.post('/previsualizar', auth, upload.single('archivo'), async (req, res) =
         const cambios = [];
         let sinCambios = 0;
         let completados = 0;
+        const alertas_proveedor = [];
 
         for (const reg of registros) {
             const existente = await CatalogoArticulo.findOne({ where: { codigo_goodies: { [Op.iLike]: reg.codigo_goodies } } });
             if (!existente) {
+                // Verificar si otro artículo del mismo proveedor tiene un código parecido (posible typo)
                 nuevos.push({ codigo: reg.codigo_goodies, nombre: reg.nombre });
                 continue;
+            }
+            // Alertar si el proveedor del Excel difiere del existente
+            if (reg.proveedor && existente.proveedor && reg.proveedor.toUpperCase().trim() !== existente.proveedor.toUpperCase().trim()) {
+                alertas_proveedor.push({
+                    codigo: reg.codigo_goodies,
+                    nombre: existente.nombre,
+                    proveedor_actual: existente.proveedor,
+                    proveedor_excel: reg.proveedor
+                });
             }
             const camposModificados = [];
             const textos = [
@@ -123,7 +134,7 @@ router.post('/previsualizar', auth, upload.single('archivo'), async (req, res) =
             }
         }
 
-        res.json({ total_excel: registros.length, nuevos, cambios, completados, sin_cambios: sinCambios });
+        res.json({ total_excel: registros.length, nuevos, cambios, completados, sin_cambios: sinCambios, alertas_proveedor });
     } catch (error) {
         res.status(500).json({ error: 'Error al analizar archivo', detalles: error.message });
     }
@@ -161,9 +172,35 @@ router.post('/importar', auth, upload.single('archivo'), async (req, res) => {
                     if (reg.proveedor_activo !== null) updates.proveedor_activo = reg.proveedor_activo;
                     if (reg.empresa_fabrica_activa !== null) updates.empresa_fabrica_activa = reg.empresa_fabrica_activa;
                     if (reg.habilitado !== null) updates.habilitado = reg.habilitado;
-                    if (Object.keys(updates).length > 0) { await existente.update(updates); actualizados++; }
+                    if (Object.keys(updates).length > 0) {
+                        // Log changes
+                        for (const [campo, valorNuevo] of Object.entries(updates)) {
+                            const valorAnterior = existente[campo];
+                            if (String(valorAnterior || '') !== String(valorNuevo || '')) {
+                                await CatalogoLog.create({
+                                    codigo_goodies: reg.codigo_goodies,
+                                    accion: 'actualizar',
+                                    campo,
+                                    valor_anterior: String(valorAnterior || ''),
+                                    valor_nuevo: String(valorNuevo || ''),
+                                    origen: 'importacion',
+                                    usuario_id: req.usuario.id
+                                });
+                            }
+                        }
+                        await existente.update(updates); actualizados++;
+                    }
                 } else {
                     await CatalogoArticulo.create({ ...reg, habilitado: reg.habilitado !== null ? reg.habilitado : true, proveedor_activo: reg.proveedor_activo !== null ? reg.proveedor_activo : true, empresa_fabrica_activa: reg.empresa_fabrica_activa !== null ? reg.empresa_fabrica_activa : true });
+                    await CatalogoLog.create({
+                        codigo_goodies: reg.codigo_goodies,
+                        accion: 'crear',
+                        campo: null,
+                        valor_anterior: null,
+                        valor_nuevo: reg.nombre || '',
+                        origen: 'importacion',
+                        usuario_id: req.usuario.id
+                    });
                     importados++;
                 }
             } catch (e) { errores++; }
@@ -424,6 +461,20 @@ router.get('/catalogo', auth, async (req, res) => {
                          'derechos_porcentaje', 'imp_interno_porcentaje', 'iva_porcentaje', 'estadistica_porcentaje']
         });
         res.json(articulos);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Log de cambios del catálogo
+router.get('/log', auth, async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 100;
+        const logs = await CatalogoLog.findAll({
+            order: [['created_at', 'DESC']],
+            limit
+        });
+        res.json(logs);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

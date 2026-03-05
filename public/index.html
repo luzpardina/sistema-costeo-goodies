@@ -1630,6 +1630,7 @@ function exportarUltimosCostosXLSX() {
             document.getElementById('filtroFabricanteArticulo').value = '';
             document.getElementById('filtroMarcaArticulo').value = '';
             document.getElementById('seleccionarTodosArt').checked = false;
+            cascadaFiltrosUltimoCosto();
             filtrarArticulos();
             actualizarSeleccion();
         }
@@ -1739,6 +1740,7 @@ async function cargarCosteos() {
             document.getElementById('filtroTipo').value = '';
             document.getElementById('filtroMarca').value = '';
             seleccionados.clear();
+            cascadaFiltrosCosteos();
             aplicarFiltros();
         }
 
@@ -2129,12 +2131,21 @@ async function ejecutarCalculo(id, metodo) {
         }
 
         async function eliminarCosteo(id) {
-            if (!confirm('Seguro que deseas eliminar este costeo?')) return;
+            const costeo = todosLosCosteos.find(c => c.id === id);
+            const esDefin = costeo && esDefinitivo(costeo);
+            if (esDefin) {
+                const nombreCosteo = costeo.nombre_costeo || 'este costeo';
+                if (!confirm('⚠️ ATENCIÓN: "' + nombreCosteo + '" es un costeo DEFINITIVO.\n\n¿Estás segura de que querés eliminarlo? Esta acción no se puede deshacer.')) return;
+                const confirma = prompt('Para confirmar, escribí ELIMINAR:');
+                if (confirma !== 'ELIMINAR') { alert('Eliminación cancelada'); return; }
+            } else {
+                if (!confirm('¿Seguro que querés eliminar este costeo?')) return;
+            }
             try {
                 const res = await fetch(API_URL + '/api/costeos/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
                 if (res.ok) { alert('Costeo eliminado'); seleccionados.delete(id); cargarCosteos(); }
                 else { alert('Error al eliminar'); }
-            } catch (err) { alert('Error de conexion'); }
+            } catch (err) { alert('Error de conexión'); }
         }
 
         async function verDetalle(id) {
@@ -3128,6 +3139,15 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                         }
                     }
                     if (preview.cambios.length > 10) msg += '\n... y ' + (preview.cambios.length - 10) + ' más';
+                }
+
+                if (preview.alertas_proveedor && preview.alertas_proveedor.length > 0) {
+                    msg += '\n\n🔴 ALERTA — Códigos con PROVEEDOR DIFERENTE (' + preview.alertas_proveedor.length + '):\n';
+                    for (const a of preview.alertas_proveedor.slice(0, 10)) {
+                        msg += '\n  ' + a.codigo + ': en sistema "' + a.proveedor_actual + '" → Excel "' + a.proveedor_excel + '"';
+                    }
+                    if (preview.alertas_proveedor.length > 10) msg += '\n  ... y ' + (preview.alertas_proveedor.length - 10) + ' más';
+                    msg += '\n\nVerificá si es correcto antes de continuar.';
                 }
 
                 msg += '\n\n¿Aplicar estos cambios?';

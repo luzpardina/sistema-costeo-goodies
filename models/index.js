@@ -17,6 +17,7 @@ const PrecioPVP = require('./PrecioPVP');
 const PrecioActual = require('./PrecioActual');
 const ValuacionInventario = require('./ValuacionInventario');
 const ValuacionDetalle = require('./ValuacionDetalle');
+const CatalogoLog = require('./CatalogoLog');
 
 // =============================================
 // RELACIONES EXISTENTES (sin cambios)
@@ -178,5 +179,6 @@ module.exports = {
     PrecioPVP,
     PrecioActual,
     ValuacionInventario,
-    ValuacionDetalle
+    ValuacionDetalle,
+    CatalogoLog
 };
