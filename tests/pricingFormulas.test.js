@@ -158,3 +158,81 @@ describe('Consistencia gross-up ↔ margen inverso', () => {
         expect(resultado.margenPct).toBeGreaterThan(pctMargen);
     });
 });
+
+// =============================================
+// MERCADO LIBRE COST TESTS
+// =============================================
+const mlService = require('../services/mlCostos');
+
+describe('ML - Costo fijo Flex', () => {
+    test('Producto $10.000 → $1.255', () => {
+        const r = mlService.costoFijoML(10000, 1, 'flex', false);
+        expect(r.costo).toBe(1255);
+    });
+
+    test('Producto $20.000 → $2.500', () => {
+        const r = mlService.costoFijoML(20000, 1, 'flex', false);
+        expect(r.costo).toBe(2500);
+    });
+
+    test('Producto $30.000 → $3.030', () => {
+        const r = mlService.costoFijoML(30000, 1, 'flex', false);
+        expect(r.costo).toBe(3030);
+    });
+
+    test('Producto >= $33.000 → $0', () => {
+        const r = mlService.costoFijoML(35000, 1, 'flex', false);
+        expect(r.costo).toBe(0);
+    });
+});
+
+describe('ML - Costo fijo Full Súper', () => {
+    test('Esencial: $6.000, 1.5kg → $350', () => {
+        const r = mlService.costoFijoML(6000, 1.5, 'full_super', true);
+        expect(r.costo).toBe(350);
+    });
+
+    test('Resto: $6.000, 1.5kg → $600', () => {
+        const r = mlService.costoFijoML(6000, 1.5, 'full_super', false);
+        expect(r.costo).toBe(600);
+    });
+
+    test('Resto: $20.000, 3kg → $1.750', () => {
+        const r = mlService.costoFijoML(20000, 3, 'full_super', false);
+        expect(r.costo).toBe(1750);
+    });
+
+    test('Tope 25%: producto $500, no puede pasar de $125', () => {
+        const r = mlService.costoFijoML(500, 1, 'full_super', false);
+        expect(r.costo).toBe(125);
+        expect(r.tope_aplicado).toBe(true);
+    });
+});
+
+describe('ML - Peso volumétrico', () => {
+    test('20×20×25 cm → 2.5 kg', () => {
+        expect(mlService.pesoVolumetrico(20, 20, 25)).toBe(2.5);
+    });
+
+    test('30×20×10 cm → 1.5 kg', () => {
+        expect(mlService.pesoVolumetrico(30, 20, 10)).toBe(1.5);
+    });
+});
+
+describe('ML - Cálculo completo', () => {
+    test('Producto $15.000 en Flex, costo $8.000, comisión 14%', () => {
+        const r = mlService.calcularML(15000, 8000, 1, 0, 0, 0, 'flex', false, 14, {});
+        expect(r.comision_monto).toBe(2100);
+        expect(r.costo_fijo.costo).toBe(1255);
+        expect(r.total_costos_ml).toBe(3355);
+        expect(r.ingreso_neto).toBe(11645);
+        expect(r.margen_pesos).toBe(3645);
+        expect(r.margen_pct).toBeCloseTo(45.6, 0);
+    });
+
+    test('Producto >= $33.000 no tiene costo fijo', () => {
+        const r = mlService.calcularML(40000, 20000, 2, 0, 0, 0, 'flex', false, 14, {});
+        expect(r.costo_fijo.costo).toBe(0);
+        expect(r.envio_gratis_obligatorio).toBe(true);
+    });
+});

@@ -1010,3 +1010,197 @@
         poblarSimArticulos(filtrados);
     }
 
+
+    // =============================================
+    // MERCADO LIBRE - CALCULADORA
+    // =============================================
+    var mlArticulos = [];
+    var mlResultados = null;
+
+    // Toggle columna Esencial según canal
+    document.addEventListener('DOMContentLoaded', function() {
+        var sel = document.getElementById('mlCanal');
+        if (sel) sel.addEventListener('change', function() {
+            var th = document.getElementById('mlThEsencial');
+            if (th) th.style.display = this.value === 'full_super' ? '' : 'none';
+            // Update existing rows
+            document.querySelectorAll('.ml-esencial-cell').forEach(function(td) {
+                td.style.display = sel.value === 'full_super' ? '' : 'none';
+            });
+        });
+    });
+
+    async function cargarArticulosML() {
+        try {
+            var resp = await fetch(API_URL + '/api/costeos/ultimos-costos', { headers: { 'Authorization': 'Bearer ' + token } });
+            var data = await resp.json();
+            if (!Array.isArray(data)) throw new Error('Datos inválidos');
+            mlArticulos = data.filter(function(a) { return (parseFloat(a.costo_neto || a.costo_unitario_neto_ars) || 0) > 0; }).map(function(a) {
+                return {
+                    codigo_goodies: a.codigo_goodies || a.codigo,
+                    nombre: a.nombre || '',
+                    costo_neto: parseFloat(a.costo_neto || a.costo_unitario_neto_ars) || 0,
+                    precio_ml: 0,
+                    peso_kg: 0,
+                    largo_cm: 0, ancho_cm: 0, alto_cm: 0,
+                    es_esencial: false
+                };
+            });
+            renderArticulosML();
+            alert('✅ ' + mlArticulos.length + ' artículos cargados');
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    function renderArticulosML() {
+        var body = document.getElementById('mlArticulosBody');
+        if (!body) return;
+        var canal = document.getElementById('mlCanal').value;
+        var showEsencial = canal === 'full_super';
+        var th = document.getElementById('mlThEsencial');
+        if (th) th.style.display = showEsencial ? '' : 'none';
+
+        body.innerHTML = mlArticulos.map(function(a, i) {
+            return '<tr>' +
+                '<td>' + a.codigo_goodies + '</td>' +
+                '<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + a.nombre + '</td>' +
+                '<td style="text-align:right;">$' + a.costo_neto.toLocaleString('es-AR', {minimumFractionDigits:2}) + '</td>' +
+                '<td><input type="number" value="' + (a.precio_ml || '') + '" onchange="mlArticulos[' + i + '].precio_ml=parseFloat(this.value)||0" style="width:80px;background:#1e1e2f;border:1px solid #444;color:#fff;padding:3px;border-radius:3px;font-size:11px;"></td>' +
+                '<td><input type="number" value="' + (a.peso_kg || '') + '" step="0.1" onchange="mlArticulos[' + i + '].peso_kg=parseFloat(this.value)||0" style="width:55px;background:#1e1e2f;border:1px solid #444;color:#fff;padding:3px;border-radius:3px;font-size:11px;"></td>' +
+                '<td style="white-space:nowrap;">' +
+                    '<input type="number" value="' + (a.largo_cm || '') + '" placeholder="L" onchange="mlArticulos[' + i + '].largo_cm=parseFloat(this.value)||0" style="width:38px;background:#1e1e2f;border:1px solid #444;color:#fff;padding:3px;border-radius:3px;font-size:10px;">×' +
+                    '<input type="number" value="' + (a.ancho_cm || '') + '" placeholder="A" onchange="mlArticulos[' + i + '].ancho_cm=parseFloat(this.value)||0" style="width:38px;background:#1e1e2f;border:1px solid #444;color:#fff;padding:3px;border-radius:3px;font-size:10px;">×' +
+                    '<input type="number" value="' + (a.alto_cm || '') + '" placeholder="H" onchange="mlArticulos[' + i + '].alto_cm=parseFloat(this.value)||0" style="width:38px;background:#1e1e2f;border:1px solid #444;color:#fff;padding:3px;border-radius:3px;font-size:10px;">' +
+                '</td>' +
+                '<td class="ml-esencial-cell" style="' + (showEsencial ? '' : 'display:none;') + '"><input type="checkbox" ' + (a.es_esencial ? 'checked' : '') + ' onchange="mlArticulos[' + i + '].es_esencial=this.checked"></td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    async function calcularML() {
+        var artConPrecio = mlArticulos.filter(function(a) { return a.precio_ml > 0; });
+        if (artConPrecio.length === 0) { alert('Ingresá al menos un Precio ML'); return; }
+
+        var canal = document.getElementById('mlCanal').value;
+        var comision = parseFloat(document.getElementById('mlComision').value) || 14;
+        var otrosCostos = {
+            pctIIBB: parseFloat(document.getElementById('mlIIBB').value) || 0,
+            pctFinanciero: parseFloat(document.getElementById('mlFinanciero').value) || 0,
+            pctLogisticoInterno: parseFloat(document.getElementById('mlLogistico').value) || 0
+        };
+
+        try {
+            var resp = await fetch(API_URL + '/api/comercial/ml/calcular', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    articulos: artConPrecio.map(function(a) {
+                        return {
+                            codigo_goodies: a.codigo_goodies,
+                            nombre: a.nombre,
+                            precio_venta: a.precio_ml,
+                            costo_producto: a.costo_neto,
+                            peso_kg: a.peso_kg,
+                            largo_cm: a.largo_cm,
+                            ancho_cm: a.ancho_cm,
+                            alto_cm: a.alto_cm,
+                            es_esencial: a.es_esencial
+                        };
+                    }),
+                    canal: canal,
+                    comision_pct: comision,
+                    otros_costos: otrosCostos
+                })
+            });
+            var resultados = await resp.json();
+            mlResultados = resultados;
+            renderResultadosML(resultados, canal);
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    function renderResultadosML(resultados, canal) {
+        var div = document.getElementById('resultadoML');
+        if (!div) return;
+        var fmtMoney = function(v) { return '$' + (parseFloat(v)||0).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2}); };
+        var canalLabel = canal === 'flex' ? 'Flex' : 'Full Súper';
+
+        // Resumen
+        var totalMargen = 0, totalIngresoNeto = 0, alertas = 0;
+        resultados.forEach(function(r) {
+            totalMargen += r.margen_pesos;
+            totalIngresoNeto += r.ingreso_neto;
+            if (r.margen_pct < 10) alertas++;
+        });
+
+        var html = '<h4 style="color:#ffe600;margin:10px 0;">🛒 Resultados ML — Canal: ' + canalLabel + ' (' + resultados.length + ' artículos)</h4>';
+
+        if (alertas > 0) {
+            html += '<div style="background:rgba(244,67,54,0.1);border:1px solid #f44336;border-radius:6px;padding:8px 12px;margin-bottom:10px;">';
+            html += '<span style="color:#f44336;font-weight:bold;">⚠️ ' + alertas + ' artículo(s) con margen menor al 10%</span></div>';
+        }
+
+        html += '<div class="table-container" style="overflow-x:auto;"><table style="font-size:11px;">';
+        html += '<thead><tr style="background:#2a2a3e;">';
+        html += '<th>Artículo</th><th style="text-align:right;">Costo</th><th style="text-align:right;">Precio ML</th>';
+        html += '<th style="text-align:right;">Comisión</th><th style="text-align:right;">Costo Fijo</th>';
+        html += '<th style="text-align:right;">Total Costos</th><th style="text-align:right;">Ingreso Neto</th>';
+        html += '<th style="text-align:right;">Margen $</th><th style="text-align:center;">Margen %</th>';
+        html += '<th>Peso Efec.</th><th>Detalle</th>';
+        html += '</tr></thead><tbody>';
+
+        resultados.forEach(function(r) {
+            var margenColor = r.margen_pct < 0 ? '#f44336' : r.margen_pct < 10 ? '#ff9800' : '#4CAF50';
+            html += '<tr>';
+            html += '<td><strong>' + r.codigo_goodies + '</strong><br><small style="color:#aaa;">' + (r.nombre||'').substring(0,25) + '</small></td>';
+            html += '<td style="text-align:right;">' + fmtMoney(r.costo_producto) + '</td>';
+            html += '<td style="text-align:right;font-weight:bold;">' + fmtMoney(r.precio_venta) + '</td>';
+            html += '<td style="text-align:right;color:#ff9800;">' + fmtMoney(r.comision_monto) + '<br><small>' + r.comision_pct + '%</small></td>';
+            html += '<td style="text-align:right;color:#f44336;">' + fmtMoney(r.costo_fijo.costo) + (r.costo_fijo.tope_aplicado ? '<br><small style="color:#ff9800;">tope 25%</small>' : '') + '</td>';
+            html += '<td style="text-align:right;">' + fmtMoney(r.total_costos) + '</td>';
+            html += '<td style="text-align:right;font-weight:bold;">' + fmtMoney(r.ingreso_neto) + '</td>';
+            html += '<td style="text-align:right;color:' + margenColor + ';font-weight:bold;">' + fmtMoney(r.margen_pesos) + '</td>';
+            html += '<td style="text-align:center;color:' + margenColor + ';font-weight:bold;font-size:13px;">' + r.margen_pct.toFixed(1) + '%</td>';
+            html += '<td style="font-size:10px;">' + r.peso_efectivo + ' kg' + (r.peso_volumetrico > r.peso_fisico ? '<br><small style="color:#ff9800;">vol</small>' : '') + '</td>';
+            html += '<td style="font-size:10px;color:#aaa;">' + r.costo_fijo.detalle + '</td>';
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+
+        // Desglose primer artículo
+        if (resultados.length > 0) {
+            var r = resultados[0];
+            html += '<details style="margin-top:10px;"><summary style="cursor:pointer;color:#ffe600;font-weight:bold;font-size:12px;">📋 Desglose del primer artículo</summary>';
+            html += '<div style="margin-top:8px;padding:12px;background:#12121e;border-radius:6px;font-size:12px;">';
+            html += '<p><strong>' + r.codigo_goodies + '</strong> — ' + r.nombre + '</p>';
+            html += '<p>Precio ML: <strong>' + fmtMoney(r.precio_venta) + '</strong> | Costo: ' + fmtMoney(r.costo_producto) + '</p>';
+            html += '<p style="margin-top:8px;color:#ff9800;"><strong>Costos ML:</strong></p>';
+            html += '<p>• Comisión ML (' + r.comision_pct + '%): -' + fmtMoney(r.comision_monto) + '</p>';
+            html += '<p>• Costo fijo unidad: -' + fmtMoney(r.costo_fijo.costo) + ' <small style="color:#aaa;">(' + r.costo_fijo.detalle + ')</small></p>';
+            if (r.iibb_monto > 0) html += '<p>• IIBB: -' + fmtMoney(r.iibb_monto) + '</p>';
+            if (r.financiero_monto > 0) html += '<p>• Financiero: -' + fmtMoney(r.financiero_monto) + '</p>';
+            if (r.logistico_interno_monto > 0) html += '<p>• Logístico interno: -' + fmtMoney(r.logistico_interno_monto) + '</p>';
+            html += '<p style="margin-top:5px;font-weight:bold;">Total costos: -' + fmtMoney(r.total_costos) + ' (' + (r.precio_venta > 0 ? (r.total_costos / r.precio_venta * 100).toFixed(1) : 0) + '% del precio)</p>';
+            html += '<p style="margin-top:8px;">Ingreso Neto: <strong>' + fmtMoney(r.ingreso_neto) + '</strong></p>';
+            html += '<p style="font-size:14px;margin-top:5px;color:' + (r.margen_pct < 10 ? '#f44336' : '#4CAF50') + ';"><strong>Margen: ' + fmtMoney(r.margen_pesos) + ' (' + r.margen_pct.toFixed(1) + '% sobre costo)</strong></p>';
+            if (r.envio_gratis_obligatorio) html += '<p style="color:#ffe600;">📦 Envío gratis obligatorio (≥ $33.000)</p>';
+            html += '<p style="margin-top:5px;font-size:11px;color:#aaa;">Peso: ' + r.peso_fisico + ' kg físico | ' + r.peso_volumetrico + ' kg volumétrico | <strong>' + r.peso_efectivo + ' kg efectivo</strong></p>';
+            html += '</div></details>';
+        }
+
+        div.innerHTML = html;
+    }
+
+    function exportarML() {
+        if (!mlResultados || !mlResultados.length) { alert('Primero calculá ML'); return; }
+        var wsData = [['Código', 'Nombre', 'Costo Neto', 'Precio ML', 'Canal', 'Peso Efectivo',
+            'Comisión ML', 'Costo Fijo', 'Total Costos', 'Ingreso Neto', 'Margen $', 'Margen %', 'Detalle Costo Fijo']];
+        mlResultados.forEach(function(r) {
+            wsData.push([r.codigo_goodies, r.nombre, r.costo_producto, r.precio_venta, r.canal,
+                r.peso_efectivo, r.comision_monto, r.costo_fijo.costo, r.total_costos,
+                r.ingreso_neto, r.margen_pesos, r.margen_pct, r.costo_fijo.detalle]);
+        });
+        var wb = XLSX.utils.book_new();
+        var ws = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(wb, ws, 'ML Costos');
+        XLSX.writeFile(wb, 'ML_Costos_' + new Date().toISOString().split('T')[0] + '.xlsx');
+    }

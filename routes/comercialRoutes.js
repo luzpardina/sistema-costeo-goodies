@@ -726,4 +726,95 @@ router.post('/simular-descuento', auth, async (req, res) => {
     }
 });
 
+// =============================================
+// MERCADO LIBRE - Calculadora de costos
+// =============================================
+
+const mlService = require('../services/mlCostos');
+
+// Calcular costos ML para múltiples artículos
+router.post('/ml/calcular', auth, async (req, res) => {
+    try {
+        const { articulos, canal, comision_pct, otros_costos } = req.body;
+        // articulos = [{ codigo_goodies, precio_venta, peso_kg, largo_cm, ancho_cm, alto_cm, es_esencial }]
+        
+        const resultados = [];
+        
+        for (const art of articulos) {
+            // Buscar costo neto del artículo
+            let costoNeto = art.costo_producto || 0;
+            if (!costoNeto && art.codigo_goodies) {
+                const ultimo = await ArticuloCosteo.findOne({
+                    where: { codigo_goodies: art.codigo_goodies },
+                    include: [{ model: Costeo, as: 'costeo', where: { estado: 'calculado', fecha_despacho: { [Op.ne]: null } } }],
+                    order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'DESC']]
+                });
+                costoNeto = ultimo ? parseFloat(ultimo.costo_unitario_neto_ars) || 0 : 0;
+            }
+
+            // Buscar datos del catálogo
+            let nombre = art.nombre || '';
+            if (art.codigo_goodies && !nombre) {
+                const catalogo = await CatalogoArticulo.findOne({ where: { codigo_goodies: art.codigo_goodies } });
+                if (catalogo) nombre = catalogo.nombre || '';
+            }
+
+            const resultado = mlService.calcularML(
+                parseFloat(art.precio_venta) || 0,
+                costoNeto,
+                parseFloat(art.peso_kg) || 0,
+                parseFloat(art.largo_cm) || 0,
+                parseFloat(art.ancho_cm) || 0,
+                parseFloat(art.alto_cm) || 0,
+                canal || 'flex',
+                art.es_esencial || false,
+                parseFloat(comision_pct) || 14,
+                otros_costos || {}
+            );
+
+            resultados.push({
+                codigo_goodies: art.codigo_goodies || '',
+                nombre,
+                ...resultado
+            });
+        }
+
+        res.json(resultados);
+    } catch (error) {
+        console.error('Error calculando ML:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Obtener tablas de costos ML (para mostrar en frontend)
+router.get('/ml/tablas', auth, (req, res) => {
+    res.json({
+        flex: mlService.FLEX_COSTOS,
+        full_super_esenciales: mlService.FULL_SUPER_ESENCIALES,
+        full_super_resto: mlService.FULL_SUPER_RESTO,
+        comision_default: mlService.COMISION_ML_DEFAULT,
+        vigencia: '12/03/2026',
+        nota: 'Costo fijo nunca supera 25% del precio. Peso = max(físico, volumétrico). >= $33.000 sin costo fijo pero envío gratis obligatorio.'
+    });
+});
+
+// Precio sugerido para margen objetivo
+router.post('/ml/precio-sugerido', auth, (req, res) => {
+    try {
+        const { costo_producto, peso_kg, canal, es_esencial, comision_pct, margen_objetivo, otros_costos } = req.body;
+        const precio = mlService.precioSugeridoML(
+            parseFloat(costo_producto) || 0,
+            parseFloat(peso_kg) || 0,
+            canal || 'flex',
+            es_esencial || false,
+            parseFloat(comision_pct) || 14,
+            parseFloat(margen_objetivo) || 30,
+            otros_costos || {}
+        );
+        res.json({ precio_sugerido: precio });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;
