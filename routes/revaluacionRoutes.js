@@ -5,9 +5,10 @@ const { requireRole, noVisualizador } = require('../middleware/roles');
 const RevaluacionService = require('../services/revaluacionService');
 const ExcelJS = require('exceljs');
 const { Revaluacion, RevaluacionArticulo } = require('../models');
+const { revaluacionValidation } = require('../middleware/validations');
 
 // Generar nueva revaluación
-router.post('/generar', auth, async (req, res) => {
+router.post('/generar', auth, revaluacionValidation, async (req, res) => {
     try {
         const { costeo_ids, tc_usd, tc_eur, tc_gbp, motivo, solo_contable, filtro_proveedor, filtro_fabrica, filtro_marca } = req.body;
         
