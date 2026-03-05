@@ -5,6 +5,7 @@ const XLSX = require('xlsx');
 const auth = require('../middleware/auth');
 const { CatalogoArticulo, CatalogoLog } = require('../models');
 const { Op } = require('sequelize');
+const { cacheMiddleware, invalidateCache } = require('../utils/cache');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -328,7 +329,7 @@ router.get('/por-proveedor', auth, async (req, res) => {
     } catch (error) { res.status(500).json({ error: 'Error al buscar' }); }
 });
 
-router.get('/proveedores', auth, async (req, res) => {
+router.get('/proveedores', auth, cacheMiddleware(300), async (req, res) => {
     try {
         const proveedores = await CatalogoArticulo.findAll({
             attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col('proveedor')), 'proveedor']],
@@ -339,7 +340,7 @@ router.get('/proveedores', auth, async (req, res) => {
     } catch (error) { res.status(500).json({ error: 'Error' }); }
 });
 
-router.get('/marcas', auth, async (req, res) => {
+router.get('/marcas', auth, cacheMiddleware(300), async (req, res) => {
     try {
         const { proveedor } = req.query;
         const where = { habilitado: true, proveedor_activo: true, marca: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } };
@@ -352,7 +353,7 @@ router.get('/marcas', auth, async (req, res) => {
     } catch (error) { res.status(500).json({ error: 'Error' }); }
 });
 
-router.get('/fabricantes', auth, async (req, res) => {
+router.get('/fabricantes', auth, cacheMiddleware(300), async (req, res) => {
     try {
         const fabricantes = await CatalogoArticulo.findAll({
             attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col('empresa_fabrica')), 'empresa_fabrica']],
@@ -392,7 +393,7 @@ router.post('/validar', auth, async (req, res) => {
     } catch (error) { res.status(500).json({ error: 'Error' }); }
 });
 
-router.get('/stats', auth, async (req, res) => {
+router.get('/stats', auth, cacheMiddleware(120), async (req, res) => {
     try {
         const total = await CatalogoArticulo.count({ where: { habilitado: true, proveedor_activo: true } });
         const totalInactivos = await CatalogoArticulo.count({ where: { [Op.or]: [{ habilitado: false }, { proveedor_activo: false }, { empresa_fabrica_activa: false }] } });
@@ -433,7 +434,7 @@ router.get('/stats', auth, async (req, res) => {
     } catch (error) { res.json({ total: 0, ultima_actualizacion: null }); }
 });
 
-router.get('/rubros', auth, async (req, res) => {
+router.get('/rubros', auth, cacheMiddleware(300), async (req, res) => {
     try {
         const rubros = await CatalogoArticulo.findAll({
             attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col('rubro')), 'rubro']],

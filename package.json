@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --verbose"
   },
   "keywords": [],
   "author": "",
@@ -23,9 +23,13 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
+    "node-cache": "^5.1.2",
     "node-fetch": "^3.3.2",
     "pg": "^8.16.3",
     "sequelize": "^6.37.7",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0"
   }
 }

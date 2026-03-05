@@ -15,6 +15,7 @@ const catalogoRoutes = require('./routes/catalogoRoutes');
 // === NUEVAS RUTAS ===
 const comercialRoutes = require('./routes/comercialRoutes');
 const contableRoutes = require('./routes/contableRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
@@ -78,6 +79,7 @@ app.use('/api/catalogo', catalogoRoutes);
 // === NUEVAS RUTAS ===
 app.use('/api/comercial', comercialRoutes);
 app.use('/api/contable', contableRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/public/index.html');

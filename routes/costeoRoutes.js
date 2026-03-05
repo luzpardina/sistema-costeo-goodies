@@ -7,6 +7,7 @@ const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios, ConsolidadoProveedor
 const CalculosService = require('../services/calculosService');
 const { requireRole, noVisualizador } = require('../middleware/roles');
 const { registrarAuditoria } = require('../utils/auditoria');
+const { cacheMiddleware, invalidateCache } = require('../utils/cache');
 
 // Configurar multer para subida de archivos
 const storage = multer.memoryStorage();
@@ -225,7 +226,7 @@ router.get('/listar', auth, async (req, res) => {
     }
 });
 
-router.get('/ultimos-costos', auth, async (req, res) => {
+router.get('/ultimos-costos', auth, cacheMiddleware(120), async (req, res) => {
     try {
         const { Op } = require('sequelize');
         const costeos = await Costeo.findAll({

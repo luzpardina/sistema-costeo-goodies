@@ -4,6 +4,39 @@
 
 
     // =============================================
+    // ADMIN - LOG DE AUDITORÍA
+    // =============================================
+    async function cargarAuditoria() {
+        var div = document.getElementById('auditoriaBody');
+        div.innerHTML = '<p style="color:#888;">Cargando...</p>';
+        try {
+            var resp = await fetch(API_URL + '/api/admin/auditoria?limit=50', { headers: { 'Authorization': 'Bearer ' + token } });
+            var logs = await resp.json();
+            if (!Array.isArray(logs) || logs.length === 0) {
+                div.innerHTML = '<p style="color:#888;">No hay registros de auditoría.</p>';
+                return;
+            }
+            var ACCION_COLORS = { crear: '#4CAF50', actualizar: '#ff9800', eliminar: '#f44336', calcular: '#4fc3f7', login: '#ce93d8', exportar: '#888', revaluar: '#00bcd4' };
+            var html = '<table style="width:100%;font-size:11px;"><thead><tr style="background:#2a2a3e;">';
+            html += '<th>Fecha</th><th>Usuario</th><th>Acción</th><th>Entidad</th><th>Detalle</th>';
+            html += '</tr></thead><tbody>';
+            logs.forEach(function(l) {
+                var fecha = l.created_at ? new Date(l.created_at).toLocaleString('es-AR') : '-';
+                var color = ACCION_COLORS[l.accion] || '#aaa';
+                html += '<tr>';
+                html += '<td style="white-space:nowrap;">' + fecha + '</td>';
+                html += '<td>' + (l.usuario_email || '-') + '</td>';
+                html += '<td style="color:' + color + ';font-weight:bold;">' + (l.accion || '-') + '</td>';
+                html += '<td>' + (l.entidad || '-') + '</td>';
+                html += '<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;">' + (l.detalle || '-') + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            div.innerHTML = html;
+        } catch(e) { div.innerHTML = '<p style="color:#f44336;">Error: ' + e.message + '</p>'; }
+    }
+
+    // =============================================
     // ADMIN - EXPORTAR / IMPORTAR CONFIGURACIÓN
     // =============================================
     async function exportarConfiguracion() {

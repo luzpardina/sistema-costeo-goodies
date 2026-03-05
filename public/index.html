@@ -625,7 +625,7 @@
                 <h3>⚙️ Configuración</h3>
                 <div style="padding:15px;background:#2a2a3e;border-radius:8px;">
                     <p style="color:#aaa;">Sistema de Costeo - GOODIES S.A.</p>
-                    <p style="color:#aaa;margin-top:10px;">Versión: 2.1 (COMEX + COMERCIAL + CONTABLE + Dashboard + Buscador)</p>
+                    <p style="color:#aaa;margin-top:10px;">Versión: 2.2 (Modular + Seguridad + Auditoría)</p>
                     <p style="color:#aaa;margin-top:10px;">Hosting: Railway</p>
                     <p style="color:#aaa;margin-top:10px;">Base de datos: PostgreSQL</p>
                 </div>
@@ -633,6 +633,12 @@
                     <button class="btn btn-success" onclick="exportarConfiguracion()" title="Descargar listas de precios y acuerdos como JSON">📥 Exportar Configuración</button>
                     <label class="btn btn-warning" style="cursor:pointer;" title="Restaurar listas y acuerdos desde un archivo JSON">📤 Importar Configuración<input type="file" id="importConfigFile" accept=".json" onchange="importarConfiguracion()" style="display:none;"></label>
                 </div>
+            </div>
+            <div class="card" style="grid-column: 1 / -1;">
+                <h3>📋 Log de Auditoría</h3>
+                <p style="color:#aaa;margin-bottom:10px;">Últimas acciones registradas en el sistema.</p>
+                <button class="btn btn-secondary" onclick="cargarAuditoria()" style="margin-bottom:10px;">🔄 Cargar últimas 50 acciones</button>
+                <div id="auditoriaBody" style="max-height:400px;overflow-y:auto;font-size:12px;"></div>
             </div>
         </div>
     </div>
