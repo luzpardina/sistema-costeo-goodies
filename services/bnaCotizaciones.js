@@ -44,9 +44,11 @@ async function obtenerCotizacionesBNA() {
     let match;
     while ((match = rowRegex.exec(html)) !== null) {
         const monedaNombre = match[1].trim();
-        // BNA uses dots as decimal separator (e.g., 1391.5000)
-        const compra = parseFloat(match[2]);
-        const venta = parseFloat(match[3]);
+        // BNA returns values with 4 implied decimals — divide by 10000
+        const compraRaw = parseFloat(match[2]);
+        const ventaRaw = parseFloat(match[3]);
+        const compra = compraRaw > 100000 ? compraRaw / 10000 : compraRaw;
+        const venta = ventaRaw > 100000 ? ventaRaw / 10000 : ventaRaw;
         
         for (const [nombre, iso] of Object.entries(monedaMap)) {
             if (monedaNombre.includes(nombre) || monedaNombre === nombre) {
