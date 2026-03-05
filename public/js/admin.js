@@ -4,6 +4,47 @@
 
 
     // =============================================
+    // ADMIN - PARÁMETROS DEL SISTEMA
+    // =============================================
+    async function cargarConfigSistema() {
+        var div = document.getElementById('configBody');
+        div.innerHTML = '<p style="color:#888;">Cargando...</p>';
+        try {
+            // Seed defaults if first time
+            await fetch(API_URL + '/api/admin/config/seed', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' } });
+            var resp = await fetch(API_URL + '/api/admin/config', { headers: { 'Authorization': 'Bearer ' + token } });
+            var configs = await resp.json();
+            if (!Array.isArray(configs) || configs.length === 0) {
+                div.innerHTML = '<p style="color:#888;">No hay parámetros configurados.</p>';
+                return;
+            }
+            var html = '<table style="width:100%;"><thead><tr style="background:#2a2a3e;"><th>Clave</th><th>Valor</th><th>Descripción</th><th>Acción</th></tr></thead><tbody>';
+            configs.forEach(function(c) {
+                html += '<tr>';
+                html += '<td style="font-weight:bold;color:#4fc3f7;">' + c.clave + '</td>';
+                html += '<td><input type="text" value="' + c.valor + '" id="cfg_' + c.clave + '" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:4px 8px;border-radius:3px;width:80px;"></td>';
+                html += '<td style="color:#aaa;">' + (c.descripcion || '') + '</td>';
+                html += '<td><button class="btn btn-sm btn-success" onclick="guardarConfig(\'' + c.clave + '\')">💾</button></td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            div.innerHTML = html;
+        } catch(e) { div.innerHTML = '<p style="color:#f44336;">Error: ' + e.message + '</p>'; }
+    }
+
+    async function guardarConfig(clave) {
+        var valor = document.getElementById('cfg_' + clave).value;
+        try {
+            await fetch(API_URL + '/api/admin/config/' + clave, {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ valor: valor })
+            });
+            alert('✅ Guardado: ' + clave + ' = ' + valor);
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    // =============================================
     // ADMIN - LOG DE AUDITORÍA
     // =============================================
     async function cargarAuditoria() {
