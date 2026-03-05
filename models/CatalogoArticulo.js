@@ -85,7 +85,36 @@ const CatalogoArticulo = sequelize.define('CatalogoArticulo', {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
         comment: 'Si el artículo se vende en Mercado Libre'
-    }
+    },
+    // Datos enriquecidos (Centum + Logísticos)
+    ean: {
+        type: DataTypes.STRING(200),
+        allowNull: true,
+        comment: 'Código(s) EAN / código de barras'
+    },
+    categoria_articulo: DataTypes.STRING(100),
+    cod_proveedor_centum: DataTypes.STRING(100),
+    tipo_empaque: DataTypes.STRING(100),
+    caja_largo_cm: DataTypes.DECIMAL(8, 2),
+    caja_ancho_cm: DataTypes.DECIMAL(8, 2),
+    caja_alto_cm: DataTypes.DECIMAL(8, 2),
+    caja_peso_kg: DataTypes.DECIMAL(8, 3),
+    und_por_caja_logistica: DataTypes.INTEGER,
+    rne: DataTypes.STRING(50),
+    rnpa: DataTypes.STRING(50),
+    es_combo: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    pesable: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    activo_web: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    },
+    unidad_venta: DataTypes.STRING(50)
 }, {
     tableName: 'catalogo_articulos',
     timestamps: true,

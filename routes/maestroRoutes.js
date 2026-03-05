@@ -53,7 +53,23 @@ function parsearExcelCatalogo(buffer) {
             es_esencial_ml: row['Esencial ML'] !== undefined ? String(row['Esencial ML']).toUpperCase().trim() === 'SI' : null,
             unidades_por_caja_ml: row['Und/Caja ML'] !== undefined ? parseInt(row['Und/Caja ML']) || null : null,
             tipo_caja_ml: row['Tipo Caja ML'] !== undefined ? String(row['Tipo Caja ML']).toLowerCase().trim() || null : null,
-            activo_ml: row['Activo ML'] !== undefined ? String(row['Activo ML']).toUpperCase().trim() === 'SI' : null
+            activo_ml: row['Activo ML'] !== undefined ? String(row['Activo ML']).toUpperCase().trim() === 'SI' : null,
+            // Datos enriquecidos
+            ean: row['EAN / Código de Barras'] !== undefined ? String(row['EAN / Código de Barras'] || '').trim() || null : null,
+            categoria_articulo: row['Categoría Artículo'] !== undefined ? String(row['Categoría Artículo'] || '').trim() || null : null,
+            cod_proveedor_centum: row['Cod. Proveedor (Centum)'] !== undefined ? String(row['Cod. Proveedor (Centum)'] || '').trim() || null : null,
+            tipo_empaque: row['Tipo Empaque'] !== undefined ? String(row['Tipo Empaque'] || '').trim() || null : null,
+            caja_largo_cm: row['Caja Largo cm'] !== undefined ? parseFloat(row['Caja Largo cm']) || null : null,
+            caja_ancho_cm: row['Caja Ancho cm'] !== undefined ? parseFloat(row['Caja Ancho cm']) || null : null,
+            caja_alto_cm: row['Caja Alto cm'] !== undefined ? parseFloat(row['Caja Alto cm']) || null : null,
+            caja_peso_kg: row['Caja Peso Kg'] !== undefined ? parseFloat(row['Caja Peso Kg']) || null : null,
+            und_por_caja_logistica: row['Und/Caja Logística'] !== undefined ? parseInt(row['Und/Caja Logística']) || null : null,
+            rne: row['RNE'] !== undefined ? String(row['RNE'] || '').trim() || null : null,
+            rnpa: row['RNPA'] !== undefined ? String(row['RNPA'] || '').trim() || null : null,
+            es_combo: row['Es Combo'] !== undefined ? String(row['Es Combo']).toUpperCase().trim() === 'SI' : null,
+            pesable: row['Pesable'] !== undefined ? String(row['Pesable']).toUpperCase().trim() === 'SI' : null,
+            activo_web: row['Activo Web'] !== undefined ? String(row['Activo Web']).toUpperCase().trim() === 'SI' : null,
+            unidad_venta: row['Unidad Venta'] !== undefined ? String(row['Unidad Venta'] || '').trim() || null : null
         };
     }).filter(r => r !== null);
 }
@@ -192,6 +208,22 @@ router.post('/importar', auth, upload.single('archivo'), async (req, res) => {
                     if (reg.unidades_por_caja_ml !== null) updates.unidades_por_caja_ml = reg.unidades_por_caja_ml;
                     if (reg.tipo_caja_ml !== null) updates.tipo_caja_ml = reg.tipo_caja_ml;
                     if (reg.activo_ml !== null) updates.activo_ml = reg.activo_ml;
+                    // Datos enriquecidos
+                    if (reg.ean !== null) updates.ean = reg.ean;
+                    if (reg.categoria_articulo !== null) updates.categoria_articulo = reg.categoria_articulo;
+                    if (reg.cod_proveedor_centum !== null) updates.cod_proveedor_centum = reg.cod_proveedor_centum;
+                    if (reg.tipo_empaque !== null) updates.tipo_empaque = reg.tipo_empaque;
+                    if (reg.caja_largo_cm !== null) updates.caja_largo_cm = reg.caja_largo_cm;
+                    if (reg.caja_ancho_cm !== null) updates.caja_ancho_cm = reg.caja_ancho_cm;
+                    if (reg.caja_alto_cm !== null) updates.caja_alto_cm = reg.caja_alto_cm;
+                    if (reg.caja_peso_kg !== null) updates.caja_peso_kg = reg.caja_peso_kg;
+                    if (reg.und_por_caja_logistica !== null) updates.und_por_caja_logistica = reg.und_por_caja_logistica;
+                    if (reg.rne !== null) updates.rne = reg.rne;
+                    if (reg.rnpa !== null) updates.rnpa = reg.rnpa;
+                    if (reg.es_combo !== null) updates.es_combo = reg.es_combo;
+                    if (reg.pesable !== null) updates.pesable = reg.pesable;
+                    if (reg.activo_web !== null) updates.activo_web = reg.activo_web;
+                    if (reg.unidad_venta !== null) updates.unidad_venta = reg.unidad_venta;
                     if (Object.keys(updates).length > 0) {
                         // Log changes
                         for (const [campo, valorNuevo] of Object.entries(updates)) {
@@ -248,9 +280,12 @@ router.get('/descargar', auth, async (req, res) => {
             'Moneda', 'País Origen', 'Und/Caja', 'Último Valor Origen', 'Último Valor Fábrica',
             'Peso Kg', 'Alto cm', 'Largo cm', 'Ancho cm',
             'Esencial ML', 'Und/Caja ML', 'Tipo Caja ML', 'Activo ML',
+            'EAN / Código de Barras', 'Categoría Artículo', 'Cod. Proveedor (Centum)', 'Tipo Empaque',
+            'Caja Largo cm', 'Caja Ancho cm', 'Caja Alto cm', 'Caja Peso Kg', 'Und/Caja Logística',
+            'RNE', 'RNPA', 'Es Combo', 'Pesable', 'Activo Web', 'Unidad Venta',
             'Proveedor Activo', 'Empresa Fábrica Activa', 'Artículo Activo'
         ];
-        const colWidths = [18.6, 57.5, 23.6, 26.5, 19.8, 30.8, 26.8, 15.4, 15.3, 10.8, 8, 5.9, 9.9, 8, 15.4, 8.9, 8.4, 7.4, 8, 8, 8, 8, 10, 10, 12, 9, 9.9, 12, 7.8];
+        const colWidths = [18.6, 57.5, 23.6, 26.5, 19.8, 30.8, 26.8, 15.4, 15.3, 10.8, 8, 5.9, 9.9, 8, 15.4, 8.9, 8.4, 7.4, 8, 8, 8, 8, 10, 10, 12, 9, 18, 15, 16, 14, 10, 10, 10, 10, 10, 14, 14, 8, 8, 8, 12, 9.9, 12, 7.8];
 
         // Set column widths
         ws.columns = headers.map((h, i) => ({ header: h, width: colWidths[i] || 12 }));
@@ -258,9 +293,11 @@ router.get('/descargar', auth, async (req, res) => {
         // Format header row
         const headerRow = ws.getRow(1);
         headerRow.height = 54;
-        headerRow.eachCell((cell) => {
+        headerRow.eachCell((cell, colNumber) => {
             cell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF333333' } };
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8DB4E2' } };
+            // Columns 27-41 (enriched data) in orange, rest in blue
+            const isEnriched = colNumber >= 27 && colNumber <= 41;
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isEnriched ? 'FFFFCC80' : 'FF8DB4E2' } };
             cell.alignment = { horizontal: 'center', vertical: 'top', wrapText: true };
             cell.border = {
                 bottom: { style: 'thin', color: { argb: 'FF666666' } }
@@ -301,6 +338,21 @@ router.get('/descargar', auth, async (req, res) => {
                 a.unidades_por_caja_ml || '',
                 a.tipo_caja_ml || '',
                 a.activo_ml ? 'SI' : '',
+                a.ean || '',
+                a.categoria_articulo || '',
+                a.cod_proveedor_centum || '',
+                a.tipo_empaque || '',
+                a.caja_largo_cm ? parseFloat(a.caja_largo_cm) : '',
+                a.caja_ancho_cm ? parseFloat(a.caja_ancho_cm) : '',
+                a.caja_alto_cm ? parseFloat(a.caja_alto_cm) : '',
+                a.caja_peso_kg ? parseFloat(a.caja_peso_kg) : '',
+                a.und_por_caja_logistica || '',
+                a.rne || '',
+                a.rnpa || '',
+                a.es_combo ? 'SI' : '',
+                a.pesable ? 'SI' : '',
+                a.activo_web ? 'SI' : '',
+                a.unidad_venta || '',
                 isProvInactive ? 'NO' : 'SI',
                 isFabInactive ? 'NO' : 'SI',
                 isArtInactive ? 'NO' : 'SI'
@@ -315,7 +367,7 @@ router.get('/descargar', auth, async (req, res) => {
         }
 
         // Auto filter on all columns
-        ws.autoFilter = { from: 'A1', to: `AC${articulos.length + 1}` };
+        ws.autoFilter = { from: 'A1', to: `AR${articulos.length + 1}` };
 
         // Freeze first row
         ws.views = [{ state: 'frozen', ySplit: 1 }];
