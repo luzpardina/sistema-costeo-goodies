@@ -18,6 +18,7 @@ const PrecioActual = require('./PrecioActual');
 const ValuacionInventario = require('./ValuacionInventario');
 const ValuacionDetalle = require('./ValuacionDetalle');
 const CatalogoLog = require('./CatalogoLog');
+const AuditoriaLog = require('./AuditoriaLog');
 
 // =============================================
 // RELACIONES EXISTENTES (sin cambios)
@@ -180,5 +181,6 @@ module.exports = {
     PrecioActual,
     ValuacionInventario,
     ValuacionDetalle,
-    CatalogoLog
+    CatalogoLog,
+    AuditoriaLog
 };

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { requireRole, noVisualizador } = require('../middleware/roles');
 const RevaluacionService = require('../services/revaluacionService');
 const ExcelJS = require('exceljs');
 const { Revaluacion, RevaluacionArticulo } = require('../models');
@@ -152,7 +153,7 @@ router.get('/exportar/:id', auth, async (req, res) => {
 });
 
 // Eliminar revaluación
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, noVisualizador, async (req, res) => {
     try {
         const revaluacion = await Revaluacion.findByPk(req.params.id);
         if (!revaluacion) {

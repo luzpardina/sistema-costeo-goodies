@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { requireRole, noVisualizador } = require('../middleware/roles');
+const { registrarAuditoria } = require('../utils/auditoria');
 const multer = require('multer');
 const XLSX = require('xlsx');
 const { Op } = require('sequelize');
@@ -287,7 +289,7 @@ router.post('/valuaciones', auth, async (req, res) => {
 });
 
 // Eliminar valuación
-router.delete('/valuaciones/:id', auth, async (req, res) => {
+router.delete('/valuaciones/:id', auth, noVisualizador, async (req, res) => {
     try {
         await ValuacionDetalle.destroy({ where: { valuacion_id: req.params.id } });
         await ValuacionInventario.destroy({ where: { id: req.params.id } });

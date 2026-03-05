@@ -5,6 +5,8 @@ const auth = require('../middleware/auth');
 const costeoController = require('../controllers/costeoController');
 const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios, ConsolidadoProveedor, CatalogoArticulo } = require('../models');
 const CalculosService = require('../services/calculosService');
+const { requireRole, noVisualizador } = require('../middleware/roles');
+const { registrarAuditoria } = require('../utils/auditoria');
 
 // Configurar multer para subida de archivos
 const storage = multer.memoryStorage();
@@ -695,7 +697,7 @@ router.post('/sync-catalogo', auth, async (req, res) => {
 });
 
 // Eliminar costeo
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, noVisualizador, async (req, res) => {
     try {
         const { id } = req.params;
         const costeo = await Costeo.findByPk(id);
@@ -704,7 +706,8 @@ router.delete('/:id', auth, async (req, res) => {
             return res.status(404).json({ error: 'Costeo no encontrado' });
         }
 
-        await costeo.destroy();
+        await costeo.destroy(); // soft-delete (paranoid mode)
+        await registrarAuditoria(req, 'eliminar', 'costeo', id, 'Eliminado: ' + (costeo.nombre_costeo || id));
         res.json({ mensaje: 'Costeo eliminado exitosamente' });
     } catch (error) {
         console.error('Error al eliminar costeo:', error);

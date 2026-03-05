@@ -159,7 +159,9 @@ fob_parte: {
     tableName: 'costeos',
     timestamps: true,
     createdAt: 'created_at',
-    updatedAt: 'updated_at'
+    updatedAt: 'updated_at',
+    paranoid: true,
+    deletedAt: 'deleted_at'
 });
 
 module.exports = Costeo;

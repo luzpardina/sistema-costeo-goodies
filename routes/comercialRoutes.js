@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { requireRole, noVisualizador } = require('../middleware/roles');
+const { registrarAuditoria } = require('../utils/auditoria');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -51,7 +53,7 @@ router.put('/listas/:id', auth, async (req, res) => {
 });
 
 // Eliminar lista
-router.delete('/listas/:id', auth, async (req, res) => {
+router.delete('/listas/:id', auth, noVisualizador, async (req, res) => {
     try {
         await ListaPrecio.destroy({ where: { id: req.params.id } });
         await AcuerdoComercial.destroy({ where: { lista_id: req.params.id } });
@@ -122,7 +124,7 @@ router.post('/acuerdos', auth, async (req, res) => {
 });
 
 // Eliminar acuerdo
-router.delete('/acuerdos/:id', auth, async (req, res) => {
+router.delete('/acuerdos/:id', auth, noVisualizador, async (req, res) => {
     try {
         await AcuerdoComercial.destroy({ where: { id: req.params.id } });
         res.json({ ok: true });

@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { Usuario, Empresa } = require('../models');
+const { registrarAuditoria } = require('../utils/auditoria');
 
 // Generar JWT
 const generarToken = (usuario) => {
@@ -95,6 +96,9 @@ const login = async (req, res) => {
 
         // Generar token
         const token = generarToken(usuario);
+
+        // Registrar login exitoso
+        await registrarAuditoria(req, 'login', 'usuario', usuario.id, 'Login exitoso: ' + usuario.email);
 
         res.json({
             mensaje: 'Login exitoso',
