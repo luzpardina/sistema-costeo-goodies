@@ -1132,15 +1132,14 @@ let todosLosArticulos = [];
             const prov = document.getElementById('filtroProveedorArticulo').value.trim().toLowerCase();
             const fab = document.getElementById('filtroFabricanteArticulo').value.trim().toLowerCase();
             
-            let filtradosPorProv = [...arts];
-            if (prov) filtradosPorProv = filtradosPorProv.filter(a => a.proveedor && a.proveedor.toLowerCase().includes(prov));
-            const fabricas = [...new Set(filtradosPorProv.map(a => a.empresa_fabrica).filter(f => f))].sort();
-            document.getElementById('listaFabricantesArticulo').innerHTML = fabricas.map(f => '<option value="' + f + '">').join('');
+            let artsFab = [...arts];
+            if (prov) artsFab = artsFab.filter(a => a.proveedor && a.proveedor.toLowerCase().includes(prov));
+            document.getElementById('listaFabricantesArticulo').innerHTML = [...new Set(artsFab.map(a => a.empresa_fabrica).filter(f => f))].sort().map(f => '<option value="' + f + '">').join('');
             
-            let filtradosPorProvYFab = [...filtradosPorProv];
-            if (fab) filtradosPorProvYFab = filtradosPorProvYFab.filter(a => a.empresa_fabrica && a.empresa_fabrica.toLowerCase().includes(fab));
-            const marcas = [...new Set(filtradosPorProvYFab.map(a => a.marca).filter(m => m))].sort();
-            document.getElementById('listaMarcasArticulo').innerHTML = marcas.map(m => '<option value="' + m + '">').join('');
+            let artsMarca = [...arts];
+            if (prov) artsMarca = artsMarca.filter(a => a.proveedor && a.proveedor.toLowerCase().includes(prov));
+            if (fab) artsMarca = artsMarca.filter(a => a.empresa_fabrica && a.empresa_fabrica.toLowerCase().includes(fab));
+            document.getElementById('listaMarcasArticulo').innerHTML = [...new Set(artsMarca.map(a => a.marca).filter(m => m))].sort().map(m => '<option value="' + m + '">').join('');
         }
 
         function filtrarArticulos() {
@@ -1721,17 +1720,16 @@ async function cargarCosteos() {
             const prov = document.getElementById('filtroProveedor').value.trim().toLowerCase();
             const fab = document.getElementById('filtroFabricante').value.trim().toLowerCase();
             
-            // Paso 1: Filtrar por proveedor → repoblar fábricas
-            let filtradosPorProv = [...arts];
-            if (prov) filtradosPorProv = filtradosPorProv.filter(a => a.proveedor && a.proveedor.toLowerCase().includes(prov));
-            const fabricas = [...new Set(filtradosPorProv.map(a => a.empresa_fabrica).filter(f => f))].sort();
-            document.getElementById('listaFabricantes').innerHTML = fabricas.map(f => '<option value="' + f + '">').join('');
+            // Fábricas: filtrar solo por proveedor
+            let artsFab = [...arts];
+            if (prov) artsFab = artsFab.filter(a => a.proveedor && a.proveedor.toLowerCase().includes(prov));
+            document.getElementById('listaFabricantes').innerHTML = [...new Set(artsFab.map(a => a.empresa_fabrica).filter(f => f))].sort().map(f => '<option value="' + f + '">').join('');
             
-            // Paso 2: Filtrar por proveedor + fábrica → repoblar marcas
-            let filtradosPorProvYFab = [...filtradosPorProv];
-            if (fab) filtradosPorProvYFab = filtradosPorProvYFab.filter(a => a.empresa_fabrica && a.empresa_fabrica.toLowerCase().includes(fab));
-            const marcas = [...new Set(filtradosPorProvYFab.map(a => a.marca).filter(m => m))].sort();
-            document.getElementById('listaMarcas').innerHTML = marcas.map(m => '<option value="' + m + '">').join('');
+            // Marcas: filtrar por proveedor Y/O fábrica (lo que esté seleccionado)
+            let artsMarca = [...arts];
+            if (prov) artsMarca = artsMarca.filter(a => a.proveedor && a.proveedor.toLowerCase().includes(prov));
+            if (fab) artsMarca = artsMarca.filter(a => a.empresa_fabrica && a.empresa_fabrica.toLowerCase().includes(fab));
+            document.getElementById('listaMarcas').innerHTML = [...new Set(artsMarca.map(a => a.marca).filter(m => m))].sort().map(m => '<option value="' + m + '">').join('');
         }
 
         function limpiarFiltros() {
@@ -3930,17 +3928,15 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         const prov = document.getElementById('filtroPrecioProveedor').value;
         const fab = document.getElementById('filtroPrecioFabricante').value;
         
-        // Paso 1: Filtrar por proveedor → repoblar fábricas
-        let filtradosPorProv = [...articulosPreciosTodos];
-        if (prov) filtradosPorProv = filtradosPorProv.filter(a => a.proveedor === prov);
-        const fabricas = [...new Set(filtradosPorProv.map(a => a.empresa_fabrica).filter(f => f))].sort();
-        const fabSel = fab;
-        document.getElementById('filtroPrecioFabricante').innerHTML = '<option value="">Todas las fábricas</option>' + fabricas.map(f => '<option' + (f === fabSel ? ' selected' : '') + '>' + f + '</option>').join('');
+        let artsFab = [...articulosPreciosTodos];
+        if (prov) artsFab = artsFab.filter(a => a.proveedor === prov);
+        const fabricas = [...new Set(artsFab.map(a => a.empresa_fabrica).filter(f => f))].sort();
+        document.getElementById('filtroPrecioFabricante').innerHTML = '<option value="">Todas las fábricas</option>' + fabricas.map(f => '<option' + (f === fab ? ' selected' : '') + '>' + f + '</option>').join('');
         
-        // Paso 2: Filtrar por proveedor + fábrica → repoblar marcas
-        let filtradosPorProvYFab = [...filtradosPorProv];
-        if (fab && fabricas.includes(fab)) filtradosPorProvYFab = filtradosPorProvYFab.filter(a => a.empresa_fabrica === fab);
-        const marcas = [...new Set(filtradosPorProvYFab.map(a => a.marca).filter(m => m))].sort();
+        let artsMarca = [...articulosPreciosTodos];
+        if (prov) artsMarca = artsMarca.filter(a => a.proveedor === prov);
+        if (fab) artsMarca = artsMarca.filter(a => a.empresa_fabrica === fab);
+        const marcas = [...new Set(artsMarca.map(a => a.marca).filter(m => m))].sort();
         const marcaSel = document.getElementById('filtroPrecioMarca').value;
         document.getElementById('filtroPrecioMarca').innerHTML = '<option value="">Todas las marcas</option>' + marcas.map(m => '<option' + (m === marcaSel ? ' selected' : '') + '>' + m + '</option>').join('');
     }
@@ -4231,15 +4227,15 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         const prov = document.getElementById('filtroMargenProveedor').value;
         const fab = document.getElementById('filtroMargenFabricante').value;
         
-        let filtradosPorProv = [...articulosPvpTodos];
-        if (prov) filtradosPorProv = filtradosPorProv.filter(a => a.proveedor === prov);
-        const fabricas = [...new Set(filtradosPorProv.map(a => a.empresa_fabrica).filter(f => f))].sort();
-        const fabSel = fab;
-        document.getElementById('filtroMargenFabricante').innerHTML = '<option value="">Todas las fábricas</option>' + fabricas.map(f => '<option' + (f === fabSel ? ' selected' : '') + '>' + f + '</option>').join('');
+        let artsFab = [...articulosPvpTodos];
+        if (prov) artsFab = artsFab.filter(a => a.proveedor === prov);
+        const fabricas = [...new Set(artsFab.map(a => a.empresa_fabrica).filter(f => f))].sort();
+        document.getElementById('filtroMargenFabricante').innerHTML = '<option value="">Todas las fábricas</option>' + fabricas.map(f => '<option' + (f === fab ? ' selected' : '') + '>' + f + '</option>').join('');
         
-        let filtradosPorProvYFab = [...filtradosPorProv];
-        if (fab && fabricas.includes(fab)) filtradosPorProvYFab = filtradosPorProvYFab.filter(a => a.empresa_fabrica === fab);
-        const marcas = [...new Set(filtradosPorProvYFab.map(a => a.marca).filter(m => m))].sort();
+        let artsMarca = [...articulosPvpTodos];
+        if (prov) artsMarca = artsMarca.filter(a => a.proveedor === prov);
+        if (fab) artsMarca = artsMarca.filter(a => a.empresa_fabrica === fab);
+        const marcas = [...new Set(artsMarca.map(a => a.marca).filter(m => m))].sort();
         const marcaSel = document.getElementById('filtroMargenMarca').value;
         document.getElementById('filtroMargenMarca').innerHTML = '<option value="">Todas las marcas</option>' + marcas.map(m => '<option' + (m === marcaSel ? ' selected' : '') + '>' + m + '</option>').join('');
     }
@@ -4782,15 +4778,15 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
         const prov = document.getElementById('filtroSimProveedor').value;
         const fab = document.getElementById('filtroSimFabricante').value;
 
-        let filtradosPorProv = [...articulosSimTodos];
-        if (prov) filtradosPorProv = filtradosPorProv.filter(a => a.proveedor === prov);
-        const fabricas = [...new Set(filtradosPorProv.map(a => a.empresa_fabrica).filter(f => f))].sort();
-        const fabSel = fab;
-        document.getElementById('filtroSimFabricante').innerHTML = '<option value="">Todas las fábricas</option>' + fabricas.map(f => '<option' + (f === fabSel ? ' selected' : '') + '>' + f + '</option>').join('');
+        let artsFab = [...articulosSimTodos];
+        if (prov) artsFab = artsFab.filter(a => a.proveedor === prov);
+        const fabricas = [...new Set(artsFab.map(a => a.empresa_fabrica).filter(f => f))].sort();
+        document.getElementById('filtroSimFabricante').innerHTML = '<option value="">Todas las fábricas</option>' + fabricas.map(f => '<option' + (f === fab ? ' selected' : '') + '>' + f + '</option>').join('');
 
-        let filtradosPorProvYFab = [...filtradosPorProv];
-        if (fab && fabricas.includes(fab)) filtradosPorProvYFab = filtradosPorProvYFab.filter(a => a.empresa_fabrica === fab);
-        const marcas = [...new Set(filtradosPorProvYFab.map(a => a.marca).filter(m => m))].sort();
+        let artsMarca = [...articulosSimTodos];
+        if (prov) artsMarca = artsMarca.filter(a => a.proveedor === prov);
+        if (fab) artsMarca = artsMarca.filter(a => a.empresa_fabrica === fab);
+        const marcas = [...new Set(artsMarca.map(a => a.marca).filter(m => m))].sort();
         const marcaSel = document.getElementById('filtroSimMarca').value;
         document.getElementById('filtroSimMarca').innerHTML = '<option value="">Todas las marcas</option>' + marcas.map(m => '<option' + (m === marcaSel ? ' selected' : '') + '>' + m + '</option>').join('');
     }
