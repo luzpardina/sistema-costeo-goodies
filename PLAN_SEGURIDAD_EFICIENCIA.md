@@ -169,4 +169,13 @@
 | 23 | Soft-delete costeos | ✅ Hecho (paranoid) |
 | 24 | Auditoría completa | ✅ Hecho (AuditoriaLog + visor ADMIN) |
 
-**Resumen: 18/24 implementados, 6 pendientes**
+**Resumen: 23/24 implementados, 1 pendiente (backup DB)**
+
+Actualizados en sesión nocturna 5-6 marzo:
+- #7 Validación inputs → ✅ express-validator en login, register, revaluación
+- #12 Paginación → ✅ Soporte server-side en costeos (?page=&limit=)
+- #15 Lazy loading → ⏳ (bajo prioridad, módulos ya son separados)
+- #16 Logging → ✅ Winston (console + archivos, request logging)
+- #20 Tests → ✅ 43 tests (pricing + ML + optimizador + envío gratis)
+- Gestión usuarios ADMIN → ✅ crear/editar/desactivar/resetear password
+- Excel export mejorado → ✅ formato profesional con colores, totales, borders
