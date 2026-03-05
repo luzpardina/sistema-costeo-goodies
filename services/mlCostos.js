@@ -65,6 +65,13 @@ const FULL_SUPER_RESTO = {
 // Comisión ML por categoría (Argentina, referencia)
 const COMISION_ML_DEFAULT = 14; // % - ajustable
 
+// Cajas estándar de embalaje ML (configurables)
+const CAJAS_ML = {
+    chica:   { largo: 25, ancho: 20, alto: 15, label: 'Chica (25×20×15)' },
+    mediana: { largo: 35, ancho: 25, alto: 20, label: 'Mediana (35×25×20)' },
+    grande:  { largo: 45, ancho: 35, alto: 25, label: 'Grande (45×35×25)' }
+};
+
 /**
  * Calcular peso volumétrico
  * Fórmula ML: (largo_cm × ancho_cm × alto_cm) / 4000
@@ -205,6 +212,64 @@ function calcularML(precioVenta, costoProducto, pesoFisicoKg, largoCm, anchoCm, 
 }
 
 /**
+ * Calcular costo ML por unidad usando datos del catálogo (caja + unidades)
+ * @param {number} precioVentaUnitario - Precio de venta por unidad en ML
+ * @param {number} costoProducto - Costo neto unitario
+ * @param {number} pesoUnitarioKg - Peso de 1 unidad
+ * @param {number} unidadesPorCaja - Cuántas unidades van en la caja
+ * @param {string} tipoCaja - 'chica' | 'mediana' | 'grande' | 'custom'
+ * @param {number} largoCm - Si custom, largo de la caja
+ * @param {number} anchoCm - Si custom
+ * @param {number} altoCm - Si custom
+ * @param {string} canal - 'flex' | 'full_super'
+ * @param {boolean} esEsencial
+ * @param {number} comisionPct
+ * @param {Object} otrosCostos
+ */
+function calcularMLConCaja(precioVentaUnitario, costoProducto, pesoUnitarioKg, unidadesPorCaja, tipoCaja, largoCm, anchoCm, altoCm, canal, esEsencial, comisionPct, otrosCostos) {
+    const unidades = unidadesPorCaja || 1;
+    
+    // Determinar dimensiones de la caja
+    let cajaL, cajaA, cajaH;
+    if (tipoCaja && CAJAS_ML[tipoCaja]) {
+        cajaL = CAJAS_ML[tipoCaja].largo;
+        cajaA = CAJAS_ML[tipoCaja].ancho;
+        cajaH = CAJAS_ML[tipoCaja].alto;
+    } else {
+        cajaL = largoCm || 0;
+        cajaA = anchoCm || 0;
+        cajaH = altoCm || 0;
+    }
+    
+    // Peso total del envío
+    const pesoTotalEnvio = (pesoUnitarioKg || 0) * unidades;
+    
+    // Peso volumétrico de la caja
+    const pesoVol = pesoVolumetrico(cajaL, cajaA, cajaH);
+    
+    // Peso efectivo
+    const pesoEfec = Math.max(pesoTotalEnvio, pesoVol);
+    
+    // El costo fijo ML se calcula sobre el PRECIO DEL PRODUCTO (no del envío)
+    // y se cobra por cada unidad vendida
+    const resultadoUnitario = calcularML(
+        precioVentaUnitario, costoProducto,
+        pesoEfec, // peso efectivo del envío completo
+        cajaL, cajaA, cajaH,
+        canal, esEsencial, comisionPct, otrosCostos
+    );
+    
+    return {
+        ...resultadoUnitario,
+        unidades_por_caja: unidades,
+        tipo_caja: tipoCaja,
+        caja_dimensiones: cajaL + '×' + cajaA + '×' + cajaH + ' cm',
+        peso_total_envio: round(pesoTotalEnvio),
+        caja_label: CAJAS_ML[tipoCaja] ? CAJAS_ML[tipoCaja].label : 'Custom (' + cajaL + '×' + cajaA + '×' + cajaH + ')'
+    };
+}
+
+/**
  * Calcular precio sugerido para un margen objetivo
  */
 function precioSugeridoML(costoProducto, pesoKg, canal, esEsencial, comisionPct, margenObjetivoPct, otrosCostos = {}) {
@@ -231,6 +296,6 @@ function round(v) {
 }
 
 module.exports = {
-    costoFijoML, calcularML, precioSugeridoML, pesoVolumetrico, pesoEfectivo,
-    FLEX_COSTOS, FULL_SUPER_ESENCIALES, FULL_SUPER_RESTO, COMISION_ML_DEFAULT
+    costoFijoML, calcularML, calcularMLConCaja, precioSugeridoML, pesoVolumetrico, pesoEfectivo,
+    FLEX_COSTOS, FULL_SUPER_ESENCIALES, FULL_SUPER_RESTO, COMISION_ML_DEFAULT, CAJAS_ML
 };

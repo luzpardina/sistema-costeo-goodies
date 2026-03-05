@@ -46,6 +46,40 @@ const CatalogoArticulo = sequelize.define('CatalogoArticulo', {
     empresa_fabrica_activa: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
+    },
+    // Datos físicos del artículo (para ML y logística)
+    peso_unitario_kg: {
+        type: DataTypes.DECIMAL(8, 3),
+        allowNull: true,
+        comment: 'Peso de 1 unidad en kg'
+    },
+    alto_cm: {
+        type: DataTypes.DECIMAL(8, 2),
+        allowNull: true
+    },
+    largo_cm: {
+        type: DataTypes.DECIMAL(8, 2),
+        allowNull: true
+    },
+    ancho_cm: {
+        type: DataTypes.DECIMAL(8, 2),
+        allowNull: true
+    },
+    // Datos específicos para ML
+    es_esencial_ml: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        comment: 'Producto "Esencial" en Full Súper ML'
+    },
+    unidades_por_caja_ml: {
+        type: DataTypes.INTEGER,
+        defaultValue: 1,
+        comment: 'Cuántas unidades van en un envío típico de ML'
+    },
+    tipo_caja_ml: {
+        type: DataTypes.STRING(20),
+        defaultValue: 'mediana',
+        comment: 'chica | mediana | grande | custom'
     }
 }, {
     tableName: 'catalogo_articulos',

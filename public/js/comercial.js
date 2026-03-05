@@ -1032,22 +1032,40 @@
 
     async function cargarArticulosML() {
         try {
-            var resp = await fetch(API_URL + '/api/costeos/ultimos-costos', { headers: { 'Authorization': 'Bearer ' + token } });
-            var data = await resp.json();
-            if (!Array.isArray(data)) throw new Error('Datos inválidos');
-            mlArticulos = data.filter(function(a) { return (parseFloat(a.costo_neto || a.costo_unitario_neto_ars) || 0) > 0; }).map(function(a) {
+            // Load both ultimos costos and catalog for physical data
+            var [respCostos, respCatalogo] = await Promise.all([
+                fetch(API_URL + '/api/costeos/ultimos-costos', { headers: { 'Authorization': 'Bearer ' + token } }),
+                fetch(API_URL + '/api/maestro/catalogo?activos=true', { headers: { 'Authorization': 'Bearer ' + token } })
+            ]);
+            var costos = await respCostos.json();
+            var catalogo = await respCatalogo.json();
+            if (!Array.isArray(costos)) throw new Error('Datos inválidos');
+            
+            // Index catalog by codigo for fast lookup
+            var catMap = {};
+            if (Array.isArray(catalogo)) catalogo.forEach(function(c) { catMap[(c.codigo_goodies||'').toUpperCase()] = c; });
+            
+            mlArticulos = costos.filter(function(a) { return (parseFloat(a.costo_neto || a.costo_unitario_neto_ars) || 0) > 0; }).map(function(a) {
+                var codigo = a.codigo_goodies || a.codigo;
+                var cat = catMap[(codigo||'').toUpperCase()] || {};
                 return {
-                    codigo_goodies: a.codigo_goodies || a.codigo,
+                    codigo_goodies: codigo,
                     nombre: a.nombre || '',
                     costo_neto: parseFloat(a.costo_neto || a.costo_unitario_neto_ars) || 0,
                     precio_ml: 0,
-                    peso_kg: 0,
-                    largo_cm: 0, ancho_cm: 0, alto_cm: 0,
-                    es_esencial: false
+                    peso_kg: parseFloat(cat.peso_unitario_kg) || 0,
+                    largo_cm: parseFloat(cat.largo_cm) || 0,
+                    ancho_cm: parseFloat(cat.ancho_cm) || 0,
+                    alto_cm: parseFloat(cat.alto_cm) || 0,
+                    es_esencial: cat.es_esencial_ml || false,
+                    unidades_por_caja: parseInt(cat.unidades_por_caja_ml) || 1,
+                    tipo_caja: cat.tipo_caja_ml || 'mediana'
                 };
             });
+            
+            var conPeso = mlArticulos.filter(function(a) { return a.peso_kg > 0; }).length;
             renderArticulosML();
-            alert('✅ ' + mlArticulos.length + ' artículos cargados');
+            alert('✅ ' + mlArticulos.length + ' artículos cargados (' + conPeso + ' con datos de peso/dimensiones del catálogo)');
         } catch(e) { alert('Error: ' + e.message); }
     }
 

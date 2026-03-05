@@ -43,7 +43,16 @@ function parsearExcelCatalogo(buffer) {
             habilitado: row['Artículo Activo'] !== undefined ? String(row['Artículo Activo']).toUpperCase().trim() !== 'NO' : null,
             unidades_por_caja: row['Und/Caja'] !== undefined ? parseFloat(row['Und/Caja']) || null : null,
             ultimo_valor_origen: row['Último Valor Origen'] !== undefined ? parseFloat(row['Último Valor Origen']) || null : null,
-            ultimo_valor_fabrica: row['Último Valor Fábrica'] !== undefined ? parseFloat(row['Último Valor Fábrica']) || null : null
+            ultimo_valor_fabrica: row['Último Valor Fábrica'] !== undefined ? parseFloat(row['Último Valor Fábrica']) || null : null,
+            // Datos físicos (para ML y logística)
+            peso_unitario_kg: row['Peso Kg'] !== undefined ? parseFloat(row['Peso Kg']) || null : (row['Masa'] !== undefined ? parseFloat(row['Masa']) || null : null),
+            alto_cm: row['Alto cm'] !== undefined ? parseFloat(row['Alto cm']) || null : (row['Alto'] !== undefined ? parseFloat(row['Alto']) || null : null),
+            largo_cm: row['Largo cm'] !== undefined ? parseFloat(row['Largo cm']) || null : (row['Largo'] !== undefined ? parseFloat(row['Largo']) || null : null),
+            ancho_cm: row['Ancho cm'] !== undefined ? parseFloat(row['Ancho cm']) || null : (row['Ancho'] !== undefined ? parseFloat(row['Ancho']) || null : null),
+            // ML
+            es_esencial_ml: row['Esencial ML'] !== undefined ? String(row['Esencial ML']).toUpperCase().trim() === 'SI' : null,
+            unidades_por_caja_ml: row['Und/Caja ML'] !== undefined ? parseInt(row['Und/Caja ML']) || null : null,
+            tipo_caja_ml: row['Tipo Caja ML'] !== undefined ? String(row['Tipo Caja ML']).toLowerCase().trim() || null : null
         };
     }).filter(r => r !== null);
 }
@@ -173,6 +182,14 @@ router.post('/importar', auth, upload.single('archivo'), async (req, res) => {
                     if (reg.proveedor_activo !== null) updates.proveedor_activo = reg.proveedor_activo;
                     if (reg.empresa_fabrica_activa !== null) updates.empresa_fabrica_activa = reg.empresa_fabrica_activa;
                     if (reg.habilitado !== null) updates.habilitado = reg.habilitado;
+                    // Datos físicos y ML
+                    if (reg.peso_unitario_kg !== null) updates.peso_unitario_kg = reg.peso_unitario_kg;
+                    if (reg.alto_cm !== null) updates.alto_cm = reg.alto_cm;
+                    if (reg.largo_cm !== null) updates.largo_cm = reg.largo_cm;
+                    if (reg.ancho_cm !== null) updates.ancho_cm = reg.ancho_cm;
+                    if (reg.es_esencial_ml !== null) updates.es_esencial_ml = reg.es_esencial_ml;
+                    if (reg.unidades_por_caja_ml !== null) updates.unidades_por_caja_ml = reg.unidades_por_caja_ml;
+                    if (reg.tipo_caja_ml !== null) updates.tipo_caja_ml = reg.tipo_caja_ml;
                     if (Object.keys(updates).length > 0) {
                         // Log changes
                         for (const [campo, valorNuevo] of Object.entries(updates)) {
@@ -227,9 +244,11 @@ router.get('/descargar', auth, async (req, res) => {
             'Rubro', 'SubRubro', 'Cod. Elaborador', 'Pos. Arancelaria',
             '% Derechos', '% Imp. Internos', '% IVA', '% Estadística',
             'Moneda', 'País Origen', 'Und/Caja', 'Último Valor Origen', 'Último Valor Fábrica',
+            'Peso Kg', 'Alto cm', 'Largo cm', 'Ancho cm',
+            'Esencial ML', 'Und/Caja ML', 'Tipo Caja ML',
             'Proveedor Activo', 'Empresa Fábrica Activa', 'Artículo Activo'
         ];
-        const colWidths = [18.6, 57.5, 23.6, 26.5, 19.8, 30.8, 26.8, 15.4, 15.3, 10.8, 8, 5.9, 9.9, 8, 15.4, 8.9, 8.4, 7.4, 9.9, 12, 7.8];
+        const colWidths = [18.6, 57.5, 23.6, 26.5, 19.8, 30.8, 26.8, 15.4, 15.3, 10.8, 8, 5.9, 9.9, 8, 15.4, 8.9, 8.4, 7.4, 8, 8, 8, 8, 10, 10, 12, 9.9, 12, 7.8];
 
         // Set column widths
         ws.columns = headers.map((h, i) => ({ header: h, width: colWidths[i] || 12 }));
@@ -272,6 +291,13 @@ router.get('/descargar', auth, async (req, res) => {
                 a.unidades_por_caja || '',
                 a.ultimo_valor_origen || '',
                 a.ultimo_valor_fabrica || '',
+                a.peso_unitario_kg ? parseFloat(a.peso_unitario_kg) : '',
+                a.alto_cm ? parseFloat(a.alto_cm) : '',
+                a.largo_cm ? parseFloat(a.largo_cm) : '',
+                a.ancho_cm ? parseFloat(a.ancho_cm) : '',
+                a.es_esencial_ml ? 'SI' : '',
+                a.unidades_por_caja_ml || '',
+                a.tipo_caja_ml || '',
                 isProvInactive ? 'NO' : 'SI',
                 isFabInactive ? 'NO' : 'SI',
                 isArtInactive ? 'NO' : 'SI'
@@ -286,7 +312,7 @@ router.get('/descargar', auth, async (req, res) => {
         }
 
         // Auto filter on all columns
-        ws.autoFilter = { from: 'A1', to: `U${articulos.length + 1}` };
+        ws.autoFilter = { from: 'A1', to: `AB${articulos.length + 1}` };
 
         // Freeze first row
         ws.views = [{ state: 'frozen', ySplit: 1 }];

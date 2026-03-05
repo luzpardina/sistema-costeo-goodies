@@ -752,22 +752,39 @@ router.post('/ml/calcular', auth, async (req, res) => {
                 costoNeto = ultimo ? parseFloat(ultimo.costo_unitario_neto_ars) || 0 : 0;
             }
 
-            // Buscar datos del catálogo
+            // Buscar datos del catálogo (incluye físicos y ML)
             let nombre = art.nombre || '';
-            if (art.codigo_goodies && !nombre) {
+            let pesoKg = parseFloat(art.peso_kg) || 0;
+            let largoCm = parseFloat(art.largo_cm) || 0;
+            let anchoCm = parseFloat(art.ancho_cm) || 0;
+            let altoCm = parseFloat(art.alto_cm) || 0;
+            let esEsencial = art.es_esencial || false;
+            let unidadesPorCaja = parseInt(art.unidades_por_caja) || 1;
+            let tipoCaja = art.tipo_caja || '';
+            
+            if (art.codigo_goodies) {
                 const catalogo = await CatalogoArticulo.findOne({ where: { codigo_goodies: art.codigo_goodies } });
-                if (catalogo) nombre = catalogo.nombre || '';
+                if (catalogo) {
+                    if (!nombre) nombre = catalogo.nombre || '';
+                    if (!pesoKg) pesoKg = parseFloat(catalogo.peso_unitario_kg) || 0;
+                    if (!largoCm) largoCm = parseFloat(catalogo.largo_cm) || 0;
+                    if (!anchoCm) anchoCm = parseFloat(catalogo.ancho_cm) || 0;
+                    if (!altoCm) altoCm = parseFloat(catalogo.alto_cm) || 0;
+                    if (!art.es_esencial && catalogo.es_esencial_ml) esEsencial = catalogo.es_esencial_ml;
+                    if (!art.unidades_por_caja && catalogo.unidades_por_caja_ml) unidadesPorCaja = catalogo.unidades_por_caja_ml;
+                    if (!art.tipo_caja && catalogo.tipo_caja_ml) tipoCaja = catalogo.tipo_caja_ml;
+                }
             }
 
-            const resultado = mlService.calcularML(
+            const resultado = mlService.calcularMLConCaja(
                 parseFloat(art.precio_venta) || 0,
                 costoNeto,
-                parseFloat(art.peso_kg) || 0,
-                parseFloat(art.largo_cm) || 0,
-                parseFloat(art.ancho_cm) || 0,
-                parseFloat(art.alto_cm) || 0,
+                pesoKg,
+                unidadesPorCaja,
+                tipoCaja,
+                largoCm, anchoCm, altoCm,
                 canal || 'flex',
-                art.es_esencial || false,
+                esEsencial,
                 parseFloat(comision_pct) || 14,
                 otros_costos || {}
             );
@@ -792,6 +809,7 @@ router.get('/ml/tablas', auth, (req, res) => {
         flex: mlService.FLEX_COSTOS,
         full_super_esenciales: mlService.FULL_SUPER_ESENCIALES,
         full_super_resto: mlService.FULL_SUPER_RESTO,
+        cajas: mlService.CAJAS_ML,
         comision_default: mlService.COMISION_ML_DEFAULT,
         vigencia: '12/03/2026',
         nota: 'Costo fijo nunca supera 25% del precio. Peso = max(físico, volumétrico). >= $33.000 sin costo fijo pero envío gratis obligatorio.'
