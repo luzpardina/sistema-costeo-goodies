@@ -2,10 +2,41 @@
 const ExcelJS = require('exceljs');
 const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios } = require('../models');
 
-class ExportarService {
+const COLORS = {
+    headerBg: 'FF1A237E', headerFont: 'FFFFFFFF',
+    greenBg: 'FF4CAF50', totalBg: 'FFE3F2FD', borderColor: 'FFD0D0D0',
+};
+const thinBorder = {
+    top: { style: 'thin', color: { argb: COLORS.borderColor } },
+    bottom: { style: 'thin', color: { argb: COLORS.borderColor } },
+    left: { style: 'thin', color: { argb: COLORS.borderColor } },
+    right: { style: 'thin', color: { argb: COLORS.borderColor } },
+};
+function styleHeader(row, bg) {
+    row.font = { bold: true, color: { argb: COLORS.headerFont }, size: 11, name: 'Calibri' };
+    row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg || COLORS.headerBg } };
+    row.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    row.height = 32;
+    row.eachCell(c => { c.border = thinBorder; });
+}
+function styleDataRow(row, alt) {
+    row.font = { size: 10, name: 'Calibri' };
+    if (alt) row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9F9F9' } };
+    row.eachCell(c => { c.border = thinBorder; });
+}
+function styleTotalRow(row) {
+    row.font = { bold: true, size: 11, name: 'Calibri' };
+    row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.totalBg } };
+    row.eachCell(c => { c.border = thinBorder; });
+}
+const fmtFecha = (f) => {
+    if (!f) return '';
+    const d = new Date(f);
+    return isNaN(d.getTime()) ? '' : `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+};
 
+class ExportarService {
     static async exportarCosteo(costeoId) {
-        // 1. Obtener datos
         const costeo = await Costeo.findByPk(costeoId, {
             include: [
                 { model: ArticuloCosteo, as: 'articulos' },
@@ -13,216 +44,158 @@ class ExportarService {
                 { model: GastosVarios, as: 'gastos_varios' }
             ]
         });
+        if (!costeo) throw new Error('Costeo no encontrado');
 
-        if (!costeo) {
-            throw new Error('Costeo no encontrado');
-        }
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'Sistema de Costeo GOODIES';
+        wb.created = new Date();
 
-        // 2. Crear workbook
-        const workbook = new ExcelJS.Workbook();
-        workbook.creator = 'Sistema de Costeo';
-        workbook.created = new Date();
+        const fechaDesp = fmtFecha(costeo.fecha_despacho);
+        const esDef = !!fechaDesp;
+        const moneda = costeo.moneda_principal || 'USD';
+        let tcP = parseFloat(costeo.tc_usd) || 1;
+        if (moneda.toUpperCase() === 'EUR') tcP = parseFloat(costeo.tc_eur) || tcP;
+        if (moneda.toUpperCase() === 'GBP') tcP = parseFloat(costeo.tc_gbp) || tcP;
 
-        // Formato de fecha DD/MM/AA
-        const formatoFecha = (fecha) => {
-            if (!fecha) return '';
-            const d = new Date(fecha);
-            if (isNaN(d.getTime())) return '';
-            const dia = String(d.getDate()).padStart(2, '0');
-            const mes = String(d.getMonth() + 1).padStart(2, '0');
-            const anio = String(d.getFullYear()).slice(-2);
-            return `${dia}/${mes}/${anio}`;
-        };
+        // =================== RESUMEN ===================
+        const ws1 = wb.addWorksheet('RESUMEN');
+        ws1.columns = [{ width: 4 }, { width: 24 }, { width: 28 }, { width: 5 }, { width: 22 }, { width: 22 }];
 
-        // Verificar si tiene fecha de despacho válida
-        const fechaDespacho = formatoFecha(costeo.fecha_despacho);
-        const estadoDespacho = fechaDespacho ? fechaDespacho : 'PRESUPUESTADO';
+        ws1.mergeCells('B1:C1');
+        ws1.getCell('B1').value = 'GOODIES S.A.';
+        ws1.getCell('B1').font = { bold: true, size: 16, color: { argb: COLORS.headerBg } };
+        ws1.mergeCells('B2:C2');
+        ws1.getCell('B2').value = costeo.nombre_costeo;
+        ws1.getCell('B2').font = { bold: true, size: 13 };
+        ws1.mergeCells('E1:F1');
+        ws1.getCell('E1').value = esDef ? 'DEFINITIVO' : 'PRESUPUESTADO';
+        ws1.getCell('E1').font = { bold: true, size: 14, color: { argb: esDef ? 'FF4CAF50' : 'FFFF9800' } };
+        ws1.getCell('E1').alignment = { horizontal: 'right' };
 
-        // 3. Hoja RESUMEN
-        const hojaCosteo = workbook.addWorksheet('RESUMEN');
-        
-        hojaCosteo.columns = [
-            { header: 'Campo', key: 'campo', width: 30 },
-            { header: 'Valor', key: 'valor', width: 25 }
+        const info = [
+            ['Proveedor', costeo.proveedor, 'TC USD', parseFloat(costeo.tc_usd) || 0],
+            ['Factura', costeo.factura_nro, 'TC EUR', parseFloat(costeo.tc_eur) || 0],
+            ['Fecha Factura', fmtFecha(costeo.fecha_factura), 'TC GBP', parseFloat(costeo.tc_gbp) || 0],
+            ['Fecha Despacho', fechaDesp || 'Sin despacho', '', ''],
+            ['Nro Despacho', costeo.nro_despacho || '-', 'FOB Total (' + moneda + ')', parseFloat(costeo.fob_total_usd) || 0],
+            ['Moneda', moneda, 'Total Gastos ARS', parseFloat(costeo.total_gastos_ars) || 0],
         ];
-
-        const filasResumen = [
-            { campo: 'COSTEO', valor: costeo.nombre_costeo },
-            { campo: 'Proveedor', valor: costeo.proveedor },
-            { campo: 'Factura', valor: costeo.factura_nro },
-            { campo: 'Fecha Factura', valor: formatoFecha(costeo.fecha_factura) },
-           { campo: 'Fecha Despacho', valor: estadoDespacho },
-            { campo: 'Nro Despacho', valor: costeo.nro_despacho || '' },
-            { campo: 'Moneda Principal', valor: costeo.moneda_principal },
-            { campo: '', valor: '' },
-            { campo: 'Tipo de Cambio USD', valor: parseFloat(costeo.tc_usd) || 0 },
-            { campo: 'Tipo de Cambio EUR', valor: parseFloat(costeo.tc_eur) || 0 },
-            { campo: 'Tipo de Cambio GBP', valor: parseFloat(costeo.tc_gbp) || 0 },
-            { campo: '', valor: '' },
-            { campo: 'FOB Total Divisa', valor: parseFloat(costeo.fob_total_usd) || 0 },
-            { campo: 'Total Gastos ARS', valor: parseFloat(costeo.total_gastos_ars) || 0 },
-            { campo: '', valor: '' },
-            { campo: 'Importe Total Inversión ARS', valor: parseFloat(costeo.costo_total_ars) || 0 },
-            { campo: 'Unidades Totales', valor: parseInt(costeo.unidades_totales) || 0 }
-        ];
-
-        for (const fila of filasResumen) {
-            hojaCosteo.addRow(fila);
-        }
-
-        // Aplicar formato numerico a columna B (2 decimales)
-        for (let i = 2; i <= hojaCosteo.rowCount; i++) {
-            const celda = hojaCosteo.getCell(`B${i}`);
-            if (typeof celda.value === 'number') {
-                celda.numFmt = '#,##0.00';
+        info.forEach((d, i) => {
+            const r = 4 + i;
+            ws1.getCell(`B${r}`).value = d[0];
+            ws1.getCell(`B${r}`).font = { bold: true, size: 10, color: { argb: 'FF666666' } };
+            ws1.getCell(`C${r}`).value = d[1] || '-';
+            if (d[2]) {
+                ws1.getCell(`E${r}`).value = d[2];
+                ws1.getCell(`E${r}`).font = { bold: true, size: 10, color: { argb: 'FF666666' } };
+                const c = ws1.getCell(`F${r}`);
+                c.value = d[3];
+                if (typeof d[3] === 'number' && d[3] > 0) c.numFmt = '#,##0.00';
             }
-        }
+        });
 
-        // Estilo encabezado
-        hojaCosteo.getRow(1).font = { bold: true };
-        hojaCosteo.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
-        hojaCosteo.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        // Grand total
+        const tr = 4 + info.length + 1;
+        ws1.mergeCells(`B${tr}:C${tr}`);
+        ws1.getCell(`B${tr}`).value = 'INVERSIÓN TOTAL ARS';
+        ws1.getCell(`B${tr}`).font = { bold: true, size: 14, color: { argb: COLORS.headerBg } };
+        ws1.mergeCells(`E${tr}:F${tr}`);
+        ws1.getCell(`E${tr}`).value = parseFloat(costeo.costo_total_ars) || 0;
+        ws1.getCell(`E${tr}`).numFmt = '$ #,##0.00';
+        ws1.getCell(`E${tr}`).font = { bold: true, size: 18, color: { argb: '224CAF50' } };
+        ws1.getCell(`E${tr}`).alignment = { horizontal: 'right' };
 
-        // 4. Hoja ARTICULOS
-        const hojaArticulos = workbook.addWorksheet('ARTICULOS');
+        ws1.getCell(`B${tr+1}`).value = 'Unidades Totales';
+        ws1.getCell(`B${tr+1}`).font = { bold: true, size: 10, color: { argb: 'FF666666' } };
+        ws1.getCell(`C${tr+1}`).value = parseInt(costeo.unidades_totales) || 0;
+        ws1.getCell(`C${tr+1}`).font = { bold: true, size: 14 };
+
+        // =================== ARTÍCULOS ===================
+        const ws2 = wb.addWorksheet('ARTÍCULOS');
+        const aH = ['Código', 'Nombre', 'Und.', moneda + ' Unit.', moneda + ' Total',
+            'ARS Unit.', 'ARS Total', 'ANMAT', 'Base Aduana',
+            'Der. %', 'Derechos', 'Estad.', 'Gastos Prorr.',
+            'COSTO NETO UNIT.', 'IVA Unit.', 'Imp.Int %', 'Imp.Int.',
+            'COSTO FINAL UNIT.', 'Factor Imp.'];
+        const aW = [16, 42, 7, 12, 14, 12, 14, 10, 14, 8, 12, 10, 14, 16, 12, 8, 12, 16, 10];
+        aH.forEach((_, i) => { ws2.getColumn(i + 1).width = aW[i]; });
         
-       hojaArticulos.columns = [
-            { header: 'Codigo Articulo Goodies', key: 'codigo', width: 22 },
-            { header: 'Nombre de Articulo', key: 'nombre', width: 40 },
-            { header: 'Unidades Compradas', key: 'unidades', width: 18 },
-            { header: 'Divisa del Proveedor', key: 'divisa', width: 18 },
-            { header: 'FOB Unitario en Divisa', key: 'fob_unit_divisa', width: 20 },
-            { header: 'FOB Total en Divisa', key: 'fob_total_divisa', width: 18 },
-            { header: 'FOB Unit ARS', key: 'fob_unit_ars', width: 14 },
-            { header: 'FOB Total ARS', key: 'fob_total_ars', width: 16 },
-            { header: 'ANMAT ARS', key: 'anmat', width: 14 },
-            { header: 'Base Aduana ARS', key: 'base_aduana', width: 16 },
-            { header: 'Derechos %', key: 'derechos_pct', width: 12 },
-            { header: 'Derechos ARS', key: 'derechos', width: 14 },
-            { header: 'Estadist ARS', key: 'estadistica', width: 14 },
-            { header: 'Gastos Prorrat ARS', key: 'gastos_prorrat', width: 18 },
-            { header: 'Costo Neto Unit', key: 'costo_neto', width: 16 },
-            { header: 'IVA Unit ARS', key: 'iva', width: 14 },
-            { header: 'Imp Int %', key: 'imp_int_pct', width: 12 },
-            { header: 'Imp Int Unit ARS', key: 'imp_int', width: 16 },
-            { header: 'Costo Final Unit', key: 'costo_final', width: 16 },
-            { header: 'Factor Importacion', key: 'factor', width: 18 }
-        ];
-        // Determinar TC según moneda principal
-        const monedaPrincipal = costeo.moneda_principal || 'USD';
-        let tcPrincipal = parseFloat(costeo.tc_usd) || 1;
-        if (monedaPrincipal.toUpperCase() === 'EUR') {
-            tcPrincipal = parseFloat(costeo.tc_eur) || parseFloat(costeo.tc_usd) || 1;
-        } else if (monedaPrincipal.toUpperCase() === 'GBP') {
-            tcPrincipal = parseFloat(costeo.tc_gbp) || parseFloat(costeo.tc_usd) || 1;
-        }
-   
-        for (const art of costeo.articulos) {
-            const fobUnitDivisa = parseFloat(art.fob_unitario_usd) || 0;
-            const fobTotalDivisa = parseFloat(art.fob_total_usd) || 0;
-            const fobUnitARS = parseFloat(art.fob_unitario_ars) || (fobUnitDivisa * tcPrincipal);
-            const fobTotalARS = parseFloat(art.fob_total_ars) || (fobTotalDivisa * tcPrincipal);
-            const costoNetoUnit = parseFloat(art.costo_unitario_neto_ars) || 0;
-            const factorImportacion = parseFloat(art.factor_importacion) || 0;
+        const hr = ws2.addRow(aH);
+        styleHeader(hr);
+        [14, 18, 19].forEach(c => { hr.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.greenBg } }; });
 
-           hojaArticulos.addRow({
-                codigo: art.codigo_goodies,
-                nombre: art.nombre,
-                unidades: parseInt(art.unidades_totales) || 0,
-                divisa: monedaPrincipal,
-                fob_unit_divisa: fobUnitDivisa,
-                fob_total_divisa: fobTotalDivisa,
-                fob_unit_ars: fobUnitARS,
-                fob_total_ars: fobTotalARS,
-                anmat: parseFloat(art.anmat_ars) || 0,
-                base_aduana: parseFloat(art.base_aduana_ars) || 0,
-                derechos_pct: (parseFloat(art.derechos_porcentaje) || 0) <= 1 ? (parseFloat(art.derechos_porcentaje) || 0) * 100 : (parseFloat(art.derechos_porcentaje) || 0),
-                derechos: parseFloat(art.derechos_total_ars) || 0,
-                estadistica: parseFloat(art.estadistica_total_ars) || 0,
-                gastos_prorrat: parseFloat(art.gastos_varios_ars) || 0,
-                costo_neto: costoNetoUnit,
-                iva: parseFloat(art.iva_unitario_ars) || 0,
-                imp_int_pct: (parseFloat(art.impuesto_interno_porcentaje) || 0) <= 1 ? (parseFloat(art.impuesto_interno_porcentaje) || 0) * 100 : (parseFloat(art.impuesto_interno_porcentaje) || 0),
-                imp_int: parseFloat(art.impuesto_interno_unitario_ars) || 0,
-                costo_final: parseFloat(art.costo_unitario_ars) || 0,
-                factor: factorImportacion
-            });
-        }
+        let tFobDiv = 0, tFobARS = 0, tCN = 0, tCF = 0, tUnd = 0;
+        costeo.articulos.forEach((a, idx) => {
+            const fuDiv = parseFloat(a.fob_unitario_usd) || 0;
+            const ftDiv = parseFloat(a.fob_total_usd) || 0;
+            const fuARS = parseFloat(a.fob_unitario_ars) || (fuDiv * tcP);
+            const ftARS = parseFloat(a.fob_total_ars) || (ftDiv * tcP);
+            const cn = parseFloat(a.costo_unitario_neto_ars) || 0;
+            const cf = parseFloat(a.costo_unitario_ars) || 0;
+            const und = parseInt(a.unidades_totales) || 0;
+            const dp = parseFloat(a.derechos_porcentaje) || 0;
+            const ip = parseFloat(a.impuesto_interno_porcentaje) || 0;
+            tFobDiv += ftDiv; tFobARS += ftARS; tCN += cn * und; tCF += cf * und; tUnd += und;
 
-        // Aplicar formato numerico a todas las columnas numericas (2 decimales)
-        for (let i = 2; i <= hojaArticulos.rowCount; i++) {
-            for (let col = 3; col <= 20; col++) {
-                const celda = hojaArticulos.getRow(i).getCell(col);
-                if (typeof celda.value === 'number') {
-                    celda.numFmt = '#,##0.00';
-                }
+            const row = ws2.addRow([
+                a.codigo_goodies, a.nombre, und, fuDiv, ftDiv, fuARS, ftARS,
+                parseFloat(a.anmat_ars) || 0, parseFloat(a.base_aduana_ars) || 0,
+                (dp <= 1 ? dp * 100 : dp), parseFloat(a.derechos_total_ars) || 0,
+                parseFloat(a.estadistica_total_ars) || 0, parseFloat(a.gastos_varios_ars) || 0,
+                cn, parseFloat(a.iva_unitario_ars) || 0,
+                (ip <= 1 ? ip * 100 : ip), parseFloat(a.impuesto_interno_unitario_ars) || 0,
+                cf, parseFloat(a.factor_importacion) || 0
+            ]);
+            styleDataRow(row, idx % 2 === 1);
+            for (let c = 4; c <= 19; c++) {
+                row.getCell(c).numFmt = (c === 10 || c === 16) ? '0.00' : '#,##0.00';
             }
-            // Negrita para Costo Neto Unit (columna 12)
-            // Negrita para Costo Neto Unit (columna 15)
-            hojaArticulos.getRow(i).getCell(15).font = { bold: true };
-            // Negrita para Factor Importacion (columna 20)
-            hojaArticulos.getRow(i).getCell(20).font = { bold: true };
-        }
+            row.getCell(14).font = { bold: true, size: 10, color: { argb: '1A237E' } };
+            row.getCell(18).font = { bold: true, size: 10, color: { argb: '4CAF50' } };
+            row.getCell(19).font = { bold: true, size: 10 };
+        });
 
-        // Estilo encabezado
-        hojaArticulos.getRow(1).font = { bold: true };
-        hojaArticulos.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
-        hojaArticulos.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        
-        // Negrita especial para titulos Costo Neto Unit y Factor Importacion
-        hojaArticulos.getRow(1).getCell(15).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00B050' } };
-        hojaArticulos.getRow(1).getCell(20).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00B050' } };
+        const totR = ws2.addRow(['', 'TOTALES', tUnd, '', tFobDiv, '', tFobARS, '', '', '', '', '', '', tCN, '', '', '', tCF, '']);
+        styleTotalRow(totR);
+        [5, 7, 14, 18].forEach(c => { totR.getCell(c).numFmt = '#,##0.00'; });
 
-        // 5. Hoja GASTOS
-        const hojaGastos = workbook.addWorksheet('GASTOS');
-        
-       hojaGastos.columns = [
-            { header: 'Descripcion', key: 'descripcion', width: 40 },
-            { header: 'Proveedor', key: 'proveedor', width: 25 },
-            { header: 'Nro Comprobante', key: 'nro_comprobante', width: 18 },
-            { header: 'Moneda', key: 'moneda', width: 10 },
-            { header: 'Monto Original', key: 'monto', width: 15 },
-            { header: '% Recargo', key: 'recargo', width: 12 },
-            { header: 'Grupo', key: 'grupo', width: 12 },
-            { header: 'Monto ARS', key: 'monto_ars', width: 18 },
-            { header: 'No Contable', key: 'no_contable', width: 12 },
-            { header: 'Observaciones', key: 'observaciones', width: 30 }
-        ];
+        ws2.autoFilter = { from: 'A1', to: `S${costeo.articulos.length + 1}` };
+        ws2.views = [{ state: 'frozen', ySplit: 1 }];
 
-        for (const gasto of costeo.gastos_varios) {
-           hojaGastos.addRow({
-                descripcion: gasto.descripcion,
-                proveedor: gasto.proveedor_gasto || '',
-                nro_comprobante: gasto.nro_comprobante || '',
-                moneda: gasto.moneda,
-                monto: parseFloat(gasto.monto) || 0,
-                recargo: parseFloat(gasto.recargo) || 0,
-                grupo: gasto.grupo || '',
-                monto_ars: parseFloat(gasto.monto_ars) || 0,
-                no_contable: gasto.no_contable ? 'SI' : '',
-                observaciones: gasto.observaciones || ''
-            });
-        }
+        // =================== GASTOS ===================
+        const ws3 = wb.addWorksheet('GASTOS');
+        const gH = ['Descripción', 'Proveedor', 'Nro Comprobante', 'Moneda', 'Monto', '% Recargo', 'Grupo', 'Monto ARS', 'No Contable', 'Observaciones'];
+        const gW = [40, 25, 16, 8, 14, 10, 10, 16, 10, 30];
+        gH.forEach((_, i) => { ws3.getColumn(i + 1).width = gW[i]; });
+        styleHeader(ws3.addRow(gH));
 
-       // Aplicar formato numerico (2 decimales)
-        for (let i = 2; i <= hojaGastos.rowCount; i++) {
-            hojaGastos.getRow(i).getCell(5).numFmt = '#,##0.00';
-            hojaGastos.getRow(i).getCell(6).numFmt = '#,##0.00';
-            hojaGastos.getRow(i).getCell(8).numFmt = '#,##0.00';
-        }
+        let tGARS = 0;
+        costeo.gastos_varios.forEach((g, idx) => {
+            const mars = parseFloat(g.monto_ars) || 0;
+            tGARS += mars;
+            const row = ws3.addRow([
+                g.descripcion, g.proveedor_gasto || '', g.nro_comprobante || '',
+                g.moneda, parseFloat(g.monto) || 0, parseFloat(g.recargo) || 0,
+                g.grupo || '', mars, g.no_contable ? 'SI' : '', g.observaciones || ''
+            ]);
+            styleDataRow(row, idx % 2 === 1);
+            row.getCell(5).numFmt = '#,##0.00';
+            row.getCell(6).numFmt = '0.00';
+            row.getCell(8).numFmt = '#,##0.00';
+            if (g.no_contable) row.getCell(9).font = { color: { argb: 'FFFF9800' }, bold: true, size: 10 };
+        });
 
-        // Estilo encabezado
-        hojaGastos.getRow(1).font = { bold: true };
-        hojaGastos.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
-        hojaGastos.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        const gTot = ws3.addRow(['', '', '', '', '', '', 'TOTAL', tGARS, '', '']);
+        styleTotalRow(gTot);
+        gTot.getCell(8).numFmt = '#,##0.00';
+        ws3.autoFilter = { from: 'A1', to: `J${costeo.gastos_varios.length + 1}` };
+        ws3.views = [{ state: 'frozen', ySplit: 1 }];
 
-        // 6. Generar buffer
-        const buffer = await workbook.xlsx.writeBuffer();
-        
-        return {
-            buffer: buffer,
-            filename: `Costeo_${costeo.nombre_costeo.replace(/[^a-zA-Z0-9]/g, '_')}_${estadoDespacho === 'PRESUPUESTADO' ? 'PRESUPUESTO' : 'DEFINITIVO'}.xlsx`
-        };
+        // Generate
+        const buffer = await wb.xlsx.writeBuffer();
+        const fd = fechaDesp ? fechaDesp.replace(/\//g, '-') : 'PRESUPUESTO';
+        const nm = (costeo.nombre_costeo || 'Costeo').replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-]/g, '').trim().replace(/\s+/g, '_');
+        return { buffer, filename: `${nm}_${fd}_${esDef ? 'DEFINITIVO' : 'PRESUPUESTO'}.xlsx` };
     }
 }
 
