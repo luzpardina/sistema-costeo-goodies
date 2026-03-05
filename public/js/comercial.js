@@ -1010,13 +1010,3 @@
         poblarSimArticulos(filtrados);
     }
 
-    // Override mostrarApp to also load simulator data
-    const _mostrarAppOriginal = mostrarApp;
-    function mostrarApp() {
-        document.getElementById('loginContainer').style.display = 'none';
-        document.getElementById('appContainer').style.display = 'block';
-        document.getElementById('userName').textContent = usuario.nombre;
-        cargarCosteos(); cargarUltimosCostos(); cargarHistorialRevaluaciones(); cargarStatsMaestro();
-        // Pre-cargar datos para módulos nuevos
-        setTimeout(() => { cargarArticulosSimulador(); }, 2000);
-    }

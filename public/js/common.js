@@ -17,7 +17,7 @@
             } catch (err) { msgEl.className = 'message error'; msgEl.textContent = 'Error de conexion.'; }
         });
 
-        function mostrarApp() { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'block'; document.getElementById('userName').textContent = usuario.nombre; cargarCosteos(); cargarUltimosCostos(); cargarHistorialRevaluaciones(); cargarStatsMaestro(); }
+        function mostrarApp() { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'block'; document.getElementById('userName').textContent = usuario.nombre; cargarCosteos(); cargarUltimosCostos(); cargarHistorialRevaluaciones(); cargarStatsMaestro(); setTimeout(function(){ if (typeof cargarArticulosSimulador === 'function') cargarArticulosSimulador(); }, 2000); }
         function logout() { token = null; usuario = null; localStorage.removeItem('token'); localStorage.removeItem('usuario'); document.getElementById('loginContainer').style.display = 'block'; document.getElementById('appContainer').style.display = 'none'; }
         function toggleImportExcel() { const area = document.getElementById('importExcelArea'); if (area) area.style.display = area.style.display === 'none' ? 'block' : 'none'; }
 
