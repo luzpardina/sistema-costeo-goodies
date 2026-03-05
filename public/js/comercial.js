@@ -1045,7 +1045,12 @@
             var catMap = {};
             if (Array.isArray(catalogo)) catalogo.forEach(function(c) { catMap[(c.codigo_goodies||'').toUpperCase()] = c; });
             
-            mlArticulos = costos.filter(function(a) { return (parseFloat(a.costo_neto || a.costo_unitario_neto_ars) || 0) > 0; }).map(function(a) {
+            mlArticulos = costos.filter(function(a) {
+                var codigo = (a.codigo_goodies || a.codigo || '').toUpperCase();
+                var cat = catMap[codigo];
+                // Solo artículos marcados como Activo ML y con costo > 0
+                return (parseFloat(a.costo_neto || a.costo_unitario_neto_ars) || 0) > 0 && cat && cat.activo_ml;
+            }).map(function(a) {
                 var codigo = a.codigo_goodies || a.codigo;
                 var cat = catMap[(codigo||'').toUpperCase()] || {};
                 return {
@@ -1065,7 +1070,11 @@
             
             var conPeso = mlArticulos.filter(function(a) { return a.peso_kg > 0; }).length;
             renderArticulosML();
-            alert('✅ ' + mlArticulos.length + ' artículos cargados (' + conPeso + ' con datos de peso/dimensiones del catálogo)');
+            if (mlArticulos.length === 0) {
+                alert('No hay artículos marcados como "Activo ML" en el catálogo.\n\nPara marcarlos: Catálogo → Descargar Excel → completar columna "Activo ML" con SI → Reimportar.\n\nMientras tanto, podés cargar artículos manualmente.');
+            } else {
+                alert('✅ ' + mlArticulos.length + ' artículos ML cargados (' + conPeso + ' con datos de peso/dimensiones)');
+            }
         } catch(e) { alert('Error: ' + e.message); }
     }
 

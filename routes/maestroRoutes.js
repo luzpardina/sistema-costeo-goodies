@@ -52,7 +52,8 @@ function parsearExcelCatalogo(buffer) {
             // ML
             es_esencial_ml: row['Esencial ML'] !== undefined ? String(row['Esencial ML']).toUpperCase().trim() === 'SI' : null,
             unidades_por_caja_ml: row['Und/Caja ML'] !== undefined ? parseInt(row['Und/Caja ML']) || null : null,
-            tipo_caja_ml: row['Tipo Caja ML'] !== undefined ? String(row['Tipo Caja ML']).toLowerCase().trim() || null : null
+            tipo_caja_ml: row['Tipo Caja ML'] !== undefined ? String(row['Tipo Caja ML']).toLowerCase().trim() || null : null,
+            activo_ml: row['Activo ML'] !== undefined ? String(row['Activo ML']).toUpperCase().trim() === 'SI' : null
         };
     }).filter(r => r !== null);
 }
@@ -190,6 +191,7 @@ router.post('/importar', auth, upload.single('archivo'), async (req, res) => {
                     if (reg.es_esencial_ml !== null) updates.es_esencial_ml = reg.es_esencial_ml;
                     if (reg.unidades_por_caja_ml !== null) updates.unidades_por_caja_ml = reg.unidades_por_caja_ml;
                     if (reg.tipo_caja_ml !== null) updates.tipo_caja_ml = reg.tipo_caja_ml;
+                    if (reg.activo_ml !== null) updates.activo_ml = reg.activo_ml;
                     if (Object.keys(updates).length > 0) {
                         // Log changes
                         for (const [campo, valorNuevo] of Object.entries(updates)) {
@@ -245,10 +247,10 @@ router.get('/descargar', auth, async (req, res) => {
             '% Derechos', '% Imp. Internos', '% IVA', '% Estadística',
             'Moneda', 'País Origen', 'Und/Caja', 'Último Valor Origen', 'Último Valor Fábrica',
             'Peso Kg', 'Alto cm', 'Largo cm', 'Ancho cm',
-            'Esencial ML', 'Und/Caja ML', 'Tipo Caja ML',
+            'Esencial ML', 'Und/Caja ML', 'Tipo Caja ML', 'Activo ML',
             'Proveedor Activo', 'Empresa Fábrica Activa', 'Artículo Activo'
         ];
-        const colWidths = [18.6, 57.5, 23.6, 26.5, 19.8, 30.8, 26.8, 15.4, 15.3, 10.8, 8, 5.9, 9.9, 8, 15.4, 8.9, 8.4, 7.4, 8, 8, 8, 8, 10, 10, 12, 9.9, 12, 7.8];
+        const colWidths = [18.6, 57.5, 23.6, 26.5, 19.8, 30.8, 26.8, 15.4, 15.3, 10.8, 8, 5.9, 9.9, 8, 15.4, 8.9, 8.4, 7.4, 8, 8, 8, 8, 10, 10, 12, 9, 9.9, 12, 7.8];
 
         // Set column widths
         ws.columns = headers.map((h, i) => ({ header: h, width: colWidths[i] || 12 }));
@@ -298,6 +300,7 @@ router.get('/descargar', auth, async (req, res) => {
                 a.es_esencial_ml ? 'SI' : '',
                 a.unidades_por_caja_ml || '',
                 a.tipo_caja_ml || '',
+                a.activo_ml ? 'SI' : '',
                 isProvInactive ? 'NO' : 'SI',
                 isFabInactive ? 'NO' : 'SI',
                 isArtInactive ? 'NO' : 'SI'
@@ -312,7 +315,7 @@ router.get('/descargar', auth, async (req, res) => {
         }
 
         // Auto filter on all columns
-        ws.autoFilter = { from: 'A1', to: `AB${articulos.length + 1}` };
+        ws.autoFilter = { from: 'A1', to: `AC${articulos.length + 1}` };
 
         // Freeze first row
         ws.views = [{ state: 'frozen', ySplit: 1 }];

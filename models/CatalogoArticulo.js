@@ -80,6 +80,11 @@ const CatalogoArticulo = sequelize.define('CatalogoArticulo', {
         type: DataTypes.STRING(20),
         defaultValue: 'mediana',
         comment: 'chica | mediana | grande | custom'
+    },
+    activo_ml: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        comment: 'Si el artículo se vende en Mercado Libre'
     }
 }, {
     tableName: 'catalogo_articulos',
