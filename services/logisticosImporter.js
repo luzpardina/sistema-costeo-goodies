@@ -13,21 +13,43 @@ const XLSX = require('xlsx');
  */
 function parsearExcelLogistico(buffer) {
     const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets[workbook.SheetNames.length > 1 ? 1 : 0]; // Preferir segunda hoja si existe
+    
+    // Pick the sheet with the most data
+    let bestSheet = null;
+    let bestRows = 0;
+    for (const name of workbook.SheetNames) {
+        const ws = workbook.Sheets[name];
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        const nonEmpty = data.filter(r => r.some(c => c !== '')).length;
+        if (nonEmpty > bestRows) {
+            bestRows = nonEmpty;
+            bestSheet = name;
+        }
+    }
+    
+    if (!bestSheet || bestRows < 3) throw new Error('No se encontró una hoja con datos suficientes');
+    
+    const sheet = workbook.Sheets[bestSheet];
     const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
     
     if (data.length < 3) throw new Error('El archivo tiene menos de 3 filas');
     
-    // Buscar fila de headers (puede ser fila 1 o 2)
+    // Buscar fila de headers — check rows 0-5 for known header words
     let headerRow = -1;
     let colMap = {};
     
+    // First check if there's a two-row header (row 0 = groups, row 1 = columns)
     for (let r = 0; r < Math.min(5, data.length); r++) {
-        const row = data[r].map(c => String(c || '').toLowerCase().trim());
-        const detected = detectColumns(row);
-        if (detected.code >= 0 || detected.description >= 0) {
+        const row = data[r].map(c => String(c || '').toLowerCase().replace(/\n/g, ' ').trim());
+        // Check if this row has CODE or DESCRIPTION
+        const hasCode = row.some(c => c === 'code' || c === 'código' || c === 'codigo' || c === 'sku');
+        const hasDesc = row.some(c => c.includes('description') || c.includes('descripcion') || c.includes('nombre'));
+        
+        if (hasCode || hasDesc) {
             headerRow = r;
-            colMap = detected;
+            // Detect groups from previous row if exists
+            const groupRow = r > 0 ? data[r-1].map(c => String(c || '').toLowerCase().trim()) : [];
+            colMap = detectColumnsWithGroups(row, groupRow);
             break;
         }
     }
@@ -65,7 +87,11 @@ function parsearExcelLogistico(buffer) {
     return articulos;
 }
 
-function detectColumns(row) {
+/**
+ * Detect columns using both header row and group row
+ * Group row tells us which "Largo" is for pieza vs caja
+ */
+function detectColumnsWithGroups(row, groupRow) {
     const map = {
         code: -1, description: -1, packaging: -1,
         pieza_largo: -1, pieza_ancho: -1, pieza_alto: -1, pieza_peso: -1,
@@ -73,46 +99,46 @@ function detectColumns(row) {
         und_caja: -1, ean: -1
     };
     
-    let inPieza = false, inCaja = false;
-    
-    // First pass: detect group headers (Datos Pieza, Datos Caja)
-    for (let i = 0; i < row.length; i++) {
-        const v = row[i];
-        if (v.includes('pieza') || v.includes('unit') || v.includes('producto')) inPieza = true;
-        if (v.includes('caja') || v.includes('box') || v.includes('case')) { inPieza = false; inCaja = true; }
+    // Build a zone map from group row: which columns belong to pieza vs caja
+    const zones = {}; // col index -> 'pieza' | 'caja' | ''
+    let currentZone = '';
+    for (let i = 0; i < Math.max(row.length, groupRow.length); i++) {
+        const g = (groupRow[i] || '').toLowerCase();
+        if (g.includes('pieza') || g.includes('unit') || g.includes('producto')) currentZone = 'pieza';
+        else if (g.includes('caja') || g.includes('box') || g.includes('case')) currentZone = 'caja';
+        else if (g.includes('pallet') || g.includes('std') || g.includes('barr') || g.includes('ean')) currentZone = 'other';
+        zones[i] = currentZone;
     }
     
-    // Second pass: detect individual columns
-    let afterCode = false;
     for (let i = 0; i < row.length; i++) {
         const v = row[i];
+        const zone = zones[i] || '';
         
-        if (v.includes('code') || v.includes('código') || v.includes('codigo') || v === 'sku') {
-            if (v.includes('ean') || v.includes('barra')) { map.ean = i; }
-            else if (map.code < 0) { map.code = i; afterCode = true; }
+        if (v === 'code' || v === 'código' || v === 'codigo' || v === 'sku') {
+            if (v.includes('ean') || v.includes('barra')) map.ean = i;
+            else if (map.code < 0) map.code = i;
         }
-        else if (v.includes('description') || v.includes('descripcion') || v.includes('nombre') || v.includes('producto')) {
+        else if (v.includes('description') || v.includes('descripcion') || v.includes('nombre')) {
             if (map.description < 0) map.description = i;
         }
-        else if (v.includes('packaging') || v.includes('empaque') || v.includes('presentac')) map.packaging = i;
+        else if (v.includes('packaging') || v.includes('empaque') || v.includes('presentac') || v.includes('unit packaging')) map.packaging = i;
         else if (v.includes('ean') || v.includes('barra') || v.includes('gtin')) map.ean = i;
-        else if (v.includes('unidades') || v.includes('und') || v.includes('units')) map.und_caja = i;
+        else if ((v.includes('unidades') || v.includes('und') || v.includes('units')) && zone === 'caja') map.und_caja = i;
         else if (v.includes('largo') || v.includes('length') || v.includes('long')) {
-            // Is it pieza or caja? Check if we already have pieza_largo
-            if (map.pieza_largo < 0) map.pieza_largo = i;
-            else map.caja_largo = i;
+            if (zone === 'pieza') map.pieza_largo = i;
+            else if (zone === 'caja') map.caja_largo = i;
         }
-        else if (v.includes('ancho') || v.includes('width') || v.includes('anch')) {
-            if (map.pieza_ancho < 0) map.pieza_ancho = i;
-            else map.caja_ancho = i;
+        else if (v.includes('ancho') || v.includes('width')) {
+            if (zone === 'pieza') map.pieza_ancho = i;
+            else if (zone === 'caja') map.caja_ancho = i;
         }
-        else if (v.includes('alto') || v.includes('altura') || v.includes('height') || v.includes('alt')) {
-            if (map.pieza_alto < 0) map.pieza_alto = i;
-            else map.caja_alto = i;
+        else if (v.includes('alto') || v.includes('altura') || v.includes('height')) {
+            if (zone === 'pieza') map.pieza_alto = i;
+            else if (zone === 'caja') map.caja_alto = i;
         }
         else if (v.includes('peso') || v.includes('weight') || v.includes('neto')) {
-            if (map.pieza_peso < 0) map.pieza_peso = i;
-            else map.caja_peso = i;
+            if (zone === 'pieza') map.pieza_peso = i;
+            else if (zone === 'caja') map.caja_peso = i;
         }
     }
     
