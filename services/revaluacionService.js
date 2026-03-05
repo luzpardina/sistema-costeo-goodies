@@ -1,12 +1,11 @@
-const { Costeo, ArticuloCosteo, GastosVarios, Revaluacion, RevaluacionArticulo } = require('../models');
+const { Costeo, ArticuloCosteo, GastosVarios, Revaluacion, RevaluacionArticulo, CatalogoArticulo } = require('../models');
 const { Op } = require('sequelize');
 
 class RevaluacionService {
 
-    static async generarRevaluacion(usuarioId, costeoIds, tcNuevoUSD, tcNuevoEUR, tcNuevoGBP, motivo, soloContable = false) {
+    static async generarRevaluacion(usuarioId, costeoIds, tcNuevoUSD, tcNuevoEUR, tcNuevoGBP, motivo, soloContable = false, filtros = {}) {
         
         // 1. Obtener artículos a revaluar
-        // NO filtrar por usuario_id para incluir costeos de todo el equipo
         let whereCondition = { 
             estado: 'calculado',
             fecha_despacho: { [Op.ne]: null }
@@ -15,6 +14,11 @@ class RevaluacionService {
         // Si hay costeos seleccionados, filtrar por ellos
         if (costeoIds && costeoIds.length > 0) {
             whereCondition.id = { [Op.in]: costeoIds };
+        }
+
+        // Si hay filtro de proveedor, filtrar costeos por proveedor
+        if (filtros.proveedor) {
+            whereCondition.proveedor = { [Op.iLike]: '%' + filtros.proveedor + '%' };
         }
         
         // Obtener todos los costeos con sus artículos y gastos
@@ -28,11 +32,57 @@ class RevaluacionService {
         });
         
         if (costeos.length === 0) {
-            throw new Error('No se encontraron costeos para revaluar');
+            throw new Error('No se encontraron costeos para revaluar' + (filtros.proveedor ? ' (proveedor: ' + filtros.proveedor + ')' : ''));
+        }
+
+        // Si hay filtros de fábrica o marca, necesitamos cruzar con el catálogo
+        let filtroFabrica = filtros.fabrica ? filtros.fabrica.toUpperCase().trim() : null;
+        let filtroMarca = filtros.marca ? filtros.marca.toUpperCase().trim() : null;
+        let catalogoMap = {};
+        if (filtroFabrica || filtroMarca) {
+            const catalogoWhere = {};
+            if (filtroFabrica) catalogoWhere.empresa_fabrica = { [Op.iLike]: '%' + filtros.fabrica + '%' };
+            if (filtroMarca) catalogoWhere.marca = { [Op.iLike]: '%' + filtros.marca + '%' };
+            const catalogoArts = await CatalogoArticulo.findAll({ where: catalogoWhere, attributes: ['codigo_goodies'] });
+            catalogoArts.forEach(a => { catalogoMap[a.codigo_goodies.toUpperCase()] = true; });
         }
         
         // 2. Agrupar por código de artículo y quedarse con el último (por fecha_despacho)
         const articulosPorCodigo = {};
+        
+        for (const costeo of costeos) {
+            for (const art of costeo.articulos) {
+                const codigo = art.codigo_goodies || 'SIN_CODIGO';
+                
+                // Aplicar filtro de fábrica/marca si está activo
+                if ((filtroFabrica || filtroMarca) && !catalogoMap[codigo.toUpperCase()]) {
+                    continue; // Skip artículos que no coinciden con el filtro
+                }
+                
+                if (!articulosPorCodigo[codigo]) {
+                    articulosPorCodigo[codigo] = {
+                        articulo: art,
+                        costeo: costeo
+                    };
+                }
+                // Como los costeos vienen ordenados por fecha_despacho DESC,
+                // el primero que encontramos es el más reciente
+            }
+        }
+
+        if (Object.keys(articulosPorCodigo).length === 0) {
+            throw new Error('No se encontraron artículos que coincidan con los filtros aplicados');
+        }
+        
+        // Build motivo with filter info
+        let motivoCompleto = motivo;
+        const filtrosActivos = [];
+        if (filtros.proveedor) filtrosActivos.push('Prov: ' + filtros.proveedor);
+        if (filtros.fabrica) filtrosActivos.push('Fáb: ' + filtros.fabrica);
+        if (filtros.marca) filtrosActivos.push('Marca: ' + filtros.marca);
+        if (filtrosActivos.length > 0) {
+            motivoCompleto += ' [Filtro: ' + filtrosActivos.join(', ') + ']';
+        }
         
         for (const costeo of costeos) {
             for (const art of costeo.articulos) {
@@ -52,7 +102,7 @@ class RevaluacionService {
         // 3. Crear registro de revaluación
         const revaluacion = await Revaluacion.create({
             fecha_revaluacion: new Date(),
-            motivo: motivo,
+            motivo: motivoCompleto,
             tc_usd_nuevo: tcNuevoUSD,
             tc_eur_nuevo: tcNuevoEUR || null,
             tc_gbp_nuevo: tcNuevoGBP || null,
@@ -214,7 +264,7 @@ class RevaluacionService {
         return {
             revaluacion_id: revaluacion.id,
             fecha: revaluacion.fecha_revaluacion,
-            motivo: motivo,
+            motivo: motivoCompleto,
             tc_usd_nuevo: tcNuevoUSD,
             tc_eur_nuevo: tcNuevoEUR,
             tc_gbp_nuevo: tcNuevoGBP,

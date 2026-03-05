@@ -9,7 +9,7 @@ const { Revaluacion, RevaluacionArticulo } = require('../models');
 // Generar nueva revaluación
 router.post('/generar', auth, async (req, res) => {
     try {
-        const { costeo_ids, tc_usd, tc_eur, tc_gbp, motivo, solo_contable } = req.body;
+        const { costeo_ids, tc_usd, tc_eur, tc_gbp, motivo, solo_contable, filtro_proveedor, filtro_fabrica, filtro_marca } = req.body;
         
         if (!tc_usd) {
             return res.status(400).json({ error: 'Debe ingresar el TC USD' });
@@ -25,7 +25,8 @@ router.post('/generar', auth, async (req, res) => {
             tc_eur ? parseFloat(tc_eur) : null,
             tc_gbp ? parseFloat(tc_gbp) : null,
             motivo,
-            solo_contable || false
+            solo_contable || false,
+            { proveedor: filtro_proveedor, fabrica: filtro_fabrica, marca: filtro_marca }
         );
         
         res.json(resultado);

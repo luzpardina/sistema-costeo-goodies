@@ -122,6 +122,18 @@
             document.getElementById('rev_tcUsd').value = '';
             document.getElementById('rev_tcEur').value = '';
             document.getElementById('rev_tcGbp').value = '';
+            document.getElementById('rev_filtroProveedor').value = '';
+            document.getElementById('rev_filtroFabrica').value = '';
+            document.getElementById('rev_filtroMarca').value = '';
+            
+            // Poblar datalists de filtros desde el catálogo
+            var arts = todosLosArticulos || [];
+            var provs = [...new Set(arts.map(function(a){return a.proveedor;}).filter(function(p){return p;}))].sort();
+            var fabs = [...new Set(arts.map(function(a){return a.empresa_fabrica;}).filter(function(f){return f;}))].sort();
+            var marcas = [...new Set(arts.map(function(a){return a.marca;}).filter(function(m){return m;}))].sort();
+            document.getElementById('rev_listaProveedores').innerHTML = provs.map(function(p){return '<option value="'+p+'">';}).join('');
+            document.getElementById('rev_listaFabricas').innerHTML = fabs.map(function(f){return '<option value="'+f+'">';}).join('');
+            document.getElementById('rev_listaMarcas').innerHTML = marcas.map(function(m){return '<option value="'+m+'">';}).join('');
             
             document.getElementById('revaluarModal').style.display = 'flex';
         }
@@ -163,7 +175,10 @@
                         tc_eur: tcEur || null,
                         tc_gbp: tcGbp || null,
                         motivo: motivo,
-                        solo_contable: document.getElementById('rev_soloContable').checked
+                        solo_contable: document.getElementById('rev_soloContable').checked,
+                        filtro_proveedor: document.getElementById('rev_filtroProveedor').value.trim() || null,
+                        filtro_fabrica: document.getElementById('rev_filtroFabrica').value.trim() || null,
+                        filtro_marca: document.getElementById('rev_filtroMarca').value.trim() || null
                     })
                 });
                 

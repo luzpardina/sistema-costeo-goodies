@@ -736,6 +736,26 @@
                     </label>
                     <small style="color:#aaa;display:block;margin-top:4px;">Excluye gastos marcados como "No Contable" del cálculo. Útil para revaluaciones contables.</small>
                 </div>
+
+                <h4 style="margin-top:20px;margin-bottom:10px;">Filtros (opcional)</h4>
+                <p style="color:#aaa;font-size:11px;margin-bottom:8px;">Si dejás todo vacío, revalúa todos los artículos. Si filtrás, solo revalúa los que coincidan.</p>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:150px;">
+                        <label style="font-size:11px;color:#888;">Proveedor</label>
+                        <input type="text" id="rev_filtroProveedor" list="rev_listaProveedores" autocomplete="off" placeholder="Todos" style="width:100%;padding:8px;background:#1e1e2f;color:#fff;border:1px solid #444;border-radius:4px;font-size:12px;">
+                        <datalist id="rev_listaProveedores"></datalist>
+                    </div>
+                    <div style="flex:1;min-width:150px;">
+                        <label style="font-size:11px;color:#888;">Empresa Fábrica</label>
+                        <input type="text" id="rev_filtroFabrica" list="rev_listaFabricas" autocomplete="off" placeholder="Todas" style="width:100%;padding:8px;background:#1e1e2f;color:#fff;border:1px solid #444;border-radius:4px;font-size:12px;">
+                        <datalist id="rev_listaFabricas"></datalist>
+                    </div>
+                    <div style="flex:1;min-width:120px;">
+                        <label style="font-size:11px;color:#888;">Marca</label>
+                        <input type="text" id="rev_filtroMarca" list="rev_listaMarcas" autocomplete="off" placeholder="Todas" style="width:100%;padding:8px;background:#1e1e2f;color:#fff;border:1px solid #444;border-radius:4px;font-size:12px;">
+                        <datalist id="rev_listaMarcas"></datalist>
+                    </div>
+                </div>
                 
                 <h4 style="margin-top:20px;margin-bottom:10px;">Nuevos Tipos de Cambio <button type="button" class="btn btn-sm" style="background:#2196F3;color:#fff;font-size:11px;padding:3px 10px;margin-left:10px;" onclick="traerTCBNA('rev_')" title="Traer cotización Venta del BNA">🏦 BNA</button> <span id="bnaFechaRev" style="font-size:10px;color:#888;"></span></h4>
                 <div style="display:flex;gap:15px;">
