@@ -202,6 +202,29 @@ function costoFijoML(precio, pesoKg, canal, esEsencial) {
         };
     }
 
+    if (canal === 'full_colecta') {
+        const tabla = COLECTA_COSTOS;
+        const precioIdx = tabla.precios.findIndex(r => precio >= r.min && precio <= r.max);
+        const pesoIdx = tabla.pesos.findIndex(r => pesoKg >= r.min && pesoKg < r.max);
+
+        if (precioIdx === -1 || pesoIdx === -1) {
+            return { costo: 0, detalle: 'Fuera de rango' };
+        }
+
+        const costo = tabla.costos[pesoIdx][precioIdx];
+        const tope = precio * 0.25;
+        const costoFinal = Math.min(costo, tope);
+
+        return {
+            costo: costoFinal,
+            costo_tabla: costo,
+            tope_aplicado: costoFinal < costo,
+            peso_rango: tabla.pesos[pesoIdx].label,
+            precio_rango: `$${tabla.precios[precioIdx].min}-$${tabla.precios[precioIdx].max}`,
+            detalle: `Full/Colecta: $${costo} [${tabla.pesos[pesoIdx].label}, ${tabla.precios[precioIdx].min}-${tabla.precios[precioIdx].max}]`
+        };
+    }
+
     if (canal === 'colecta') {
         const precioIdx = COLECTA_COSTOS.precios.findIndex(r => precio >= r.min && precio <= r.max);
         const pesoIdx = COLECTA_COSTOS.pesos.findIndex(r => pesoKg >= r.min && pesoKg < r.max);
