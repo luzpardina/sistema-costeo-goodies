@@ -30,7 +30,22 @@ async function obtenerCotizacionesBNA() {
     const fechaMatch = html.match(/Fecha:\s*([0-9\/]+)/i);
     const fecha = fechaMatch ? fechaMatch[1].trim() : new Date().toLocaleDateString('es-AR');
     
-    // Parse table rows
+    /**
+     * Parse number from BNA - handles both formats:
+     * Argentine: "1.400,5000" (dot=thousands, comma=decimal) → 1400.5
+     * English:   "1400.5000" (dot=decimal) → 1400.5
+     */
+    function parseArgNum(str) {
+        if (!str) return 0;
+        const s = String(str).trim();
+        if (s.includes(',')) {
+            // Argentine format: remove dots (thousands), comma → dot (decimal)
+            return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+        }
+        // English format: dot is decimal
+        return parseFloat(s) || 0;
+    }
+
     const monedaMap = {
         'Dolar U.S.A': 'USD',
         'Euro': 'EUR',
@@ -38,17 +53,14 @@ async function obtenerCotizacionesBNA() {
     };
     
     const cotizaciones = {};
-    
-    // Match table rows: Moneda | Compra | Venta
+
+    // Parse table rows from markdown format (from web_fetch proxy)
     const rowRegex = /\|\s*([^|]+?)\s*\|\s*([\d.,]+)\s*\|\s*([\d.,]+)\s*\|/g;
     let match;
     while ((match = rowRegex.exec(html)) !== null) {
         const monedaNombre = match[1].trim();
-        // BNA returns values with 4 implied decimals — divide by 10000
-        const compraRaw = parseFloat(match[2]);
-        const ventaRaw = parseFloat(match[3]);
-        const compra = compraRaw > 100000 ? compraRaw / 10000 : compraRaw;
-        const venta = ventaRaw > 100000 ? ventaRaw / 10000 : ventaRaw;
+        const compra = parseArgNum(match[2]);
+        const venta = parseArgNum(match[3]);
         
         for (const [nombre, iso] of Object.entries(monedaMap)) {
             if (monedaNombre.includes(nombre) || monedaNombre === nombre) {
@@ -76,8 +88,8 @@ async function obtenerCotizacionesBNA() {
             const cellText = cells[i];
             for (const [nombre, iso] of Object.entries(monedaMap)) {
                 if (cellText.includes(nombre)) {
-                    const compra = parseFloat(cells[i + 1].replace(/\./g, '').replace(',', '.'));
-                    const venta = parseFloat(cells[i + 2].replace(/\./g, '').replace(',', '.'));
+                    const compra = parseArgNum(cells[i + 1]);
+                    const venta = parseArgNum(cells[i + 2]);
                     if (!isNaN(compra) && !isNaN(venta)) {
                         cotizaciones[iso] = { moneda: iso, nombre: cellText, compra, venta };
                     }
