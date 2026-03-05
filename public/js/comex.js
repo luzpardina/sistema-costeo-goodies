@@ -2452,3 +2452,51 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             }
         }
 
+
+    // =============================================
+    // TC DESDE BNA (OPCIONAL)
+    // =============================================
+    async function traerTCBNA(prefix) {
+        // prefix: '' = costeo form (cm_tcUsd), 'rev_' = revaluación (rev_tcUsd), 'recalc_' = recalcular (tcUsdNuevo)
+        var idMap;
+        if (prefix === 'rev_') {
+            idMap = { usd: 'rev_tcUsd', eur: 'rev_tcEur', gbp: 'rev_tcGbp', fecha: 'bnaFechaRev' };
+        } else if (prefix === 'recalc_') {
+            idMap = { usd: 'tcUsdNuevo', eur: 'tcEurNuevo', gbp: 'tcGbpNuevo', fecha: null };
+        } else {
+            idMap = { usd: 'cm_tcUsd', eur: 'cm_tcEur', gbp: 'cm_tcGbp', fecha: 'bnaFecha' };
+        }
+
+        try {
+            var resp = await fetch(API_URL + '/api/admin/cotizaciones-bna', { headers: { 'Authorization': 'Bearer ' + token } });
+            var data = await resp.json();
+            if (data.error) { alert('Error BNA: ' + data.error); return; }
+            
+            var cotiz = data.cotizaciones || {};
+            var llenados = [];
+            
+            // Solo llenar campos VACÍOS (no pisa valores ya cargados)
+            if (cotiz.USD) {
+                var el = document.getElementById(idMap.usd);
+                if (el && !el.value) { el.value = cotiz.USD.venta; llenados.push('USD: ' + cotiz.USD.venta); }
+                else if (el && el.value) { llenados.push('USD: ya tenía ' + el.value + ' (BNA: ' + cotiz.USD.venta + ')'); }
+            }
+            if (cotiz.EUR) {
+                var el = document.getElementById(idMap.eur);
+                if (el && !el.value) { el.value = cotiz.EUR.venta; llenados.push('EUR: ' + cotiz.EUR.venta); }
+                else if (el && el.value) { llenados.push('EUR: ya tenía ' + el.value + ' (BNA: ' + cotiz.EUR.venta + ')'); }
+            }
+            if (cotiz.GBP) {
+                var el = document.getElementById(idMap.gbp);
+                if (el && !el.value) { el.value = cotiz.GBP.venta; llenados.push('GBP: ' + cotiz.GBP.venta); }
+                else if (el && el.value) { llenados.push('GBP: ya tenía ' + el.value + ' (BNA: ' + cotiz.GBP.venta + ')'); }
+            }
+            
+            if (idMap.fecha) {
+                var fechaEl = document.getElementById(idMap.fecha);
+                if (fechaEl) fechaEl.textContent = '📅 BNA ' + data.fecha;
+            }
+            
+            alert('🏦 Cotizaciones BNA (' + data.fecha + '):\n\n' + llenados.join('\n') + '\n\nNota: no se pisaron valores ya cargados.');
+        } catch(e) { alert('Error al conectar con BNA: ' + e.message); }
+    }

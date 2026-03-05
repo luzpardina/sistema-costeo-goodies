@@ -65,4 +65,15 @@ router.post('/config/seed', auth, async (req, res) => {
     }
 });
 
+// Cotizaciones BNA
+router.get('/cotizaciones-bna', auth, async (req, res) => {
+    try {
+        const { obtenerCotizacionesBNA } = require('../services/bnaCotizaciones');
+        const data = await obtenerCotizacionesBNA();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: 'No se pudo obtener cotizaciones del BNA: ' + error.message });
+    }
+});
+
 module.exports = router;

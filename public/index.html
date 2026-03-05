@@ -737,7 +737,7 @@
                     <small style="color:#aaa;display:block;margin-top:4px;">Excluye gastos marcados como "No Contable" del cálculo. Útil para revaluaciones contables.</small>
                 </div>
                 
-                <h4 style="margin-top:20px;margin-bottom:10px;">Nuevos Tipos de Cambio</h4>
+                <h4 style="margin-top:20px;margin-bottom:10px;">Nuevos Tipos de Cambio <button type="button" class="btn btn-sm" style="background:#2196F3;color:#fff;font-size:11px;padding:3px 10px;margin-left:10px;" onclick="traerTCBNA('rev_')" title="Traer cotización Venta del BNA">🏦 BNA</button> <span id="bnaFechaRev" style="font-size:10px;color:#888;"></span></h4>
                 <div style="display:flex;gap:15px;">
                     <div class="form-group" style="flex:1;">
                         <label>TC USD *</label>
@@ -821,7 +821,7 @@
                 <h3>Recalcular con Tipo de Cambio</h3>
                 <button class="modal-close" onclick="cerrarModal('recalcularModal')">×</button>
             </div>
-            <p style="color: #aaa; margin-bottom: 15px;">Ingresa los tipos de cambio:</p>
+            <p style="color: #aaa; margin-bottom: 15px;">Ingresa los tipos de cambio: <button type="button" class="btn btn-sm" style="background:#2196F3;color:#fff;font-size:11px;padding:3px 10px;margin-left:10px;" onclick="traerTCBNA('recalc_')" title="Traer cotización Venta del BNA">🏦 BNA</button></p>
             <div class="form-row">
                 <div class="form-group"><label>TC USD</label><input type="number" id="tcUsdNuevo" step="0.01"></div>
                 <div class="form-group"><label>TC EUR</label><input type="number" id="tcEurNuevo" step="0.01"></div>
@@ -905,7 +905,7 @@
                     <div class="form-group"><label>Fecha Despacho</label><input type="date" id="cm_fechaDespacho"></div>
                     <div class="form-group"><label>Nro Despacho</label><input type="text" id="cm_nroDespacho" placeholder="Ej: 25-001-IC04..."></div>
                 </div>
-                <h4>Tipos de Cambio</h4>
+                <h4>Tipos de Cambio <button type="button" class="btn btn-sm" style="background:#2196F3;color:#fff;font-size:11px;padding:3px 10px;margin-left:10px;" onclick="traerTCBNA()" title="Traer cotización Venta del BNA (no pisa valores ya cargados)">🏦 Traer del BNA</button> <span id="bnaFecha" style="font-size:10px;color:#888;margin-left:5px;"></span></h4>
                 <div class="form-row">
                     <div class="form-group"><label>TC USD</label><input type="number" id="cm_tcUsd" step="0.0001" placeholder="Ej: 1450.00"></div>
                     <div class="form-group"><label>TC EUR</label><input type="number" id="cm_tcEur" step="0.0001" placeholder="Ej: 1550.00"></div>
