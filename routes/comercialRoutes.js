@@ -810,11 +810,55 @@ router.get('/ml/tablas', auth, (req, res) => {
         full_super_esenciales: mlService.FULL_SUPER_ESENCIALES,
         full_super_resto: mlService.FULL_SUPER_RESTO,
         colecta: mlService.COLECTA_COSTOS,
+        envio_gratis: mlService.ENVIO_GRATIS_COSTOS,
         cajas: mlService.CAJAS_ML,
         comision_default: mlService.COMISION_ML_DEFAULT,
         vigencia: '12/03/2026',
-        nota: 'Costo fijo nunca supera 25% del precio. Peso = max(físico, volumétrico). >= $33.000 sin costo fijo pero envío gratis obligatorio.'
+        nota: '<$33K: comisión + flat fee. ≥$33K: comisión + envío gratis obligatorio.'
     });
+});
+
+// Cálculo inverso masivo: dado precio ML actual → margen real
+router.post('/ml/margen-inverso', auth, async (req, res) => {
+    try {
+        const { articulos, canal, comision_pct, otros_costos } = req.body;
+        const resultados = [];
+        for (const art of articulos) {
+            let costoNeto = parseFloat(art.costo_neto) || 0;
+            let pesoKg = parseFloat(art.peso_kg) || 0;
+            let nombre = art.nombre || '';
+            let esEsencial = art.es_esencial || false;
+            let impInternoPct = 0;
+            
+            if (art.codigo_goodies) {
+                if (!costoNeto) {
+                    const ultimo = await ArticuloCosteo.findOne({
+                        where: { codigo_goodies: art.codigo_goodies },
+                        include: [{ model: Costeo, as: 'costeo', where: { estado: 'calculado', fecha_despacho: { [Op.ne]: null } } }],
+                        order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'DESC']]
+                    });
+                    costoNeto = ultimo ? parseFloat(ultimo.costo_unitario_neto_ars) || 0 : 0;
+                }
+                const catalogo = await CatalogoArticulo.findOne({ where: { codigo_goodies: art.codigo_goodies } });
+                if (catalogo) {
+                    if (!nombre) nombre = catalogo.nombre || '';
+                    if (!pesoKg) pesoKg = parseFloat(catalogo.peso_unitario_kg) || 0;
+                    if (catalogo.es_esencial_ml) esEsencial = catalogo.es_esencial_ml;
+                    if (catalogo.imp_interno_porcentaje) impInternoPct = parseFloat(catalogo.imp_interno_porcentaje) * 100;
+                }
+            }
+            const costos = { ...(otros_costos || {}), pctImpInterno: impInternoPct };
+            const resultado = mlService.margenInversoML(
+                parseFloat(art.precio_ml) || 0, costoNeto, pesoKg,
+                canal || 'full_colecta', esEsencial,
+                parseFloat(comision_pct) || 14, costos
+            );
+            resultados.push({ codigo_goodies: art.codigo_goodies || '', nombre, ...resultado });
+        }
+        res.json(resultados);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // Precio sugerido para margen objetivo

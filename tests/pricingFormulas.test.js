@@ -297,3 +297,46 @@ describe('ML - Optimizador de precios', () => {
         expect(mejor.ajuste_necesario).toBeGreaterThan(0);
     });
 });
+
+describe('ML - Envío gratis >= $33K', () => {
+    test('Producto $40.000, 1kg → tiene costo envío', () => {
+        const r = mlService.calcularML(40000, 20000, 1, 0, 0, 0, 'full_colecta', false, 14, {});
+        expect(r.costo_fijo.costo).toBe(0); // No flat fee
+        expect(r.costo_envio.costo).toBeGreaterThan(0); // Sí envío
+        expect(r.envio_gratis_obligatorio).toBe(true);
+    });
+
+    test('Producto $25.000 → tiene flat fee, no envío', () => {
+        const r = mlService.calcularML(25000, 12000, 1, 0, 0, 0, 'full_colecta', false, 14, {});
+        expect(r.costo_fijo.costo).toBeGreaterThan(0); // Sí flat fee
+        expect(r.costo_envio.costo).toBe(0); // No envío
+        expect(r.envio_gratis_obligatorio).toBe(false);
+    });
+
+    test('Envío gratis $40K, 2kg → costo $8.250 (rango $33-50K, 2-3kg)', () => {
+        const env = mlService.costoEnvioGratis(40000, 2);
+        expect(env.costo).toBe(8250); // 2-3kg, $33-50K
+    });
+});
+
+describe('ML - Cálculo inverso', () => {
+    test('Inverso: precio $25K, costo $10K → margen positivo', () => {
+        const r = mlService.margenInversoML(25000, 10000, 1, 'flex', false, 14, { pctIIBB: 3.5 });
+        expect(r.ingreso_neto).toBeGreaterThan(10000);
+        expect(r.margen_pct).toBeGreaterThan(0);
+        expect(r.es_rentable).toBe(true);
+    });
+
+    test('Inverso: precio $12K, costo $10K → margen bajo o negativo', () => {
+        const r = mlService.margenInversoML(12000, 10000, 1, 'flex', false, 14, { pctIIBB: 3.5 });
+        expect(r.margen_pct).toBeLessThan(20);
+    });
+
+    test('Inverso con imp internos', () => {
+        const r = mlService.margenInversoML(30000, 15000, 1, 'full_colecta', false, 14, { pctIIBB: 3.5, pctImpInterno: 5 });
+        expect(r.imp_interno).toBeGreaterThan(0);
+        expect(r.margen_pct).toBeLessThan(
+            mlService.margenInversoML(30000, 15000, 1, 'full_colecta', false, 14, { pctIIBB: 3.5 }).margen_pct
+        );
+    });
+});

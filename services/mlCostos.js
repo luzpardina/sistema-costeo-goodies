@@ -1,15 +1,70 @@
 /**
  * Mercado Libre - Tablas de costos desde 12/03/2026
- * Canales: Flex, Full Súper (Esenciales / Resto)
- * Solo aplica a productos < $33.000
+ * 
+ * Para productos < $33.000:
+ *   - Comisión ML (%) + Costo fijo por unidad (flat fee según precio/peso/canal)
+ * 
+ * Para productos >= $33.000:
+ *   - Comisión ML (%) + Costo de envío gratis obligatorio (según peso y rango de precio)
  */
 
-// === FLEX (solo por precio) ===
+// === FLEX (solo por precio, productos < $33K) ===
 const FLEX_COSTOS = [
     { min: 0, max: 15999, costo: 1255 },
     { min: 16000, max: 23999, costo: 2500 },
     { min: 24000, max: 32999, costo: 3030 },
 ];
+
+// === COSTO ENVÍO GRATIS OBLIGATORIO (productos >= $33K) ===
+// Peso × rango de precio. El seller absorbe este costo.
+const ENVIO_GRATIS_COSTOS = {
+    precios: [
+        { min: 0, max: 32999, label: '<$33K' },
+        { min: 33000, max: 49999, label: '$33-50K' },
+        { min: 50000, max: 999999999, label: '>$50K' },
+    ],
+    pesos: [
+        { min: 0, max: 0.3 }, { min: 0.3, max: 0.5 }, { min: 0.5, max: 1 },
+        { min: 1, max: 1.5 }, { min: 1.5, max: 2 }, { min: 2, max: 3 },
+        { min: 3, max: 4 }, { min: 4, max: 5 }, { min: 5, max: 8 },
+        { min: 8, max: 10 }, { min: 10, max: 13 }, { min: 13, max: 15 },
+        { min: 15, max: 20 }, { min: 20, max: 25 }, { min: 25, max: 30 },
+        { min: 30, max: 40 }, { min: 40, max: 50 }, { min: 50, max: 60 },
+        { min: 60, max: 70 }, { min: 70, max: 80 }, { min: 80, max: 90 },
+        { min: 90, max: 100 }, { min: 100, max: 120 }, { min: 120, max: 140 },
+        { min: 140, max: 160 }, { min: 160, max: 180 }, { min: 180, max: 9999999 },
+    ],
+    // costos[peso_idx][precio_idx] — <$33K, $33-50K, >$50K
+    costos: [
+        [7868, 5620, 6080],
+        [8596, 6140, 6600],
+        [9800, 7000, 7470],
+        [10122, 7230, 7720],
+        [10458, 7470, 7970],
+        [11550, 8250, 8710],
+        [12866, 9190, 9860],
+        [14070, 10050, 10760],
+        [15512, 11080, 11830],
+        [16926, 12090, 12840],
+        [18270, 13050, 13920],
+        [19684, 14060, 14930],
+        [23506, 16790, 17830],
+        [28182, 20130, 21420],
+        [38780, 27700, 29410],
+        [44268, 31620, 33570],
+        [46802, 33430, 35490],
+        [51996, 37140, 39610],
+        [54068, 38620, 41290],
+        [62524, 44660, 47850],
+        [77308, 55220, 59180],
+        [89152, 63680, 68230],
+        [97328, 69520, 74490],
+        [109592, 78280, 83890],
+        [121870, 87050, 93280],
+        [134120, 95800, 102660],
+        [146398, 104570, 112060],
+    ]
+};
 
 // === FULL SÚPER - ESENCIALES (precio × peso) ===
 const FULL_SUPER_ESENCIALES = {
@@ -263,40 +318,77 @@ function costoFijoML(precio, pesoKg, canal, esEsencial) {
  * @param {number} comisionPct - % comisión ML (default 14%)
  * @param {Object} otrosCostos - { pctIIBB, pctFinanciero, pctLogisticoInterno }
  */
+/**
+ * Obtener costo de envío gratis obligatorio (>= $33K)
+ */
+function costoEnvioGratis(precio, pesoKg) {
+    if (precio < 33000) return { costo: 0, detalle: 'No aplica (<$33K)' };
+    
+    const tabla = ENVIO_GRATIS_COSTOS;
+    const precioIdx = tabla.precios.findIndex(r => precio >= r.min && precio <= r.max);
+    const pesoIdx = tabla.pesos.findIndex(r => pesoKg >= r.min && pesoKg < r.max);
+    
+    if (precioIdx === -1 || pesoIdx === -1) return { costo: 0, detalle: 'Fuera de rango' };
+    
+    const costo = tabla.costos[pesoIdx][precioIdx];
+    return {
+        costo,
+        peso_rango: `${tabla.pesos[pesoIdx].min}-${tabla.pesos[pesoIdx].max} kg`,
+        precio_rango: tabla.precios[precioIdx].label,
+        detalle: `Envío gratis: $${costo} [${tabla.pesos[pesoIdx].min}-${tabla.pesos[pesoIdx].max}kg, ${tabla.precios[precioIdx].label}]`
+    };
+}
+
+/**
+ * Cálculo completo ML para un artículo
+ * 
+ * < $33.000: Comisión + Flat fee (costo fijo por unidad)
+ * >= $33.000: Comisión + Costo envío gratis obligatorio
+ * 
+ * Además: IIBB, IVA (si corresponde), Imp. Internos (si corresponde)
+ */
 function calcularML(precioVenta, costoProducto, pesoFisicoKg, largoCm, anchoCm, altoCm, canal, esEsencial, comisionPct, otrosCostos = {}) {
     const pesoVol = pesoVolumetrico(largoCm || 0, anchoCm || 0, altoCm || 0);
     const pesoEfec = Math.max(pesoFisicoKg || 0, pesoVol);
 
-    // Comisión ML (% sobre precio)
+    // 1. Comisión ML (% sobre precio) — siempre
     const comision = comisionPct || COMISION_ML_DEFAULT;
     const montoComision = precioVenta * (comision / 100);
 
-    // Costo fijo por unidad
-    const costoFijo = costoFijoML(precioVenta, pesoEfec, canal, esEsencial);
+    // 2. Costo ML por unidad: flat fee O envío gratis según rango
+    let costoFijo = { costo: 0, detalle: '' };
+    let costoEnvio = { costo: 0, detalle: '' };
+    
+    if (precioVenta < 33000) {
+        // Flat fee según canal/precio/peso
+        costoFijo = costoFijoML(precioVenta, pesoEfec, canal, esEsencial);
+    } else {
+        // Envío gratis obligatorio (el seller lo absorbe)
+        costoEnvio = costoEnvioGratis(precioVenta, pesoEfec);
+    }
 
-    // Otros costos Goodies
+    // 3. Costos Goodies sobre la venta
     const pctIIBB = otrosCostos.pctIIBB || 0;
+    const pctIVA = otrosCostos.pctIVA || 0;       // IVA débito fiscal si corresponde
+    const pctImpInterno = otrosCostos.pctImpInterno || 0;
     const pctFinanciero = otrosCostos.pctFinanciero || 0;
-    const pctLogisticoInterno = otrosCostos.pctLogisticoInterno || 0;
+    
     const montoIIBB = precioVenta * (pctIIBB / 100);
+    const montoImpInterno = precioVenta * (pctImpInterno / 100);
     const montoFinanciero = precioVenta * (pctFinanciero / 100);
-    const montoLogisticoInterno = precioVenta * (pctLogisticoInterno / 100);
 
-    // Total costos ML + Goodies
-    const totalCostosML = montoComision + costoFijo.costo;
-    const totalCostosGoodies = montoIIBB + montoFinanciero + montoLogisticoInterno;
+    // Total costos
+    const totalCostosML = montoComision + costoFijo.costo + costoEnvio.costo;
+    const totalCostosGoodies = montoIIBB + montoImpInterno + montoFinanciero;
     const totalCostos = totalCostosML + totalCostosGoodies;
 
     // Ingreso neto
     const ingresoNeto = precioVenta - totalCostos;
 
-    // Margen
+    // Margen sobre costo
     const margenPesos = ingresoNeto - costoProducto;
     const margenPct = costoProducto > 0 ? (margenPesos / costoProducto) * 100 : 0;
     const margenSobreVenta = precioVenta > 0 ? (margenPesos / precioVenta) * 100 : 0;
-
-    // Precio sugerido para margen objetivo
-    // precioSugerido = (costoProducto + costoFijo) / (1 - comision/100 - otrosPct/100) * (1 + margenObjetivo/100)
 
     return {
         precio_venta: round(precioVenta),
@@ -306,12 +398,15 @@ function calcularML(precioVenta, costoProducto, pesoFisicoKg, largoCm, anchoCm, 
         peso_efectivo: round(pesoEfec),
         canal,
         es_esencial: esEsencial,
+        // Desglose
         comision_pct: comision,
         comision_monto: round(montoComision),
-        costo_fijo: costoFijo,
+        costo_fijo: costoFijo,          // Solo < $33K
+        costo_envio: costoEnvio,        // Solo >= $33K
         iibb_monto: round(montoIIBB),
+        imp_interno_monto: round(montoImpInterno),
         financiero_monto: round(montoFinanciero),
-        logistico_interno_monto: round(montoLogisticoInterno),
+        // Totales
         total_costos_ml: round(totalCostosML),
         total_costos_goodies: round(totalCostosGoodies),
         total_costos: round(totalCostos),
@@ -320,7 +415,36 @@ function calcularML(precioVenta, costoProducto, pesoFisicoKg, largoCm, anchoCm, 
         margen_pct: round(margenPct),
         margen_sobre_venta: round(margenSobreVenta),
         envio_gratis_obligatorio: precioVenta >= 33000,
-        alerta: margenPct < 10 ? '⚠️ Margen menor al 10%' : (margenPct < 0 ? '🔴 PÉRDIDA' : null)
+        alerta: margenPct < 0 ? '🔴 PÉRDIDA' : (margenPct < 10 ? '⚠️ Margen menor al 10%' : null)
+    };
+}
+
+/**
+ * CÁLCULO INVERSO: dado un precio de publicación ML, calcular el margen
+ * Misma lógica que calcularML pero pensado para "ya tengo el precio, cuánto me queda"
+ */
+function margenInversoML(precioPublicacion, costoImportacion, pesoKg, canal, esEsencial, comisionPct, otrosCostos = {}) {
+    const resultado = calcularML(precioPublicacion, costoImportacion, pesoKg, 0, 0, 0, canal, esEsencial, comisionPct, otrosCostos);
+    
+    return {
+        precio_publicacion: round(precioPublicacion),
+        costo_importacion: round(costoImportacion),
+        // Desglose costos ML
+        comision: round(resultado.comision_monto),
+        costo_fijo_o_envio: round(resultado.costo_fijo.costo + resultado.costo_envio.costo),
+        detalle_costo_ml: precioPublicacion < 33000 ? resultado.costo_fijo.detalle : resultado.costo_envio.detalle,
+        // Desglose costos Goodies  
+        iibb: round(resultado.iibb_monto),
+        imp_interno: round(resultado.imp_interno_monto),
+        financiero: round(resultado.financiero_monto),
+        // Resultado
+        total_deducciones: round(resultado.total_costos),
+        ingreso_neto: round(resultado.ingreso_neto),
+        margen_pesos: round(resultado.margen_pesos),
+        margen_pct: round(resultado.margen_pct),
+        margen_sobre_venta_pct: round(resultado.margen_sobre_venta),
+        es_rentable: resultado.margen_pct > 0,
+        alerta: resultado.alerta
     };
 }
 
@@ -498,7 +622,9 @@ function round(v) {
 }
 
 module.exports = {
-    costoFijoML, calcularML, calcularMLConCaja, precioSugeridoML, optimizarPrecioML,
+    costoFijoML, costoEnvioGratis, calcularML, calcularMLConCaja, 
+    precioSugeridoML, optimizarPrecioML, margenInversoML,
     pesoVolumetrico, pesoEfectivo,
-    FLEX_COSTOS, FULL_SUPER_ESENCIALES, FULL_SUPER_RESTO, COLECTA_COSTOS, COMISION_ML_DEFAULT, CAJAS_ML
+    FLEX_COSTOS, FULL_SUPER_ESENCIALES, FULL_SUPER_RESTO, COLECTA_COSTOS, 
+    ENVIO_GRATIS_COSTOS, COMISION_ML_DEFAULT, CAJAS_ML
 };
