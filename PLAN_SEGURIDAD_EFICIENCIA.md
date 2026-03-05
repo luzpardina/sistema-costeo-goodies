@@ -137,3 +137,36 @@
 ---
 
 *Documento generado el 5 de Marzo de 2026*
+
+---
+
+## ESTADO DE IMPLEMENTACIÓN (actualizado 5 marzo 2026)
+
+| # | Item | Estado |
+|---|------|--------|
+| 1 | .gitignore + .env fuera del repo | ✅ Hecho |
+| 2 | Proteger registro (solo admins) | ✅ Hecho |
+| 3 | JWT_SECRET fuerte | ✅ Hecho (local, pendiente Railway) |
+| 4 | Roles y permisos (noVisualizador) | ✅ Hecho en DELETE endpoints |
+| 5 | Helmet (headers seguridad) | ✅ Hecho |
+| 6 | Rate limiting login | ✅ Hecho (10 intentos/15 min) |
+| 7 | Validación inputs | ⏳ Pendiente |
+| 8 | CORS restrictivo | ✅ Hecho (configurable) |
+| 9 | JWT refresh tokens | ⏳ Pendiente |
+| 10 | HTTPS forzado | ✅ Hecho (producción) |
+| 11 | Caché servidor | ✅ Hecho (node-cache 5 min) |
+| 12 | Paginación | ⏳ Pendiente |
+| 13 | Índices DB | ✅ Hecho (auto en startup) |
+| 14 | Compresión | ✅ Hecho (compression) |
+| 15 | Lazy loading JS | ⏳ Pendiente |
+| 16 | Logging estructurado | ⏳ Parcial (audit log) |
+| 17 | Error handler centralizado | ✅ Hecho |
+| 18 | Backup automático DB | ⏳ Pendiente |
+| 19 | Health check completo | ✅ Hecho (DB + memoria + uptime) |
+| 20 | Tests automatizados | ✅ Hecho (17 tests fórmulas pricing) |
+| 21 | Config variables en DB | ✅ Hecho (ConfigSistema) |
+| 22 | Limitar uploads | ✅ Hecho (10mb) |
+| 23 | Soft-delete costeos | ✅ Hecho (paranoid) |
+| 24 | Auditoría completa | ✅ Hecho (AuditoriaLog + visor ADMIN) |
+
+**Resumen: 18/24 implementados, 6 pendientes**

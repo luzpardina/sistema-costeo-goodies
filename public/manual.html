@@ -205,7 +205,7 @@
     <div class="manual-container">
         <nav class="sidebar">
             <h2>📘 Manual de Usuario</h2>
-            <div class="version" id="manualVersion">Versión 2.1 — Marzo 2026</div>
+            <div class="version" id="manualVersion">Versión 2.2 — Marzo 2026</div>
             
             <div class="section-title">General</div>
             <a href="#intro">Introducción</a>
@@ -993,6 +993,23 @@
             <section id="changelog">
                 <h2>Historial de Cambios</h2>
                 
+                <h3>Marzo 2026 — v2.2 (seguridad + modular)</h3>
+                <ul>
+                    <li>Sistema modularizado: 5 archivos JS (common, comex, comercial, contable, admin)</li>
+                    <li>Seguridad: Helmet, rate limiting login, CORS restrictivo, HTTPS redirect</li>
+                    <li>Roles y permisos: middleware noVisualizador en endpoints de escritura</li>
+                    <li>Registro protegido: solo admins pueden crear usuarios</li>
+                    <li>Soft-delete en costeos (se pueden recuperar)</li>
+                    <li>Índices de DB para rendimiento (17 índices automáticos)</li>
+                    <li>Caché en servidor (node-cache 5 min en catálogo)</li>
+                    <li>Compresión de respuestas (gzip)</li>
+                    <li>Tests unitarios: 17 tests para fórmulas de pricing</li>
+                    <li>Tabla ConfigSistema: IVA, estadística, ANMAT configurables desde ADMIN</li>
+                    <li>Log de Auditoría general con visor en ADMIN</li>
+                    <li>Health check completo (DB + memoria + uptime)</li>
+                    <li>Error handler centralizado</li>
+                </ul>
+
                 <h3>Marzo 2026 — v2.1 (sesión actual)</h3>
                 <ul>
                     <li>Buscador rápido global: busca artículos y costeos desde cualquier módulo</li>
@@ -1058,7 +1075,7 @@
             </section>
 
             <div style="margin-top:60px; padding:20px; background:#12121e; border-radius:8px; text-align:center; color:#666;">
-                <p>Sistema de Costeo GOODIES S.A. — Manual v2.1</p>
+                <p>Sistema de Costeo GOODIES S.A. — Manual v2.2</p>
                 <p>Desarrollado con asistencia de Claude (Anthropic)</p>
                 <p style="margin-top:10px;">Para soporte técnico, contactar al administrador del sistema.</p>
             </div>
