@@ -62,6 +62,10 @@ const apiLimiter = rateLimit({
 // === RENDIMIENTO ===
 app.use(compression());
 
+// === LOGGING ===
+const { requestLogger } = require('./utils/logger');
+app.use(requestLogger);
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static('public'));

@@ -169,15 +169,27 @@ router.get('/listar', auth, async (req, res) => {
     try {
         const { Op } = require('sequelize');
         const sortBy = req.query.sort || 'fecha_despacho';
+        const page = parseInt(req.query.page) || 0;
+        const limit = parseInt(req.query.limit) || 0; // 0 = all (backwards compatible)
+        const offset = page > 0 && limit > 0 ? (page - 1) * limit : 0;
+
         const orderClause = sortBy === 'actualizado'
             ? [['updated_at', 'DESC']]
             : [['fecha_despacho', 'DESC NULLS LAST'], ['created_at', 'DESC']];
-        const costeos = await Costeo.findAll({
+        
+        const queryOpts = {
             order: orderClause,
             include: [
                 { model: ArticuloCosteo, as: 'articulos', attributes: ['id', 'codigo_goodies', 'nombre'] }
             ]
-        });
+        };
+        if (limit > 0) {
+            queryOpts.limit = limit;
+            queryOpts.offset = offset;
+        }
+
+        const costeos = await Costeo.findAll(queryOpts);
+        const total = limit > 0 ? await Costeo.count() : costeos.length;
 
         // Buscar marcas del catálogo para todos los códigos de artículos
         const todosCodigos = [...new Set(costeos.flatMap(c => (c.articulos || []).map(a => a.codigo_goodies).filter(Boolean)))];
@@ -219,7 +231,11 @@ router.get('/listar', auth, async (req, res) => {
             };
         });
 
-        res.json(lista);
+        if (limit > 0) {
+            res.json({ data: lista, total, page, limit, pages: Math.ceil(total / limit) });
+        } else {
+            res.json(lista); // Backwards compatible: array for no pagination
+        }
     } catch (error) {
         console.error('Error al listar costeos:', error);
         res.status(500).json({ error: 'Error al listar costeos' });
