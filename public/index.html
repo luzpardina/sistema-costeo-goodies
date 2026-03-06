@@ -198,7 +198,7 @@
                 <div class="filtros">
                     <div class="filtro-grupo">
                         <label>Nombre Costeo</label>
-                        <input type="text" id="filtroNombre" placeholder="Buscar por nombre..." oninput="aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
+                        <input type="search" id="filtroNombre" autocomplete="off" placeholder="Buscar por nombre..." oninput="aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
                     </div>
                     <div class="filtro-grupo">
                         <label>Proveedor de Origen</label>
@@ -257,7 +257,7 @@
                 <div class="filtros" style="margin-bottom: 15px;">
                     <div class="filtro-grupo">
                         <label>Buscar Artículo</label>
-                        <input type="text" id="buscarArticulo" placeholder="Código o nombre..." onkeyup="filtrarArticulos()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 250px;">
+                        <input type="search" id="buscarArticulo" autocomplete="off" placeholder="Código o nombre..." onkeyup="filtrarArticulos()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 250px;">
                     </div>
                     <!-- Hidden trap fields to prevent Chrome autofill -->
                     <input type="text" name="prevent_autofill" style="display:none;" tabindex="-1">
@@ -431,7 +431,7 @@
                     <span style="color:#888;font-size:11px;margin-right:5px;align-self:center;">Listas:</span>
                 </div>
                 <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
-                    <input type="text" id="filtroPrecioTexto" placeholder="🔍 Buscar por código o nombre..." oninput="filtrarArticulosPrecios()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px 12px;border-radius:5px;width:250px;">
+                    <input type="search" id="filtroPrecioTexto" autocomplete="off" placeholder="🔍 Buscar por código o nombre..." oninput="filtrarArticulosPrecios()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px 12px;border-radius:5px;width:250px;">
                     <select id="filtroPrecioProveedor" onchange="cascadaFiltrosPrecios(); filtrarArticulosPrecios()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
                         <option value="">Todos los proveedores</option>
                     </select>
@@ -467,7 +467,7 @@
                     <span style="color:#888;font-size:11px;margin-right:5px;align-self:center;">Listas:</span>
                 </div>
                 <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
-                    <input type="text" id="filtroMargenTexto" placeholder="🔍 Buscar por código o nombre..." oninput="filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px 12px;border-radius:5px;width:250px;">
+                    <input type="search" id="filtroMargenTexto" autocomplete="off" placeholder="🔍 Buscar por código o nombre..." oninput="filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px 12px;border-radius:5px;width:250px;">
                     <select id="filtroMargenProveedor" onchange="cascadaFiltrosMargenes(); filtrarArticulosPvp()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:8px;border-radius:5px;">
                         <option value="">Todos los proveedores</option>
                     </select>
@@ -796,7 +796,7 @@
                     </div>
                     <div style="flex:1;min-width:150px;">
                         <label style="font-size:11px;color:#888;">Empresa Fábrica</label>
-                        <input type="text" id="rev_filtroFabrica" list="rev_listaFabricas" autocomplete="off" placeholder="Todas" style="width:100%;padding:8px;background:#1e1e2f;color:#fff;border:1px solid #444;border-radius:4px;font-size:12px;">
+                        <input type="search" id="rev_filtroFabrica" autocomplete="off" list="rev_listaFabricas" autocomplete="off" placeholder="Todas" style="width:100%;padding:8px;background:#1e1e2f;color:#fff;border:1px solid #444;border-radius:4px;font-size:12px;">
                         <datalist id="rev_listaFabricas"></datalist>
                     </div>
                     <div style="flex:1;min-width:120px;">
