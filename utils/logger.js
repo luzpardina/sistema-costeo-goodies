@@ -1,5 +1,31 @@
 const winston = require('winston');
 const path = require('path');
+const fs = require('fs');
+
+// Ensure logs directory exists
+const logsDir = path.join(__dirname, '..', 'logs');
+try { if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true }); } catch(e) { /* Railway may not allow */ }
+
+const transports = [
+    new winston.transports.Console({
+        format: winston.format.combine(
+            winston.format.colorize(),
+            winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
+                const metaStr = Object.keys(meta).length ? ' ' + JSON.stringify(meta) : '';
+                return `${timestamp} [${level}] ${message}${metaStr}`;
+            })
+        )
+    })
+];
+
+// Only add file transports if logs dir is writable
+try {
+    fs.accessSync(logsDir, fs.constants.W_OK);
+    transports.push(
+        new winston.transports.File({ filename: path.join(logsDir, 'error.log'), level: 'error', maxsize: 5242880, maxFiles: 3 }),
+        new winston.transports.File({ filename: path.join(logsDir, 'combined.log'), maxsize: 10485760, maxFiles: 5 })
+    );
+} catch(e) { /* No file logging on this environment */ }
 
 const logger = winston.createLogger({
     level: process.env.LOG_LEVEL || 'info',
@@ -9,31 +35,7 @@ const logger = winston.createLogger({
         winston.format.json()
     ),
     defaultMeta: { service: 'sistema-costeo' },
-    transports: [
-        // Console (always)
-        new winston.transports.Console({
-            format: winston.format.combine(
-                winston.format.colorize(),
-                winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
-                    const metaStr = Object.keys(meta).length ? ' ' + JSON.stringify(meta) : '';
-                    return `${timestamp} [${level}] ${message}${metaStr}`;
-                })
-            )
-        }),
-        // File: errors only
-        new winston.transports.File({
-            filename: path.join(__dirname, '..', 'logs', 'error.log'),
-            level: 'error',
-            maxsize: 5242880, // 5MB
-            maxFiles: 3,
-        }),
-        // File: all logs
-        new winston.transports.File({
-            filename: path.join(__dirname, '..', 'logs', 'combined.log'),
-            maxsize: 10485760, // 10MB
-            maxFiles: 5,
-        })
-    ]
+    transports
 });
 
 // Request logging middleware
