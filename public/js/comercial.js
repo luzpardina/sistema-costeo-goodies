@@ -500,9 +500,9 @@
     }
 
     async function calcularPrecios() {
-        // Solo artículos que están en la vista filtrada Y tildados
-        const codigos = articulosPrecios.filter(a => preciosSeleccionados.has(a.codigo_goodies)).map(a => a.codigo_goodies);
-        if (codigos.length === 0) { alert('Seleccioná al menos un artículo de los filtrados'); return; }
+        // Enviar artículos CON su costo (de la fuente elegida) para que el backend no rebusque
+        const arts = articulosPrecios.filter(a => preciosSeleccionados.has(a.codigo_goodies));
+        if (arts.length === 0) { alert('Seleccioná al menos un artículo de los filtrados'); return; }
         const listasIds = [...listasSeleccionadas];
         if (listasIds.length === 0) { alert('Seleccioná al menos una lista de precios (checkboxes en Listas de Precios)'); return; }
 
@@ -510,7 +510,15 @@
             const resp = await fetch(API_URL + '/api/comercial/calcular-precios', {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ codigos, lista_ids: listasIds })
+                body: JSON.stringify({
+                    articulos: arts.map(a => ({
+                        codigo_goodies: a.codigo_goodies,
+                        costo_neto: a.costo_neto,
+                        iva_pct: a.iva_pct,
+                        imp_interno_pct: a.imp_interno_pct
+                    })),
+                    lista_ids: listasIds
+                })
             });
             const resultados = await resp.json();
             ultimosResultadosPrecios = resultados;
@@ -823,7 +831,16 @@
             const resp = await fetch(API_URL + '/api/comercial/calcular-margenes', {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ articulos_pvp: artConPvp.map(a => ({ codigo_goodies: a.codigo_goodies, pvp: a.pvp })), lista_ids: listasIds })
+                body: JSON.stringify({
+                    articulos_pvp: artConPvp.map(a => ({
+                        codigo_goodies: a.codigo_goodies,
+                        pvp: a.pvp,
+                        costo_neto: a.costo_neto,
+                        iva_pct: a.iva_pct,
+                        imp_interno_pct: a.imp_interno_pct
+                    })),
+                    lista_ids: listasIds
+                })
             });
             const resultados = await resp.json();
             ultimosResultadosMargenes = resultados;

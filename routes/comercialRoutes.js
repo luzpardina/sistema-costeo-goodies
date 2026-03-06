@@ -156,7 +156,7 @@ router.put('/acuerdos/:id', auth, async (req, res) => {
 
 router.post('/calcular-precios', auth, async (req, res) => {
     try {
-        const { codigos, lista_ids } = req.body;
+        const { articulos, codigos, lista_ids } = req.body;
 
         let whereListas = {};
         if (lista_ids && lista_ids.length > 0) {
@@ -166,20 +166,48 @@ router.post('/calcular-precios', auth, async (req, res) => {
         const todosAcuerdos = await AcuerdoComercial.findAll({ order: [['orden', 'ASC']] });
         const resultados = [];
 
-        for (const codigo_goodies of codigos) {
-            const ultimoArticulo = await ArticuloCosteo.findOne({
-                where: { codigo_goodies },
-                include: [{ model: Costeo, as: 'costeo', where: { estado: 'calculado', fecha_despacho: { [Op.ne]: null } } }],
-                order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'DESC']]
-            });
+        // Build list of articles to process
+        // NEW: accept articulos with costo_neto from frontend
+        // FALLBACK: accept codigos (old format) and fetch from DB
+        let articulosToProcess = [];
+        if (articulos && articulos.length > 0) {
+            // Frontend sent costs directly — use them
+            for (const art of articulos) {
+                const catalogo = await CatalogoArticulo.findOne({ where: { codigo_goodies: art.codigo_goodies } });
+                articulosToProcess.push({
+                    codigo_goodies: art.codigo_goodies,
+                    nombre: catalogo ? catalogo.nombre : art.codigo_goodies,
+                    costoNeto: parseFloat(art.costo_neto) || 0,
+                    ivaPct: art.iva_pct !== undefined ? parseFloat(art.iva_pct) / 100 : (catalogo ? (parseFloat(catalogo.iva_porcentaje) || 0.21) : 0.21),
+                    impInternoPct: art.imp_interno_pct !== undefined ? parseFloat(art.imp_interno_pct) / 100 : (catalogo ? (parseFloat(catalogo.imp_interno_porcentaje) || 0) : 0),
+                    rubro: catalogo ? (catalogo.rubro || 'Otros') : 'Otros'
+                });
+            }
+        } else if (codigos && codigos.length > 0) {
+            // Old format: fetch from DB (backwards compatible)
+            for (const codigo_goodies of codigos) {
+                const ultimoArticulo = await ArticuloCosteo.findOne({
+                    where: { codigo_goodies },
+                    include: [{ model: Costeo, as: 'costeo', where: { estado: 'calculado', fecha_despacho: { [Op.ne]: null } } }],
+                    order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'DESC']]
+                });
+                const costoNeto = ultimoArticulo ? parseFloat(ultimoArticulo.costo_unitario_neto_ars) || 0 : 0;
+                if (costoNeto === 0) continue;
+                const catalogo = await CatalogoArticulo.findOne({ where: { codigo_goodies } });
+                articulosToProcess.push({
+                    codigo_goodies,
+                    nombre: catalogo ? catalogo.nombre : codigo_goodies,
+                    costoNeto,
+                    ivaPct: catalogo ? (parseFloat(catalogo.iva_porcentaje) || 0.21) : 0.21,
+                    impInternoPct: catalogo ? (parseFloat(catalogo.imp_interno_porcentaje) || 0) : 0,
+                    rubro: catalogo ? (catalogo.rubro || 'Otros') : 'Otros'
+                });
+            }
+        }
 
-            const costoNeto = ultimoArticulo ? parseFloat(ultimoArticulo.costo_unitario_neto_ars) || 0 : 0;
+        for (const artData of articulosToProcess) {
+            const { codigo_goodies, nombre, costoNeto, ivaPct, impInternoPct, rubro } = artData;
             if (costoNeto === 0) continue;
-
-            const catalogo = await CatalogoArticulo.findOne({ where: { codigo_goodies } });
-            const ivaPct = catalogo ? (parseFloat(catalogo.iva_porcentaje) || 0.21) : 0.21;
-            const impInternoPct = catalogo ? (parseFloat(catalogo.imp_interno_porcentaje) || 0) : 0;
-            const rubro = catalogo ? (catalogo.rubro || 'Otros') : 'Otros';
 
             const preciosPorLista = [];
 
@@ -423,17 +451,21 @@ router.post('/calcular-margenes', auth, async (req, res) => {
         for (const artPvp of articulos_pvp) {
             const { codigo_goodies, pvp } = artPvp;
 
-            const ultimoArticulo = await ArticuloCosteo.findOne({
-                where: { codigo_goodies },
-                include: [{ model: Costeo, as: 'costeo', where: { estado: 'calculado', fecha_despacho: { [Op.ne]: null } } }],
-                order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'DESC']]
-            });
-
-            const costoNeto = ultimoArticulo ? parseFloat(ultimoArticulo.costo_unitario_neto_ars) || 0 : 0;
+            // Use cost from frontend if provided, otherwise fetch from DB
+            let costoNeto = artPvp.costo_neto ? parseFloat(artPvp.costo_neto) : 0;
+            
+            if (!costoNeto) {
+                const ultimoArticulo = await ArticuloCosteo.findOne({
+                    where: { codigo_goodies },
+                    include: [{ model: Costeo, as: 'costeo', where: { estado: 'calculado', fecha_despacho: { [Op.ne]: null } } }],
+                    order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'DESC']]
+                });
+                costoNeto = ultimoArticulo ? parseFloat(ultimoArticulo.costo_unitario_neto_ars) || 0 : 0;
+            }
 
             const catalogo = await CatalogoArticulo.findOne({ where: { codigo_goodies } });
-            const ivaPct = catalogo ? (parseFloat(catalogo.iva_porcentaje) || 0.21) : 0.21;
-            const impInternoPct = catalogo ? (parseFloat(catalogo.imp_interno_porcentaje) || 0) : 0;
+            const ivaPct = artPvp.iva_pct !== undefined ? parseFloat(artPvp.iva_pct) / 100 : (catalogo ? (parseFloat(catalogo.iva_porcentaje) || 0.21) : 0.21);
+            const impInternoPct = artPvp.imp_interno_pct !== undefined ? parseFloat(artPvp.imp_interno_pct) / 100 : (catalogo ? (parseFloat(catalogo.imp_interno_porcentaje) || 0) : 0);
             const rubro = catalogo ? (catalogo.rubro || 'Otros') : 'Otros';
 
             const margenesListas = [];
@@ -639,16 +671,19 @@ router.post('/precios-actuales', auth, async (req, res) => {
 
 router.post('/simular-descuento', auth, async (req, res) => {
     try {
-        const { codigo_goodies, lista_id, precio_actual, cantidad_actual } = req.body;
+        const { codigo_goodies, lista_id, precio_actual, cantidad_actual, costo_neto_override } = req.body;
 
-        // Buscar costo neto
-        const ultimoArticulo = await ArticuloCosteo.findOne({
-            where: { codigo_goodies },
-            include: [{ model: Costeo, as: 'costeo', where: { estado: { [Op.ne]: 'borrador' } } }],
-            order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'DESC']]
-        });
-
-        const costoNeto = ultimoArticulo ? parseFloat(ultimoArticulo.costo_unitario_neto_ars) || 0 : 0;
+        // Use cost from frontend if provided, otherwise fetch from DB
+        let costoNeto = costo_neto_override ? parseFloat(costo_neto_override) : 0;
+        
+        if (!costoNeto) {
+            const ultimoArticulo = await ArticuloCosteo.findOne({
+                where: { codigo_goodies },
+                include: [{ model: Costeo, as: 'costeo', where: { estado: { [Op.ne]: 'borrador' } } }],
+                order: [[{ model: Costeo, as: 'costeo' }, 'fecha_despacho', 'DESC']]
+            });
+            costoNeto = ultimoArticulo ? parseFloat(ultimoArticulo.costo_unitario_neto_ars) || 0 : 0;
+        }
 
         // Buscar lista y sus parámetros
         const lista = await ListaPrecio.findByPk(lista_id);
