@@ -126,16 +126,32 @@
             document.getElementById('rev_filtroFabrica').value = '';
             document.getElementById('rev_filtroMarca').value = '';
             
-            // Poblar datalists de filtros desde el catálogo
+            // Poblar datalists — usar catálogo local si disponible, si no cargar del API
             var arts = todosLosArticulos || [];
+            if (arts.length > 0) {
+                poblarDatalistsRevaluacion(arts);
+            } else {
+                // Cargar proveedores/fabricantes/marcas desde el catálogo API
+                fetch(API_URL + '/api/maestro/stats', { headers: { 'Authorization': 'Bearer ' + token } })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.proveedores) document.getElementById('rev_listaProveedores').innerHTML = data.proveedores.map(function(p){return '<option value="'+p+'">';}).join('');
+                        if (data.fabricantes) document.getElementById('rev_listaFabricas').innerHTML = data.fabricantes.map(function(f){return '<option value="'+f+'">';}).join('');
+                        if (data.marcas) document.getElementById('rev_listaMarcas').innerHTML = data.marcas.map(function(m){return '<option value="'+m+'">';}).join('');
+                    })
+                    .catch(function() { /* silently fail */ });
+            }
+            
+            document.getElementById('revaluarModal').style.display = 'flex';
+        }
+
+        function poblarDatalistsRevaluacion(arts) {
             var provs = [...new Set(arts.map(function(a){return a.proveedor;}).filter(function(p){return p;}))].sort();
             var fabs = [...new Set(arts.map(function(a){return a.empresa_fabrica;}).filter(function(f){return f;}))].sort();
             var marcas = [...new Set(arts.map(function(a){return a.marca;}).filter(function(m){return m;}))].sort();
             document.getElementById('rev_listaProveedores').innerHTML = provs.map(function(p){return '<option value="'+p+'">';}).join('');
             document.getElementById('rev_listaFabricas').innerHTML = fabs.map(function(f){return '<option value="'+f+'">';}).join('');
             document.getElementById('rev_listaMarcas').innerHTML = marcas.map(function(m){return '<option value="'+m+'">';}).join('');
-            
-            document.getElementById('revaluarModal').style.display = 'flex';
         }
         
         // Rev motivo - detalle siempre visible
@@ -163,6 +179,13 @@
             const costeoIds = Array.from(seleccionados).map(cb => cb.dataset.id);
             
             try {
+                var filtros = {
+                    filtro_proveedor: document.getElementById('rev_filtroProveedor').value.trim() || null,
+                    filtro_fabrica: document.getElementById('rev_filtroFabrica').value.trim() || null,
+                    filtro_marca: document.getElementById('rev_filtroMarca').value.trim() || null
+                };
+                console.log('Revaluación filtros enviados:', filtros);
+                
                 const res = await fetch(API_URL + '/api/revaluaciones/generar', {
                     method: 'POST',
                     headers: {
@@ -176,9 +199,9 @@
                         tc_gbp: tcGbp || null,
                         motivo: motivo,
                         solo_contable: document.getElementById('rev_soloContable').checked,
-                        filtro_proveedor: document.getElementById('rev_filtroProveedor').value.trim() || null,
-                        filtro_fabrica: document.getElementById('rev_filtroFabrica').value.trim() || null,
-                        filtro_marca: document.getElementById('rev_filtroMarca').value.trim() || null
+                        filtro_proveedor: filtros.filtro_proveedor,
+                        filtro_fabrica: filtros.filtro_fabrica,
+                        filtro_marca: filtros.filtro_marca
                     })
                 });
                 

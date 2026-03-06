@@ -5,6 +5,8 @@ class RevaluacionService {
 
     static async generarRevaluacion(usuarioId, costeoIds, tcNuevoUSD, tcNuevoEUR, tcNuevoGBP, motivo, soloContable = false, filtros = {}) {
         
+        console.log('Revaluación - Filtros recibidos:', JSON.stringify(filtros));
+        
         // 1. Obtener artículos a revaluar
         let whereCondition = { 
             estado: 'calculado',
@@ -92,6 +94,9 @@ class RevaluacionService {
         if (Object.keys(articulosPorCodigo).length === 0) {
             throw new Error('No se encontraron artículos que coincidan con los filtros aplicados');
         }
+
+        console.log('Revaluación - Artículos después de filtros:', Object.keys(articulosPorCodigo).length, 
+            'de', costeos.reduce((sum, c) => sum + c.articulos.length, 0), 'totales');
         
         // Build motivo with filter info
         let motivoCompleto = motivo;

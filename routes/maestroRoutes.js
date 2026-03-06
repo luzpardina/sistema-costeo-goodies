@@ -504,13 +504,23 @@ router.get('/stats', auth, cacheMiddleware(120), async (req, res) => {
             raw: true
         });
         
+        // Listas de valores para datalists
+        const marcas = await CatalogoArticulo.findAll({
+            attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col('marca')), 'marca']],
+            where: { habilitado: true, proveedor_activo: true, marca: { [Op.and]: [{ [Op.ne]: '' }, { [Op.ne]: null }] } },
+            order: [['marca', 'ASC']], raw: true
+        });
+
         res.json({ 
             total, totalInactivos, totalGeneral,
             proveedores_activos: provsActivos.length,
             proveedores_inactivos: provsInactivos.length,
             fabricas_activas: fabsActivas.length,
             fabricas_inactivas: fabsInactivas.length,
-            ultima_actualizacion: ultimoArt ? ultimoArt.updated_at : null 
+            ultima_actualizacion: ultimoArt ? ultimoArt.updated_at : null,
+            proveedores: provsActivos.map(p => p.proveedor).filter(p => p).sort(),
+            fabricantes: fabsActivas.map(f => f.empresa_fabrica).filter(f => f).sort(),
+            marcas: marcas.map(m => m.marca).filter(m => m).sort()
         });
     } catch (error) { res.json({ total: 0, ultima_actualizacion: null }); }
 });
