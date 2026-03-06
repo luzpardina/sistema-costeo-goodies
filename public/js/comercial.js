@@ -142,12 +142,28 @@
             activa: listasSeleccionadas.has(id)
         };
         try {
-            await fetch(API_URL + '/api/comercial/listas/' + id, {
+            var resp = await fetch(API_URL + '/api/comercial/listas/' + id, {
                 method: 'PUT',
                 headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            await cargarListas();
+            if (resp.ok) {
+                // Update only this list in local data, don't reload all
+                var idx = listasPrecios.findIndex(function(l) { return l.id === id; });
+                if (idx >= 0) {
+                    Object.assign(listasPrecios[idx], data);
+                    listasPrecios[idx]._editing = false;
+                }
+                // Brief visual feedback
+                var row = document.getElementById('ed_nombre_' + id);
+                if (row) {
+                    var tr = row.closest('tr');
+                    if (tr) { tr.style.background = '#1b3a1b'; setTimeout(function() { tr.style.background = ''; }, 1000); }
+                }
+                actualizarSelectsListas();
+            } else {
+                alert('Error al guardar');
+            }
         } catch(e) { alert('Error al guardar: ' + e.message); }
     }
 
