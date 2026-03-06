@@ -411,23 +411,46 @@
         const fmtMoney = v => '$' + (parseFloat(v)||0).toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:0});
         var html = '';
 
-        // 1. Costeos por Proveedor (top 8)
-        const porProv = {};
-        costeos.forEach(c => { const p = c.proveedor || 'Sin Proveedor'; porProv[p] = (porProv[p] || 0) + 1; });
-        const topProvs = Object.entries(porProv).sort((a, b) => b[1] - a[1]).slice(0, 8);
-        const maxProv = topProvs[0] ? topProvs[0][1] : 1;
+        // Helper: get year from fecha_despacho
+        function getYear(c) {
+            if (!c.fecha_despacho) return null;
+            return new Date(c.fecha_despacho).getFullYear();
+        }
 
-        html += '<div style="background:#12121e;border-radius:8px;padding:12px;border:1px solid #333;">';
-        html += '<p style="color:#4fc3f7;font-weight:bold;font-size:12px;margin-bottom:8px;">Costeos por Proveedor</p>';
-        topProvs.forEach(([prov, cant]) => {
-            const pct = (cant / maxProv) * 100;
-            html += '<div style="margin:4px 0;display:flex;align-items:center;gap:6px;">';
-            html += '<span style="font-size:10px;color:#aaa;width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + prov + '">' + prov + '</span>';
-            html += '<div style="flex:1;background:#1a1a2e;border-radius:3px;height:14px;"><div style="width:' + pct + '%;background:#4fc3f7;height:100%;border-radius:3px;"></div></div>';
-            html += '<span style="font-size:11px;color:#fff;width:20px;text-align:right;">' + cant + '</span>';
+        // 1. Importaciones por Proveedor — separadas por año
+        var costeosConDesp = costeos.filter(function(c) { return c.fecha_despacho; });
+        var years = {};
+        costeosConDesp.forEach(function(c) {
+            var y = getYear(c);
+            if (y < 2025) y = 'Anteriores';
+            if (!years[y]) years[y] = [];
+            years[y].push(c);
+        });
+
+        // Show 2026 first, then 2025, then earlier
+        var yearOrder = ['2026', '2025', 'Anteriores'];
+        yearOrder.forEach(function(yearLabel) {
+            var yearCosteos = years[yearLabel];
+            if (!yearCosteos || yearCosteos.length === 0) return;
+
+            var porProv = {};
+            yearCosteos.forEach(function(c) { var p = c.proveedor || 'Sin Proveedor'; porProv[p] = (porProv[p] || 0) + 1; });
+            var topProvs = Object.entries(porProv).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 8);
+            var maxProv = topProvs[0] ? topProvs[0][1] : 1;
+
+            html += '<div style="background:#12121e;border-radius:8px;padding:12px;border:1px solid #333;">';
+            html += '<p style="color:#4fc3f7;font-weight:bold;font-size:12px;margin-bottom:8px;">Importaciones por Proveedor ' + yearLabel + ' <span style="color:#888;font-weight:normal;">(' + yearCosteos.length + ' despachos)</span></p>';
+            topProvs.forEach(function(entry) {
+                var prov = entry[0], cant = entry[1];
+                var pct = (cant / maxProv) * 100;
+                html += '<div style="margin:4px 0;display:flex;align-items:center;gap:6px;">';
+                html += '<span style="font-size:10px;color:#aaa;width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + prov + '">' + prov + '</span>';
+                html += '<div style="flex:1;background:#1a1a2e;border-radius:3px;height:14px;"><div style="width:' + pct + '%;background:#4fc3f7;height:100%;border-radius:3px;"></div></div>';
+                html += '<span style="font-size:11px;color:#fff;width:20px;text-align:right;">' + cant + '</span>';
+                html += '</div>';
+            });
             html += '</div>';
         });
-        html += '</div>';
 
         // 2. Evolución TC USD (últimos 15 costeos con fecha despacho)
         const costeosConTC = costeos.filter(c => c.fecha_despacho && c.tc_usd).sort((a, b) => new Date(a.fecha_despacho) - new Date(b.fecha_despacho)).slice(-15);
@@ -443,7 +466,6 @@
             costeosConTC.forEach(c => {
                 const tc = parseFloat(c.tc_usd);
                 const pct = ((tc - minTC) / rangoTC) * 80 + 20;
-                const fecha = new Date(c.fecha_despacho).toLocaleDateString('es-AR', {month:'short', year:'2-digit'});
                 html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;" title="' + c.nombre_costeo + ': TC ' + tc + '">';
                 html += '<span style="font-size:8px;color:#aaa;">' + tc.toFixed(0) + '</span>';
                 html += '<div style="width:100%;background:#ff9800;border-radius:2px 2px 0 0;height:' + pct + '%;"></div>';
@@ -457,34 +479,52 @@
             html += '</div>';
         }
 
-        // 3. Resumen rápido
-        const calculados = costeos.filter(c => c.estado === 'calculado').length;
-        const sinDespacho = costeos.filter(c => !c.fecha_despacho).length;
-        const monedas = {};
-        costeos.forEach(c => { const m = c.moneda_principal || 'USD'; monedas[m] = (monedas[m] || 0) + 1; });
+        // 3. Resumen General (mejorado)
+        var calculados = costeos.filter(function(c) { return c.estado === 'calculado'; }).length;
+        var presupuestados = costeos.filter(function(c) { return !c.fecha_despacho; }).length;
+        var consolidados = costeos.filter(function(c) { return c.es_consolidado; }).length;
+        var noConsolidados = costeos.filter(function(c) { return c.fecha_despacho && !c.es_consolidado; }).length;
+
+        // Monedas: cantidad + suma total inversión por moneda
+        var monedas = {};
+        costeos.forEach(function(c) {
+            var m = c.moneda_principal || 'USD';
+            if (!monedas[m]) monedas[m] = { cant: 0, total: 0 };
+            monedas[m].cant++;
+            monedas[m].total += parseFloat(c.costo_total_ars) || 0;
+        });
 
         html += '<div style="background:#12121e;border-radius:8px;padding:12px;border:1px solid #333;">';
         html += '<p style="color:#4CAF50;font-weight:bold;font-size:12px;margin-bottom:8px;">Resumen General</p>';
         html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">';
         html += '<div>Total: <strong style="color:#fff;">' + costeos.length + '</strong></div>';
         html += '<div>Calculados: <strong style="color:#4CAF50;">' + calculados + '</strong></div>';
-        html += '<div>Sin despacho: <strong style="color:#ff9800;">' + sinDespacho + '</strong></div>';
-        html += '<div>Monedas: <strong style="color:#fff;">' + Object.entries(monedas).map(([m,c]) => m + ':' + c).join(' ') + '</strong></div>';
+        html += '<div>Presupuestados: <strong style="color:#ff9800;">' + presupuestados + '</strong></div>';
+        html += '<div>Consolidados: <strong style="color:#4fc3f7;">' + consolidados + '</strong> / Directos: <strong style="color:#fff;">' + noConsolidados + '</strong></div>';
+        html += '</div>';
+        // Monedas detalle
+        html += '<div style="margin-top:8px;border-top:1px solid #333;padding-top:8px;">';
+        html += '<p style="color:#888;font-size:10px;margin-bottom:4px;">Facturas por moneda:</p>';
+        Object.entries(monedas).forEach(function(entry) {
+            var m = entry[0], d = entry[1];
+            html += '<div style="font-size:11px;display:flex;justify-content:space-between;"><span><strong style="color:#fff;">' + m + '</strong>: ' + d.cant + ' facturas</span><span style="color:#4CAF50;">' + fmtMoney(d.total) + '</span></div>';
+        });
         html += '</div></div>';
 
-        // 4. Top artículos más costosos
-        const artsConCosto = todosLosArticulos || [];
+        // 4. Top artículos más costosos — nombre en vez de código, último costo revaluado
+        var artsConCosto = todosLosArticulos || [];
         if (artsConCosto.length > 0) {
-            const topArts = [...artsConCosto].filter(a => a.costo_neto).sort((a, b) => parseFloat(b.costo_neto) - parseFloat(a.costo_neto)).slice(0, 8);
-            const maxArt = topArts[0] ? parseFloat(topArts[0].costo_neto) : 1;
+            var topArts = artsConCosto.filter(function(a) { return a.costo_neto; }).sort(function(a, b) { return parseFloat(b.costo_neto) - parseFloat(a.costo_neto); }).slice(0, 8);
+            var maxArt = topArts[0] ? parseFloat(topArts[0].costo_neto) : 1;
 
             html += '<div style="background:#12121e;border-radius:8px;padding:12px;border:1px solid #333;">';
             html += '<p style="color:#ce93d8;font-weight:bold;font-size:12px;margin-bottom:8px;">Top Artículos por Costo Neto</p>';
-            topArts.forEach(a => {
-                const costo = parseFloat(a.costo_neto);
-                const pct = (costo / maxArt) * 100;
+            topArts.forEach(function(a) {
+                var costo = parseFloat(a.costo_neto);
+                var pct = (costo / maxArt) * 100;
+                var label = (a.nombre || a.codigo_goodies || '-').substring(0, 28);
                 html += '<div style="margin:4px 0;display:flex;align-items:center;gap:6px;">';
-                html += '<span style="font-size:10px;color:#aaa;width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (a.nombre||a.codigo_goodies) + '">' + (a.codigo_goodies || '-') + '</span>';
+                html += '<span style="font-size:10px;color:#aaa;width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (a.codigo_goodies||'') + ' — ' + (a.nombre||'') + '">' + label + '</span>';
                 html += '<div style="flex:1;background:#1a1a2e;border-radius:3px;height:14px;"><div style="width:' + pct + '%;background:#ce93d8;height:100%;border-radius:3px;"></div></div>';
                 html += '<span style="font-size:10px;color:#fff;width:70px;text-align:right;">' + fmtMoney(costo) + '</span>';
                 html += '</div>';
