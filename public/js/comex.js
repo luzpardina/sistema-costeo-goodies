@@ -106,6 +106,8 @@
 // ========== REVALUACIONES ==========
         var revaluacionActualId = null;
         
+        var revCatalogoArts = [];
+
         function abrirModalRevaluar() {
             // Verificar si hay costeos seleccionados
             const seleccionados = document.querySelectorAll('.costeo-check:checked');
@@ -129,9 +131,9 @@
             // Poblar datalists — usar catálogo local si disponible, si no cargar del API
             var arts = todosLosArticulos || [];
             if (arts.length > 0) {
+                revCatalogoArts = arts;
                 poblarDatalistsRevaluacion(arts);
             } else {
-                // Cargar proveedores/fabricantes/marcas desde el catálogo API
                 fetch(API_URL + '/api/maestro/stats', { headers: { 'Authorization': 'Bearer ' + token } })
                     .then(function(r) { return r.json(); })
                     .then(function(data) {
@@ -139,7 +141,7 @@
                         if (data.fabricantes) document.getElementById('rev_listaFabricas').innerHTML = data.fabricantes.map(function(f){return '<option value="'+f+'">';}).join('');
                         if (data.marcas) document.getElementById('rev_listaMarcas').innerHTML = data.marcas.map(function(m){return '<option value="'+m+'">';}).join('');
                     })
-                    .catch(function() { /* silently fail */ });
+                    .catch(function() {});
             }
             
             document.getElementById('revaluarModal').style.display = 'flex';
@@ -151,6 +153,21 @@
             var marcas = [...new Set(arts.map(function(a){return a.marca;}).filter(function(m){return m;}))].sort();
             document.getElementById('rev_listaProveedores').innerHTML = provs.map(function(p){return '<option value="'+p+'">';}).join('');
             document.getElementById('rev_listaFabricas').innerHTML = fabs.map(function(f){return '<option value="'+f+'">';}).join('');
+            document.getElementById('rev_listaMarcas').innerHTML = marcas.map(function(m){return '<option value="'+m+'">';}).join('');
+        }
+
+        function cascadaFiltrosRevaluacion() {
+            if (revCatalogoArts.length === 0) return;
+            var prov = document.getElementById('rev_filtroProveedor').value.trim();
+            var fab = document.getElementById('rev_filtroFabrica').value.trim();
+            
+            var filtered = revCatalogoArts;
+            if (prov) filtered = filtered.filter(function(a) { return a.proveedor === prov; });
+            var fabs = [...new Set(filtered.map(function(a){return a.empresa_fabrica;}).filter(function(f){return f;}))].sort();
+            document.getElementById('rev_listaFabricas').innerHTML = fabs.map(function(f){return '<option value="'+f+'">';}).join('');
+            
+            if (fab) filtered = filtered.filter(function(a) { return a.empresa_fabrica === fab; });
+            var marcas = [...new Set(filtered.map(function(a){return a.marca;}).filter(function(m){return m;}))].sort();
             document.getElementById('rev_listaMarcas').innerHTML = marcas.map(function(m){return '<option value="'+m+'">';}).join('');
         }
         

@@ -108,21 +108,6 @@ class RevaluacionService {
             motivoCompleto += ' [Filtro: ' + filtrosActivos.join(', ') + ']';
         }
         
-        for (const costeo of costeos) {
-            for (const art of costeo.articulos) {
-                const codigo = art.codigo_goodies || 'SIN_CODIGO';
-                
-                if (!articulosPorCodigo[codigo]) {
-                    articulosPorCodigo[codigo] = {
-                        articulo: art,
-                        costeo: costeo
-                    };
-                }
-                // Como los costeos vienen ordenados por fecha_despacho DESC,
-                // el primero que encontramos es el más reciente
-            }
-        }
-        
         // 3. Crear registro de revaluación
         const revaluacion = await Revaluacion.create({
             fecha_revaluacion: new Date(),

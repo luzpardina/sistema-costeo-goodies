@@ -177,6 +177,7 @@ router.post('/calcular-precios', auth, async (req, res) => {
                 articulosToProcess.push({
                     codigo_goodies: art.codigo_goodies,
                     nombre: catalogo ? catalogo.nombre : art.codigo_goodies,
+                    proveedor: catalogo ? (catalogo.proveedor || '') : '',
                     costoNeto: parseFloat(art.costo_neto) || 0,
                     ivaPct: art.iva_pct !== undefined ? parseFloat(art.iva_pct) / 100 : (catalogo ? (parseFloat(catalogo.iva_porcentaje) || 0.21) : 0.21),
                     impInternoPct: art.imp_interno_pct !== undefined ? parseFloat(art.imp_interno_pct) / 100 : (catalogo ? (parseFloat(catalogo.imp_interno_porcentaje) || 0) : 0),
@@ -197,6 +198,7 @@ router.post('/calcular-precios', auth, async (req, res) => {
                 articulosToProcess.push({
                     codigo_goodies,
                     nombre: catalogo ? catalogo.nombre : codigo_goodies,
+                    proveedor: catalogo ? (catalogo.proveedor || '') : '',
                     costoNeto,
                     ivaPct: catalogo ? (parseFloat(catalogo.iva_porcentaje) || 0.21) : 0.21,
                     impInternoPct: catalogo ? (parseFloat(catalogo.imp_interno_porcentaje) || 0) : 0,
@@ -413,8 +415,8 @@ router.post('/calcular-precios', auth, async (req, res) => {
 
             resultados.push({
                 codigo_goodies,
-                nombre: ultimoArticulo ? ultimoArticulo.nombre : (catalogo ? catalogo.nombre : codigo_goodies),
-                proveedor: catalogo ? (catalogo.proveedor || '') : '',
+                nombre,
+                proveedor: artData.proveedor || '',
                 rubro,
                 costo_neto: Math.round(costoNeto * 100) / 100,
                 iva_pct: ivaPct * 100,
