@@ -535,12 +535,9 @@
         });
         html += '</div></div>';
 
-        // 4. Top artículos por CANTIDAD IMPORTADA — separados 2026 y 2025
+        // 4. Top artículos por CANTIDAD IMPORTADA (unidades) — separados 2026 y 2025
         var artsConCosto = todosLosArticulos || [];
-        if (artsConCosto.length > 0) {
-            // Need to get quantities from costeos, not from artsConCosto
-            // artsConCosto has ultimo costo per articulo but not quantity per year
-            // We need to go through costeos and sum unidades by article and year
+        if (costeos.length > 0) {
             var artsPorAnio = { '2026': {}, '2025': {} };
             costeos.forEach(function(c) {
                 var y = getYear(c);
@@ -548,39 +545,41 @@
                 if (y >= 2026) yearKey = '2026';
                 else if (y === 2025) yearKey = '2025';
                 if (!yearKey) return;
-                var nombres = (c.articulos_nombres || '').split('|').filter(function(n){return n.trim();});
-                // Each article entry is "CODIGO NOMBRE"
-                nombres.forEach(function(entry) {
-                    var parts = entry.trim().split(' ');
-                    var codigo = parts[0] || '';
-                    var nombre = parts.slice(1).join(' ') || codigo;
+                // Parse new format: "CODIGO|NOMBRE|UNIDADES;;CODIGO|NOMBRE|UNIDADES"
+                var entries = (c.articulos_nombres || '').split(';;').filter(function(n){return n.trim();});
+                entries.forEach(function(entry) {
+                    var parts = entry.split('|');
+                    var codigo = (parts[0] || '').trim();
+                    var nombre = (parts[1] || codigo).trim();
+                    var unidades = parseInt(parts[2]) || 0;
+                    if (!codigo && !nombre) return;
+                    // Try to get better name from catalog
                     if (!nombre || nombre === codigo) {
-                        // Try to find in catalog
                         var cat = artsConCosto.find(function(a){return a.codigo_goodies === codigo;});
                         if (cat) nombre = cat.nombre;
                     }
                     var key = codigo || nombre;
-                    if (!artsPorAnio[yearKey][key]) artsPorAnio[yearKey][key] = { nombre: nombre || key, cantidad: 0 };
-                    // We don't have per-article quantities in the listing, count occurrences
-                    artsPorAnio[yearKey][key].cantidad++;
+                    if (!artsPorAnio[yearKey][key]) artsPorAnio[yearKey][key] = { nombre: nombre || key, unidades: 0, despachos: 0 };
+                    artsPorAnio[yearKey][key].unidades += unidades;
+                    artsPorAnio[yearKey][key].despachos++;
                 });
             });
 
             ['2026', '2025'].forEach(function(yearKey) {
                 var arts = artsPorAnio[yearKey];
-                var topArts = Object.values(arts).sort(function(a,b){return b.cantidad - a.cantidad;}).slice(0, 8);
+                var topArts = Object.values(arts).filter(function(a){return a.unidades > 0;}).sort(function(a,b){return b.unidades - a.unidades;}).slice(0, 10);
                 if (topArts.length === 0) return;
-                var maxQ = topArts[0].cantidad;
+                var maxQ = topArts[0].unidades;
 
                 html += '<div style="background:#12121e;border-radius:8px;padding:12px;border:1px solid #333;">';
-                html += '<p style="color:#ce93d8;font-weight:bold;font-size:12px;margin-bottom:8px;">Top Artículos Importados ' + yearKey + ' <span style="color:#888;font-weight:normal;">(por cant. despachos)</span></p>';
+                html += '<p style="color:#ce93d8;font-weight:bold;font-size:12px;margin-bottom:8px;">Top Artículos Importados ' + yearKey + ' <span style="color:#888;font-weight:normal;">(por unidades)</span></p>';
                 topArts.forEach(function(a) {
-                    var pct = (a.cantidad / maxQ) * 100;
+                    var pct = (a.unidades / maxQ) * 100;
                     var label = (a.nombre || '-').substring(0, 28);
                     html += '<div style="margin:3px 0;display:flex;align-items:center;gap:6px;">';
                     html += '<span style="font-size:10px;color:#aaa;width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + a.nombre + '">' + label + '</span>';
                     html += '<div style="flex:1;background:#1a1a2e;border-radius:3px;height:14px;"><div style="width:' + pct + '%;background:#ce93d8;height:100%;border-radius:3px;"></div></div>';
-                    html += '<span style="font-size:11px;color:#fff;width:25px;text-align:right;">' + a.cantidad + '</span>';
+                    html += '<span style="font-size:10px;color:#fff;width:55px;text-align:right;" title="' + a.despachos + ' despacho(s)">' + a.unidades.toLocaleString('es-AR') + ' <span style="font-size:8px;color:#888;">(' + a.despachos + 'd)</span></span>';
                     html += '</div>';
                 });
                 html += '</div>';
