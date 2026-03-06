@@ -225,6 +225,7 @@ router.get('/listar', auth, async (req, res) => {
                 estado: c.estado,
                 unidades_totales: c.unidades_totales,
                 costo_total_ars: c.costo_total_ars,
+                fob_total_divisa: c.fob_total_usd,
                 es_consolidado: c.es_consolidado,
                 cant_articulos: c.articulos ? c.articulos.length : 0,
                 articulos_nombres: c.articulos ? c.articulos.map(a => (a.codigo_goodies || '') + ' ' + (a.nombre || '')).join('|') : ''

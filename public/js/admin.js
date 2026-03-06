@@ -411,55 +411,77 @@
         const fmtMoney = v => '$' + (parseFloat(v)||0).toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:0});
         var html = '';
 
-        // Helper: get year from fecha_despacho
         function getYear(c) {
             if (!c.fecha_despacho) return null;
             return new Date(c.fecha_despacho).getFullYear();
         }
+        function esDefinitivo(c) { return !!c.fecha_despacho; }
 
-        // 1. Importaciones por Proveedor — separadas por año
-        var costeosConDesp = costeos.filter(function(c) { return c.fecha_despacho; });
-        var years = {};
-        costeosConDesp.forEach(function(c) {
+        // 1. Importaciones por MARCA — separadas por año, con color definitivo/presupuestado
+        // Agrupar costeos por año
+        var yearBuckets = { '2026': [], '2025': [], 'Anteriores': [] };
+        costeos.forEach(function(c) {
             var y = getYear(c);
-            if (y < 2025) y = 'Anteriores';
-            if (!years[y]) years[y] = [];
-            years[y].push(c);
+            if (!y) {
+                // Presupuestados: agrupar en el año actual
+                yearBuckets['2026'].push(c);
+            } else if (y >= 2026) yearBuckets['2026'].push(c);
+            else if (y === 2025) yearBuckets['2025'].push(c);
+            else yearBuckets['Anteriores'].push(c);
         });
 
-        // Show 2026 first, then 2025, then earlier
         var yearOrder = ['2026', '2025', 'Anteriores'];
         yearOrder.forEach(function(yearLabel) {
-            var yearCosteos = years[yearLabel];
+            var yearCosteos = yearBuckets[yearLabel];
             if (!yearCosteos || yearCosteos.length === 0) return;
 
-            var porProv = {};
-            yearCosteos.forEach(function(c) { var p = c.proveedor || 'Sin Proveedor'; porProv[p] = (porProv[p] || 0) + 1; });
-            var topProvs = Object.entries(porProv).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 8);
-            var maxProv = topProvs[0] ? topProvs[0][1] : 1;
+            // Count by marca: { marca: { definitivo: N, presupuestado: N } }
+            var porMarca = {};
+            yearCosteos.forEach(function(c) {
+                var marcas = c.marcas ? c.marcas.split(',').map(function(m){return m.trim();}).filter(function(m){return m;}) : [];
+                if (marcas.length === 0) marcas = [c.proveedor || 'Sin Marca'];
+                var isDef = esDefinitivo(c);
+                marcas.forEach(function(marca) {
+                    if (!porMarca[marca]) porMarca[marca] = { def: 0, pres: 0 };
+                    if (isDef) porMarca[marca].def++;
+                    else porMarca[marca].pres++;
+                });
+            });
+            var topMarcas = Object.entries(porMarca).sort(function(a,b) { return (b[1].def + b[1].pres) - (a[1].def + a[1].pres); }).slice(0, 10);
+            var maxMarca = topMarcas[0] ? (topMarcas[0][1].def + topMarcas[0][1].pres) : 1;
 
+            var labelYear = yearLabel === 'Anteriores' ? 'Anteriores a 2025' : yearLabel;
             html += '<div style="background:#12121e;border-radius:8px;padding:12px;border:1px solid #333;">';
-            html += '<p style="color:#4fc3f7;font-weight:bold;font-size:12px;margin-bottom:8px;">Importaciones por Proveedor ' + yearLabel + ' <span style="color:#888;font-weight:normal;">(' + yearCosteos.length + ' despachos)</span></p>';
-            topProvs.forEach(function(entry) {
-                var prov = entry[0], cant = entry[1];
-                var pct = (cant / maxProv) * 100;
-                html += '<div style="margin:4px 0;display:flex;align-items:center;gap:6px;">';
-                html += '<span style="font-size:10px;color:#aaa;width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + prov + '">' + prov + '</span>';
-                html += '<div style="flex:1;background:#1a1a2e;border-radius:3px;height:14px;"><div style="width:' + pct + '%;background:#4fc3f7;height:100%;border-radius:3px;"></div></div>';
-                html += '<span style="font-size:11px;color:#fff;width:20px;text-align:right;">' + cant + '</span>';
+            html += '<p style="color:#4fc3f7;font-weight:bold;font-size:12px;margin-bottom:8px;">Importaciones por Marca ' + labelYear + ' <span style="color:#888;font-weight:normal;">(' + yearCosteos.length + ')</span></p>';
+            topMarcas.forEach(function(entry) {
+                var marca = entry[0], d = entry[1];
+                var total = d.def + d.pres;
+                var pctDef = (d.def / maxMarca) * 100;
+                var pctPres = (d.pres / maxMarca) * 100;
+                html += '<div style="margin:3px 0;display:flex;align-items:center;gap:6px;">';
+                html += '<span style="font-size:10px;color:#aaa;width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + marca + '">' + marca + '</span>';
+                html += '<div style="flex:1;background:#1a1a2e;border-radius:3px;height:14px;display:flex;">';
+                if (d.def > 0) html += '<div style="width:' + pctDef + '%;background:#4fc3f7;height:100%;border-radius:3px 0 0 3px;" title="Definitivos: ' + d.def + '"></div>';
+                if (d.pres > 0) html += '<div style="width:' + pctPres + '%;background:#ff9800;height:100%;border-radius:0 3px 3px 0;" title="Presupuestados: ' + d.pres + '"></div>';
+                html += '</div>';
+                html += '<span style="font-size:11px;color:#fff;width:20px;text-align:right;">' + total + '</span>';
                 html += '</div>';
             });
+            // Legend
+            html += '<div style="margin-top:6px;display:flex;gap:12px;font-size:9px;color:#888;">';
+            html += '<span><span style="display:inline-block;width:10px;height:10px;background:#4fc3f7;border-radius:2px;vertical-align:middle;"></span> Definitivos</span>';
+            html += '<span><span style="display:inline-block;width:10px;height:10px;background:#ff9800;border-radius:2px;vertical-align:middle;"></span> Presupuestados</span>';
+            html += '</div>';
             html += '</div>';
         });
 
-        // 2. Evolución TC USD (últimos 15 costeos con fecha despacho)
+        // 2. Evolución TC USD
         const costeosConTC = costeos.filter(c => c.fecha_despacho && c.tc_usd).sort((a, b) => new Date(a.fecha_despacho) - new Date(b.fecha_despacho)).slice(-15);
         if (costeosConTC.length > 1) {
             const tcs = costeosConTC.map(c => parseFloat(c.tc_usd));
             const maxTC = Math.max(...tcs);
             const minTC = Math.min(...tcs);
             const rangoTC = maxTC - minTC || 1;
-
             html += '<div style="background:#12121e;border-radius:8px;padding:12px;border:1px solid #333;">';
             html += '<p style="color:#ff9800;font-weight:bold;font-size:12px;margin-bottom:8px;">TC USD — Últimos ' + costeosConTC.length + ' despachos</p>';
             html += '<div style="display:flex;align-items:flex-end;gap:2px;height:80px;">';
@@ -473,25 +495,24 @@
             });
             html += '</div>';
             html += '<div style="display:flex;justify-content:space-between;font-size:9px;color:#666;margin-top:2px;">';
-            const fechaFirst = new Date(costeosConTC[0].fecha_despacho).toLocaleDateString('es-AR', {month:'short', year:'2-digit'});
-            const fechaLast = new Date(costeosConTC[costeosConTC.length-1].fecha_despacho).toLocaleDateString('es-AR', {month:'short', year:'2-digit'});
-            html += '<span>' + fechaFirst + '</span><span>' + fechaLast + '</span></div>';
+            html += '<span>' + new Date(costeosConTC[0].fecha_despacho).toLocaleDateString('es-AR', {month:'short', year:'2-digit'}) + '</span>';
+            html += '<span>' + new Date(costeosConTC[costeosConTC.length-1].fecha_despacho).toLocaleDateString('es-AR', {month:'short', year:'2-digit'}) + '</span></div>';
             html += '</div>';
         }
 
-        // 3. Resumen General (mejorado)
+        // 3. Resumen General
         var calculados = costeos.filter(function(c) { return c.estado === 'calculado'; }).length;
         var presupuestados = costeos.filter(function(c) { return !c.fecha_despacho; }).length;
         var consolidados = costeos.filter(function(c) { return c.es_consolidado; }).length;
         var noConsolidados = costeos.filter(function(c) { return c.fecha_despacho && !c.es_consolidado; }).length;
 
-        // Monedas: cantidad + suma total inversión por moneda
+        // Monedas: cantidad + suma en moneda ORIGINAL
         var monedas = {};
         costeos.forEach(function(c) {
             var m = c.moneda_principal || 'USD';
-            if (!monedas[m]) monedas[m] = { cant: 0, total: 0 };
+            if (!monedas[m]) monedas[m] = { cant: 0, totalDivisa: 0 };
             monedas[m].cant++;
-            monedas[m].total += parseFloat(c.costo_total_ars) || 0;
+            monedas[m].totalDivisa += parseFloat(c.fob_total_divisa) || 0;
         });
 
         html += '<div style="background:#12121e;border-radius:8px;padding:12px;border:1px solid #333;">';
@@ -502,34 +523,68 @@
         html += '<div>Presupuestados: <strong style="color:#ff9800;">' + presupuestados + '</strong></div>';
         html += '<div>Consolidados: <strong style="color:#4fc3f7;">' + consolidados + '</strong> / Directos: <strong style="color:#fff;">' + noConsolidados + '</strong></div>';
         html += '</div>';
-        // Monedas detalle
         html += '<div style="margin-top:8px;border-top:1px solid #333;padding-top:8px;">';
-        html += '<p style="color:#888;font-size:10px;margin-bottom:4px;">Facturas por moneda:</p>';
+        html += '<p style="color:#888;font-size:10px;margin-bottom:4px;">Facturas por moneda (FOB en moneda original):</p>';
+        var monedaSymbols = { USD: 'USD', EUR: 'EUR', GBP: 'GBP' };
         Object.entries(monedas).forEach(function(entry) {
             var m = entry[0], d = entry[1];
-            html += '<div style="font-size:11px;display:flex;justify-content:space-between;"><span><strong style="color:#fff;">' + m + '</strong>: ' + d.cant + ' facturas</span><span style="color:#4CAF50;">' + fmtMoney(d.total) + '</span></div>';
+            var fmtDiv = d.totalDivisa.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+            html += '<div style="font-size:11px;display:flex;justify-content:space-between;">';
+            html += '<span><strong style="color:#fff;">' + m + '</strong>: ' + d.cant + ' facturas</span>';
+            html += '<span style="color:#4CAF50;">' + (monedaSymbols[m]||m) + ' ' + fmtDiv + '</span></div>';
         });
         html += '</div></div>';
 
-        // 4. Top artículos más costosos — nombre en vez de código, último costo revaluado
+        // 4. Top artículos por CANTIDAD IMPORTADA — separados 2026 y 2025
         var artsConCosto = todosLosArticulos || [];
         if (artsConCosto.length > 0) {
-            var topArts = artsConCosto.filter(function(a) { return a.costo_neto; }).sort(function(a, b) { return parseFloat(b.costo_neto) - parseFloat(a.costo_neto); }).slice(0, 8);
-            var maxArt = topArts[0] ? parseFloat(topArts[0].costo_neto) : 1;
+            // Need to get quantities from costeos, not from artsConCosto
+            // artsConCosto has ultimo costo per articulo but not quantity per year
+            // We need to go through costeos and sum unidades by article and year
+            var artsPorAnio = { '2026': {}, '2025': {} };
+            costeos.forEach(function(c) {
+                var y = getYear(c);
+                var yearKey = null;
+                if (y >= 2026) yearKey = '2026';
+                else if (y === 2025) yearKey = '2025';
+                if (!yearKey) return;
+                var nombres = (c.articulos_nombres || '').split('|').filter(function(n){return n.trim();});
+                // Each article entry is "CODIGO NOMBRE"
+                nombres.forEach(function(entry) {
+                    var parts = entry.trim().split(' ');
+                    var codigo = parts[0] || '';
+                    var nombre = parts.slice(1).join(' ') || codigo;
+                    if (!nombre || nombre === codigo) {
+                        // Try to find in catalog
+                        var cat = artsConCosto.find(function(a){return a.codigo_goodies === codigo;});
+                        if (cat) nombre = cat.nombre;
+                    }
+                    var key = codigo || nombre;
+                    if (!artsPorAnio[yearKey][key]) artsPorAnio[yearKey][key] = { nombre: nombre || key, cantidad: 0 };
+                    // We don't have per-article quantities in the listing, count occurrences
+                    artsPorAnio[yearKey][key].cantidad++;
+                });
+            });
 
-            html += '<div style="background:#12121e;border-radius:8px;padding:12px;border:1px solid #333;">';
-            html += '<p style="color:#ce93d8;font-weight:bold;font-size:12px;margin-bottom:8px;">Top Artículos por Costo Neto</p>';
-            topArts.forEach(function(a) {
-                var costo = parseFloat(a.costo_neto);
-                var pct = (costo / maxArt) * 100;
-                var label = (a.nombre || a.codigo_goodies || '-').substring(0, 28);
-                html += '<div style="margin:4px 0;display:flex;align-items:center;gap:6px;">';
-                html += '<span style="font-size:10px;color:#aaa;width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (a.codigo_goodies||'') + ' — ' + (a.nombre||'') + '">' + label + '</span>';
-                html += '<div style="flex:1;background:#1a1a2e;border-radius:3px;height:14px;"><div style="width:' + pct + '%;background:#ce93d8;height:100%;border-radius:3px;"></div></div>';
-                html += '<span style="font-size:10px;color:#fff;width:70px;text-align:right;">' + fmtMoney(costo) + '</span>';
+            ['2026', '2025'].forEach(function(yearKey) {
+                var arts = artsPorAnio[yearKey];
+                var topArts = Object.values(arts).sort(function(a,b){return b.cantidad - a.cantidad;}).slice(0, 8);
+                if (topArts.length === 0) return;
+                var maxQ = topArts[0].cantidad;
+
+                html += '<div style="background:#12121e;border-radius:8px;padding:12px;border:1px solid #333;">';
+                html += '<p style="color:#ce93d8;font-weight:bold;font-size:12px;margin-bottom:8px;">Top Artículos Importados ' + yearKey + ' <span style="color:#888;font-weight:normal;">(por cant. despachos)</span></p>';
+                topArts.forEach(function(a) {
+                    var pct = (a.cantidad / maxQ) * 100;
+                    var label = (a.nombre || '-').substring(0, 28);
+                    html += '<div style="margin:3px 0;display:flex;align-items:center;gap:6px;">';
+                    html += '<span style="font-size:10px;color:#aaa;width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + a.nombre + '">' + label + '</span>';
+                    html += '<div style="flex:1;background:#1a1a2e;border-radius:3px;height:14px;"><div style="width:' + pct + '%;background:#ce93d8;height:100%;border-radius:3px;"></div></div>';
+                    html += '<span style="font-size:11px;color:#fff;width:25px;text-align:right;">' + a.cantidad + '</span>';
+                    html += '</div>';
+                });
                 html += '</div>';
             });
-            html += '</div>';
         }
 
         document.getElementById('dashboardContent').innerHTML = html;
