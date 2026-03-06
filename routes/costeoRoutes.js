@@ -246,6 +246,54 @@ router.get('/listar', auth, async (req, res) => {
 router.get('/ultimos-costos', auth, cacheMiddleware(120), async (req, res) => {
     try {
         const { Op } = require('sequelize');
+        const revaluacionId = req.query.revaluacion_id;
+        
+        // Si se pidió una revaluación específica, usar esos costos
+        if (revaluacionId) {
+            const { Revaluacion, RevaluacionArticulo } = require('../models');
+            const rev = await Revaluacion.findByPk(revaluacionId, {
+                include: [{ model: RevaluacionArticulo, as: 'articulos' }]
+            });
+            if (!rev) return res.status(404).json({ error: 'Revaluación no encontrada' });
+            
+            const codigos = rev.articulos.map(a => a.codigo_goodies).filter(Boolean);
+            const catItems = codigos.length > 0 ? await CatalogoArticulo.findAll({
+                where: { codigo_goodies: { [Op.in]: codigos } },
+                attributes: ['codigo_goodies', 'proveedor', 'empresa_fabrica', 'marca', 'rubro', 'iva_porcentaje', 'imp_interno_porcentaje', 'proveedor_activo', 'empresa_fabrica_activa', 'habilitado'],
+                raw: true
+            }) : [];
+            const catMap = {};
+            catItems.forEach(ci => { catMap[ci.codigo_goodies] = ci; });
+            
+            const resultado = rev.articulos
+                .filter(a => a.costo_neto_revaluado && parseFloat(a.costo_neto_revaluado) > 0)
+                .map(a => {
+                    const cat = catMap[a.codigo_goodies] || {};
+                    return {
+                        codigo_goodies: a.codigo_goodies,
+                        nombre: a.nombre,
+                        proveedor: cat.proveedor || a.proveedor || '',
+                        empresa_fabrica: cat.empresa_fabrica || '',
+                        marca: cat.marca || '',
+                        rubro: cat.rubro || '',
+                        moneda_fob: '',
+                        valor_fob: a.fob_intermediaria || a.fob_proveedor_origen,
+                        costo_neto: a.costo_neto_revaluado,
+                        costo_con_impuestos: null,
+                        costo_anterior: a.costo_neto_original,
+                        diferencia_pct: a.diferencia_costo_pct,
+                        fecha_despacho: a.fecha_despacho,
+                        nombre_costeo: a.nombre_costeo_origen,
+                        fuente: 'Revaluación: ' + rev.motivo,
+                        iva_porcentaje: cat.iva_porcentaje,
+                        imp_interno_porcentaje: cat.imp_interno_porcentaje
+                    };
+                });
+            
+            return res.json(resultado);
+        }
+        
+        // Default: último costo por despacho
         const costeos = await Costeo.findAll({
             where: { 
                 estado: 'calculado',

@@ -442,10 +442,16 @@
                         <option value="">Todas las marcas</option>
                     </select>
                 </div>
-                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
-                    <button class="btn btn-secondary" title="Traer artículos del catálogo con su último costo para calcular precios" onclick="cargarArticulosParaPrecios()">📦 Cargar Artículos</button>
-                    <button class="btn btn-primary" title="Calcula precios de venta para los artículos y listas seleccionadas usando fórmula gross-up" onclick="calcularPrecios()">💲 Calcular Precios</button>
-                    <button class="btn btn-success" title="Descargar resultados de precios calculados en Excel" onclick="exportarPrecios()">📥 Exportar Excel</button>
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
+                    <div style="display:flex;flex-direction:column;gap:2px;">
+                        <label style="font-size:10px;color:#888;">Fuente de Costos</label>
+                        <select id="fuenteCostosPrecios" onchange="cargarArticulosParaPrecios()" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;font-size:12px;min-width:200px;">
+                            <option value="ultimo_despacho">Último Despacho (original)</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-secondary" title="Traer artículos con costo de la fuente seleccionada" onclick="cargarArticulosParaPrecios()" style="align-self:flex-end;">📦 Cargar Artículos</button>
+                    <button class="btn btn-primary" title="Calcula precios de venta para los artículos y listas seleccionadas usando fórmula gross-up" onclick="calcularPrecios()" style="align-self:flex-end;">💲 Calcular Precios</button>
+                    <button class="btn btn-success" title="Descargar resultados de precios calculados en Excel" onclick="exportarPrecios()" style="align-self:flex-end;">📥 Exportar Excel</button>
                 </div>
                 <div class="table-container" style="max-height:300px;overflow-y:auto;">
                     <table style="font-size:12px;">

@@ -376,11 +376,38 @@
     var ultimosResultadosPrecios = null;
     var ultimosResultadosMargenes = null;
 
+    // Cargar revaluaciones disponibles en el dropdown de fuente de costos
+    async function cargarFuentesCostos() {
+        try {
+            var resp = await fetch(API_URL + '/api/revaluaciones/historial', { headers: { 'Authorization': 'Bearer ' + token } });
+            var revs = await resp.json();
+            var sel = document.getElementById('fuenteCostosPrecios');
+            if (!sel) return;
+            sel.innerHTML = '<option value="ultimo_despacho">Último Despacho (costo original)</option>';
+            if (Array.isArray(revs)) {
+                revs.forEach(function(r) {
+                    var fecha = r.fecha_revaluacion ? new Date(r.fecha_revaluacion).toLocaleDateString('es-AR') : '';
+                    var label = 'Rev. ' + fecha + ' — ' + (r.motivo || '').substring(0, 40) + ' (' + r.cantidad_articulos + ' arts)';
+                    sel.innerHTML += '<option value="' + r.id + '">' + label + '</option>';
+                });
+            }
+        } catch(e) { console.error('Error cargando revaluaciones:', e); }
+    }
+    // Cargar al inicio
+    setTimeout(cargarFuentesCostos, 1000);
+
     async function cargarArticulosParaPrecios() {
         try {
-            const resp = await fetch(API_URL + '/api/costeos/ultimos-costos', { headers: { 'Authorization': 'Bearer ' + token } });
+            var fuente = document.getElementById('fuenteCostosPrecios').value;
+            var url = API_URL + '/api/costeos/ultimos-costos';
+            if (fuente && fuente !== 'ultimo_despacho') {
+                url += '?revaluacion_id=' + fuente;
+            }
+            const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
             const data = await resp.json();
-            if (!Array.isArray(data)) throw new Error('Datos inválidos');
+            if (!Array.isArray(data)) throw new Error(data.error || 'Datos inválidos');
+
+            var fuenteLabel = fuente === 'ultimo_despacho' ? 'Último Despacho' : document.getElementById('fuenteCostosPrecios').selectedOptions[0].text;
 
             articulosPreciosTodos = data.map(a => ({
                 codigo_goodies: a.codigo_goodies || a.codigo,
@@ -391,7 +418,8 @@
                 rubro: a.rubro || '',
                 costo_neto: parseFloat(a.costo_neto || a.costo_unitario_neto_ars) || 0,
                 iva_pct: a.iva_porcentaje ? (parseFloat(a.iva_porcentaje) * 100) : 21,
-                imp_interno_pct: a.imp_interno_porcentaje ? (parseFloat(a.imp_interno_porcentaje) * 100) : 0
+                imp_interno_pct: a.imp_interno_porcentaje ? (parseFloat(a.imp_interno_porcentaje) * 100) : 0,
+                fuente: a.fuente || 'Último Despacho'
             })).filter(a => a.costo_neto > 0);
 
             poblarDropdownsPrecios(articulosPreciosTodos);
