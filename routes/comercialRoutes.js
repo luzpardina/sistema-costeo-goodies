@@ -595,7 +595,7 @@ router.post('/calcular-margenes', auth, async (req, res) => {
 
             resultados.push({
                 codigo_goodies,
-                nombre: ultimoArticulo ? ultimoArticulo.nombre : (catalogo ? catalogo.nombre : codigo_goodies),
+                nombre: catalogo ? catalogo.nombre : codigo_goodies,
                 rubro,
                 costo_neto: Math.round(costoNeto * 100) / 100,
                 iva_pct: ivaPct * 100,
@@ -747,7 +747,7 @@ router.post('/simular-descuento', auth, async (req, res) => {
 
         res.json({
             codigo_goodies,
-            nombre: ultimoArticulo ? ultimoArticulo.nombre : codigo_goodies,
+            nombre: catalogo ? catalogo.nombre : codigo_goodies,
             lista_nombre: lista.nombre,
             costo_neto: costoNeto,
             precio_actual,
