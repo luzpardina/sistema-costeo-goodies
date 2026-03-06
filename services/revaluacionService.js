@@ -18,7 +18,7 @@ class RevaluacionService {
 
         // Si hay filtro de proveedor, filtrar costeos por proveedor
         if (filtros.proveedor) {
-            whereCondition.proveedor = { [Op.iLike]: '%' + filtros.proveedor + '%' };
+            whereCondition.proveedor = { [Op.iLike]: filtros.proveedor.trim() };
         }
         
         // Obtener todos los costeos con sus artículos y gastos
@@ -36,15 +36,21 @@ class RevaluacionService {
         }
 
         // Si hay filtros de fábrica o marca, necesitamos cruzar con el catálogo
-        let filtroFabrica = filtros.fabrica ? filtros.fabrica.toUpperCase().trim() : null;
-        let filtroMarca = filtros.marca ? filtros.marca.toUpperCase().trim() : null;
+        let filtroFabrica = filtros.fabrica ? filtros.fabrica.trim() : null;
+        let filtroMarca = filtros.marca ? filtros.marca.trim() : null;
         let catalogoMap = {};
         if (filtroFabrica || filtroMarca) {
             const catalogoWhere = {};
-            if (filtroFabrica) catalogoWhere.empresa_fabrica = { [Op.iLike]: '%' + filtros.fabrica + '%' };
-            if (filtroMarca) catalogoWhere.marca = { [Op.iLike]: '%' + filtros.marca + '%' };
+            if (filtroFabrica) catalogoWhere.empresa_fabrica = { [Op.iLike]: filtros.fabrica.trim() };
+            if (filtroMarca) catalogoWhere.marca = { [Op.iLike]: filtros.marca.trim() };
             const catalogoArts = await CatalogoArticulo.findAll({ where: catalogoWhere, attributes: ['codigo_goodies'] });
             catalogoArts.forEach(a => { catalogoMap[a.codigo_goodies.toUpperCase()] = true; });
+            
+            if (Object.keys(catalogoMap).length === 0) {
+                throw new Error('No se encontraron artículos en el catálogo con ' + 
+                    (filtroMarca ? 'marca "' + filtros.marca + '"' : '') +
+                    (filtroFabrica ? ' fábrica "' + filtros.fabrica + '"' : ''));
+            }
         }
         
         // 2. Agrupar por código de artículo y quedarse con el último (por fecha_despacho)
