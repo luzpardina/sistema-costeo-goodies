@@ -43,7 +43,16 @@ class RevaluacionService {
             const catalogoWhere = {};
             if (filtroFabrica) catalogoWhere.empresa_fabrica = { [Op.iLike]: filtros.fabrica.trim() };
             if (filtroMarca) catalogoWhere.marca = { [Op.iLike]: filtros.marca.trim() };
-            const catalogoArts = await CatalogoArticulo.findAll({ where: catalogoWhere, attributes: ['codigo_goodies'] });
+            let catalogoArts = await CatalogoArticulo.findAll({ where: catalogoWhere, attributes: ['codigo_goodies', 'nombre', 'marca'] });
+            
+            // Fallback: si no encontró por marca exacta, buscar en nombre del artículo
+            if (catalogoArts.length === 0 && filtroMarca) {
+                catalogoArts = await CatalogoArticulo.findAll({ 
+                    where: { nombre: { [Op.iLike]: '%' + filtros.marca.trim() + '%' } },
+                    attributes: ['codigo_goodies', 'nombre', 'marca']
+                });
+            }
+            
             catalogoArts.forEach(a => { catalogoMap[a.codigo_goodies.toUpperCase()] = true; });
             
             if (Object.keys(catalogoMap).length === 0) {
@@ -51,6 +60,10 @@ class RevaluacionService {
                     (filtroMarca ? 'marca "' + filtros.marca + '"' : '') +
                     (filtroFabrica ? ' fábrica "' + filtros.fabrica + '"' : ''));
             }
+            
+            console.log('Filtro revaluación: ' + Object.keys(catalogoMap).length + ' artículos matchean ' +
+                (filtroMarca ? 'marca/nombre "' + filtros.marca + '"' : '') +
+                (filtroFabrica ? ' fábrica "' + filtros.fabrica + '"' : ''));
         }
         
         // 2. Agrupar por código de artículo y quedarse con el último (por fecha_despacho)
