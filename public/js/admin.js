@@ -417,25 +417,23 @@
         }
         function esDefinitivo(c) { return !!c.fecha_despacho; }
 
-        // 1. Importaciones por MARCA — separadas por año, con color definitivo/presupuestado
-        // Agrupar costeos por año
+        // 1. Importaciones por MARCA — todas en un solo recuadro, columnas lado a lado
         var yearBuckets = { '2026': [], '2025': [], 'Anteriores': [] };
         costeos.forEach(function(c) {
             var y = getYear(c);
-            if (!y) {
-                // Presupuestados: agrupar en el año actual
-                yearBuckets['2026'].push(c);
-            } else if (y >= 2026) yearBuckets['2026'].push(c);
+            if (!y) yearBuckets['2026'].push(c);
+            else if (y >= 2026) yearBuckets['2026'].push(c);
             else if (y === 2025) yearBuckets['2025'].push(c);
             else yearBuckets['Anteriores'].push(c);
         });
 
         var yearOrder = ['2026', '2025', 'Anteriores'];
+        var yearColumns = [];
+        
         yearOrder.forEach(function(yearLabel) {
             var yearCosteos = yearBuckets[yearLabel];
             if (!yearCosteos || yearCosteos.length === 0) return;
 
-            // Count by marca: { marca: { definitivo: N, presupuestado: N } }
             var porMarca = {};
             yearCosteos.forEach(function(c) {
                 var marcas = c.marcas ? c.marcas.split(',').map(function(m){return m.trim();}).filter(function(m){return m;}) : [];
@@ -447,33 +445,43 @@
                     else porMarca[marca].pres++;
                 });
             });
-            var topMarcas = Object.entries(porMarca).sort(function(a,b) { return (b[1].def + b[1].pres) - (a[1].def + a[1].pres); }).slice(0, 10);
+            var topMarcas = Object.entries(porMarca).sort(function(a,b) { return (b[1].def + b[1].pres) - (a[1].def + a[1].pres); }).slice(0, 8);
             var maxMarca = topMarcas[0] ? (topMarcas[0][1].def + topMarcas[0][1].pres) : 1;
+            var labelYear = yearLabel === 'Anteriores' ? 'Ant. 2025' : yearLabel;
 
-            var labelYear = yearLabel === 'Anteriores' ? 'Anteriores a 2025' : yearLabel;
-            html += '<div style="background:#12121e;border-radius:8px;padding:12px;border:1px solid #333;">';
-            html += '<p style="color:#4fc3f7;font-weight:bold;font-size:12px;margin-bottom:8px;">Importaciones por Marca ' + labelYear + ' <span style="color:#888;font-weight:normal;">(' + yearCosteos.length + ')</span></p>';
+            var col = '';
+            col += '<div style="flex:1;min-width:200px;">';
+            col += '<p style="color:#4fc3f7;font-weight:bold;font-size:11px;margin-bottom:6px;">' + labelYear + ' <span style="color:#888;font-weight:normal;">(' + yearCosteos.length + ')</span></p>';
             topMarcas.forEach(function(entry) {
                 var marca = entry[0], d = entry[1];
                 var total = d.def + d.pres;
                 var pctDef = (d.def / maxMarca) * 100;
                 var pctPres = (d.pres / maxMarca) * 100;
-                html += '<div style="margin:3px 0;display:flex;align-items:center;gap:6px;">';
-                html += '<span style="font-size:10px;color:#aaa;width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + marca + '">' + marca + '</span>';
-                html += '<div style="flex:1;background:#1a1a2e;border-radius:3px;height:14px;display:flex;">';
-                if (d.def > 0) html += '<div style="width:' + pctDef + '%;background:#4fc3f7;height:100%;border-radius:3px 0 0 3px;" title="Definitivos: ' + d.def + '"></div>';
-                if (d.pres > 0) html += '<div style="width:' + pctPres + '%;background:#ff9800;height:100%;border-radius:0 3px 3px 0;" title="Presupuestados: ' + d.pres + '"></div>';
-                html += '</div>';
-                html += '<span style="font-size:11px;color:#fff;width:20px;text-align:right;">' + total + '</span>';
-                html += '</div>';
+                col += '<div style="margin:2px 0;display:flex;align-items:center;gap:4px;">';
+                col += '<span style="font-size:9px;color:#aaa;width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + marca + '">' + marca + '</span>';
+                col += '<div style="flex:1;background:#1a1a2e;border-radius:3px;height:12px;display:flex;">';
+                if (d.def > 0) col += '<div style="width:' + pctDef + '%;background:#4fc3f7;height:100%;border-radius:3px 0 0 3px;" title="Definitivos: ' + d.def + '"></div>';
+                if (d.pres > 0) col += '<div style="width:' + pctPres + '%;background:#ff9800;height:100%;border-radius:0 3px 3px 0;" title="Presupuestados: ' + d.pres + '"></div>';
+                col += '</div>';
+                col += '<span style="font-size:10px;color:#fff;width:18px;text-align:right;">' + total + '</span>';
+                col += '</div>';
             });
-            // Legend
+            col += '</div>';
+            yearColumns.push(col);
+        });
+
+        if (yearColumns.length > 0) {
+            html += '<div style="background:#12121e;border-radius:8px;padding:12px;border:1px solid #333;grid-column:1/-1;">';
+            html += '<p style="color:#4fc3f7;font-weight:bold;font-size:12px;margin-bottom:8px;">Importaciones por Marca</p>';
+            html += '<div style="display:flex;gap:15px;flex-wrap:wrap;">';
+            html += yearColumns.join('');
+            html += '</div>';
             html += '<div style="margin-top:6px;display:flex;gap:12px;font-size:9px;color:#888;">';
             html += '<span><span style="display:inline-block;width:10px;height:10px;background:#4fc3f7;border-radius:2px;vertical-align:middle;"></span> Definitivos</span>';
             html += '<span><span style="display:inline-block;width:10px;height:10px;background:#ff9800;border-radius:2px;vertical-align:middle;"></span> Presupuestados</span>';
             html += '</div>';
             html += '</div>';
-        });
+        }
 
         // 2. Evolución TC USD
         const costeosConTC = costeos.filter(c => c.fecha_despacho && c.tc_usd).sort((a, b) => new Date(a.fecha_despacho) - new Date(b.fecha_despacho)).slice(-15);
