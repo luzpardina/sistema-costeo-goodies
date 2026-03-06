@@ -508,39 +508,66 @@
             html += '</div>';
         }
 
-        // 3. Resumen General
-        var calculados = costeos.filter(function(c) { return c.estado === 'calculado'; }).length;
-        var presupuestados = costeos.filter(function(c) { return !c.fecha_despacho; }).length;
-        var consolidados = costeos.filter(function(c) { return c.es_consolidado; }).length;
-        var noConsolidados = costeos.filter(function(c) { return c.fecha_despacho && !c.es_consolidado; }).length;
-
-        // Monedas: cantidad + suma en moneda ORIGINAL
-        var monedas = {};
+        // 3. Resumen General — por año en columnas
+        var resumenPorAnio = {};
+        var resumenTotal = { total: 0, calculados: 0, presupuestados: 0, consolidados: 0, directos: 0, monedas: {} };
+        
         costeos.forEach(function(c) {
+            var y = getYear(c);
+            var yearKey = !y ? 'Pres.' : (y >= 2026 ? '2026' : (y === 2025 ? '2025' : 'Ant.'));
+            if (!resumenPorAnio[yearKey]) resumenPorAnio[yearKey] = { total: 0, calculados: 0, presupuestados: 0, consolidados: 0, directos: 0, monedas: {} };
+            var r = resumenPorAnio[yearKey];
+            
+            r.total++;
+            resumenTotal.total++;
+            if (c.estado === 'calculado') { r.calculados++; resumenTotal.calculados++; }
+            if (!c.fecha_despacho) { r.presupuestados++; resumenTotal.presupuestados++; }
+            if (c.es_consolidado) { r.consolidados++; resumenTotal.consolidados++; }
+            if (c.fecha_despacho && !c.es_consolidado) { r.directos++; resumenTotal.directos++; }
+            
             var m = c.moneda_principal || 'USD';
-            if (!monedas[m]) monedas[m] = { cant: 0, totalDivisa: 0 };
-            monedas[m].cant++;
-            monedas[m].totalDivisa += parseFloat(c.fob_total_divisa) || 0;
+            var fob = parseFloat(c.fob_total_divisa) || 0;
+            if (!r.monedas[m]) r.monedas[m] = { cant: 0, fob: 0 };
+            r.monedas[m].cant++;
+            r.monedas[m].fob += fob;
+            if (!resumenTotal.monedas[m]) resumenTotal.monedas[m] = { cant: 0, fob: 0 };
+            resumenTotal.monedas[m].cant++;
+            resumenTotal.monedas[m].fob += fob;
         });
 
-        html += '<div style="background:#12121e;border-radius:8px;padding:12px;border:1px solid #333;">';
+        html += '<div style="background:#12121e;border-radius:8px;padding:12px;border:1px solid #333;grid-column:1/-1;">';
         html += '<p style="color:#4CAF50;font-weight:bold;font-size:12px;margin-bottom:8px;">Resumen General</p>';
-        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">';
-        html += '<div>Total: <strong style="color:#fff;">' + costeos.length + '</strong></div>';
-        html += '<div>Calculados: <strong style="color:#4CAF50;">' + calculados + '</strong></div>';
-        html += '<div>Presupuestados: <strong style="color:#ff9800;">' + presupuestados + '</strong></div>';
-        html += '<div>Consolidados: <strong style="color:#4fc3f7;">' + consolidados + '</strong> / Directos: <strong style="color:#fff;">' + noConsolidados + '</strong></div>';
-        html += '</div>';
-        html += '<div style="margin-top:8px;border-top:1px solid #333;padding-top:8px;">';
-        html += '<p style="color:#888;font-size:10px;margin-bottom:4px;">Facturas por moneda (FOB en moneda original):</p>';
-        var monedaSymbols = { USD: 'USD', EUR: 'EUR', GBP: 'GBP' };
-        Object.entries(monedas).forEach(function(entry) {
-            var m = entry[0], d = entry[1];
-            var fmtDiv = d.totalDivisa.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
-            html += '<div style="font-size:11px;display:flex;justify-content:space-between;">';
-            html += '<span><strong style="color:#fff;">' + m + '</strong>: ' + d.cant + ' facturas</span>';
-            html += '<span style="color:#4CAF50;">' + (monedaSymbols[m]||m) + ' ' + fmtDiv + '</span></div>';
+        html += '<div style="display:flex;gap:12px;flex-wrap:wrap;">';
+        
+        var resYears = ['2026', '2025', 'Ant.', 'Pres.'];
+        // Only show years that have data, plus total
+        var activeYears = resYears.filter(function(y) { return resumenPorAnio[y] && resumenPorAnio[y].total > 0; });
+        
+        // Render each year column + total
+        var allCols = activeYears.concat(['TOTAL']);
+        allCols.forEach(function(yearKey) {
+            var r = yearKey === 'TOTAL' ? resumenTotal : resumenPorAnio[yearKey];
+            if (!r || r.total === 0) return;
+            var isTotal = yearKey === 'TOTAL';
+            var titleColor = isTotal ? '#4CAF50' : '#4fc3f7';
+            var borderStyle = isTotal ? 'border-left:2px solid #4CAF50;padding-left:12px;' : '';
+            
+            html += '<div style="flex:1;min-width:140px;' + borderStyle + '">';
+            html += '<p style="color:' + titleColor + ';font-weight:bold;font-size:11px;margin-bottom:6px;">' + yearKey + '</p>';
+            html += '<div style="font-size:11px;line-height:1.6;">';
+            html += '<div>Costeos: <strong style="color:#fff;">' + r.total + '</strong></div>';
+            if (r.presupuestados > 0) html += '<div>Presupuestados: <strong style="color:#ff9800;">' + r.presupuestados + '</strong></div>';
+            html += '<div>Consol: <strong style="color:#4fc3f7;">' + r.consolidados + '</strong> / Dir: <strong style="color:#fff;">' + r.directos + '</strong></div>';
+            // Monedas
+            html += '<div style="margin-top:4px;border-top:1px solid #333;padding-top:4px;">';
+            Object.entries(r.monedas).sort().forEach(function(entry) {
+                var m = entry[0], d = entry[1];
+                var fobFmt = d.fob.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+                html += '<div style="font-size:10px;"><strong style="color:#fff;">' + m + '</strong> ' + d.cant + 'f → <span style="color:#4CAF50;">' + m + ' ' + fobFmt + '</span></div>';
+            });
+            html += '</div></div></div>';
         });
+        
         html += '</div></div>';
 
         // 4. Top artículos por CANTIDAD IMPORTADA (unidades) — separados 2026 y 2025
