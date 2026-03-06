@@ -341,15 +341,22 @@
         const base_calculo = document.getElementById('acuerdoBase').value;
         if (!lista_id) { alert('Seleccioná una lista'); return; }
         if (!pct_acuerdo) { alert('Ingresá un porcentaje'); return; }
-        await fetch(API_URL + '/api/comercial/acuerdos', {
-            method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lista_id, categoria, pct_acuerdo, pct_acuerdo_2, pct_acuerdo_3, tipo_acuerdo, orden, base_calculo })
-        });
-        document.getElementById('acuerdoPct').value = '';
-        document.getElementById('acuerdoPct2').value = '';
-        document.getElementById('acuerdoPct3').value = '';
-        cargarAcuerdos();
+        try {
+            var resp = await fetch(API_URL + '/api/comercial/acuerdos', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lista_id, categoria, pct_acuerdo, pct_acuerdo_2, pct_acuerdo_3, tipo_acuerdo, orden, base_calculo })
+            });
+            var data = await resp.json();
+            if (!resp.ok) {
+                alert('Error al guardar acuerdo: ' + (data.error || 'Error desconocido'));
+                return;
+            }
+            document.getElementById('acuerdoPct').value = '';
+            document.getElementById('acuerdoPct2').value = '';
+            document.getElementById('acuerdoPct3').value = '';
+            cargarAcuerdos();
+        } catch(e) { alert('Error de conexión: ' + e.message); }
     }
 
     async function eliminarAcuerdo(id) {
