@@ -381,16 +381,19 @@
         try {
             var resp = await fetch(API_URL + '/api/revaluaciones/historial', { headers: { 'Authorization': 'Bearer ' + token } });
             var revs = await resp.json();
-            var sel = document.getElementById('fuenteCostosPrecios');
-            if (!sel) return;
-            sel.innerHTML = '<option value="ultimo_despacho">Último Despacho (costo original)</option>';
+            var opciones = '<option value="ultimo_despacho">Último Despacho (costo original)</option>';
             if (Array.isArray(revs)) {
                 revs.forEach(function(r) {
                     var fecha = r.fecha_revaluacion ? new Date(r.fecha_revaluacion).toLocaleDateString('es-AR') : '';
                     var label = 'Rev. ' + fecha + ' — ' + (r.motivo || '').substring(0, 40) + ' (' + r.cantidad_articulos + ' arts)';
-                    sel.innerHTML += '<option value="' + r.id + '">' + label + '</option>';
+                    opciones += '<option value="' + r.id + '">' + label + '</option>';
                 });
             }
+            // Poblar TODOS los selectores de fuente de costos
+            ['fuenteCostosPrecios', 'fuenteCostosMargenes'].forEach(function(id) {
+                var sel = document.getElementById(id);
+                if (sel) sel.innerHTML = opciones;
+            });
         } catch(e) { console.error('Error cargando revaluaciones:', e); }
     }
     // Cargar al inicio
@@ -695,7 +698,10 @@
 
     async function cargarArticulosParaMargen() {
         try {
-            const resp = await fetch(API_URL + '/api/costeos/ultimos-costos', { headers: { 'Authorization': 'Bearer ' + token } });
+            var fuente = document.getElementById('fuenteCostosMargenes').value;
+            var url = API_URL + '/api/costeos/ultimos-costos';
+            if (fuente && fuente !== 'ultimo_despacho') url += '?revaluacion_id=' + fuente;
+            const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
             const data = await resp.json();
             articulosPvpTodos = (Array.isArray(data) ? data : []).map(a => ({
                 codigo_goodies: a.codigo_goodies || a.codigo,
@@ -705,6 +711,8 @@
                 marca: a.marca || '',
                 rubro: a.rubro || '',
                 costo_neto: parseFloat(a.costo_neto || a.costo_unitario_neto_ars) || 0,
+                iva_pct: a.iva_porcentaje ? (parseFloat(a.iva_porcentaje) * 100) : 21,
+                imp_interno_pct: a.imp_interno_porcentaje ? (parseFloat(a.imp_interno_porcentaje) * 100) : 0,
                 pvp: 0
             })).filter(a => a.costo_neto > 0);
             const proveedores = [...new Set(articulosPvpTodos.map(a => a.proveedor).filter(p => p))].sort();

@@ -484,8 +484,14 @@
                         <option value="">Todas las marcas</option>
                     </select>
                 </div>
-                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
-                    <button class="btn btn-secondary" title="Traer artículos del catálogo con su último costo para calcular márgenes" onclick="cargarArticulosParaMargen()">📦 Cargar Artículos del Catálogo</button>
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
+                    <div style="display:flex;flex-direction:column;gap:2px;">
+                        <label style="font-size:10px;color:#888;">Fuente de Costos</label>
+                        <select id="fuenteCostosMargenes" style="background:#1e1e2f;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;font-size:12px;min-width:200px;">
+                            <option value="ultimo_despacho">Último Despacho (original)</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-secondary" title="Traer artículos del catálogo con su último costo para calcular márgenes" onclick="cargarArticulosParaMargen()" style="align-self:flex-end;">📦 Cargar Artículos del Catálogo</button>
                     <button class="btn btn-warning" title="Descargar un Excel con los artículos para completar la columna PVP" onclick="descargarTemplatePvp()">📥 Descargar Template PVP</button>
                     <label class="btn btn-purple" style="cursor:pointer;">📤 Subir Template PVP<input type="file" id="pvpExcelFile" accept=".xlsx,.xls" onchange="subirTemplatePvp()" style="display:none;"></label>
                     <button class="btn btn-primary" title="Calcular el margen real de Goodies en cada lista desde el PVP ingresado" onclick="calcularMargenes()">📊 Calcular Márgenes</button>
