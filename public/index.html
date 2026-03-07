@@ -707,6 +707,12 @@
          ============================================= -->
     <div id="modAdmin" style="display:none;">
         <div class="cards">
+            <div class="card" style="border-left:4px solid #f44336;">
+                <h3>🔍 Diagnóstico del Sistema</h3>
+                <p style="color:#aaa;margin-bottom:10px;">Ejecuta pruebas automáticas de cada subsistema: base de datos, revaluaciones, catálogo, listas de precios, cálculos.</p>
+                <button class="btn btn-warning" onclick="ejecutarDiagnostico()" style="margin-bottom:10px;">🔍 Ejecutar Diagnóstico Completo</button>
+                <div id="diagnosticoResultado" style="display:none;margin-top:10px;max-height:500px;overflow-y:auto;background:#0a0a15;padding:12px;border-radius:6px;font-family:monospace;font-size:12px;"></div>
+            </div>
             <div class="card" style="border-left:4px solid #4fc3f7;">
                 <h3>📘 Manual de Usuario</h3>
                 <p style="color:#aaa;margin-bottom:15px;">Documentación completa del sistema: cómo usar cada módulo, fórmulas de cálculo, glosario y más.</p>

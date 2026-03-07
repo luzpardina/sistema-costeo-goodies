@@ -695,6 +695,36 @@
         } catch(e) { document.getElementById('historialContenido').innerHTML = '<p style="color:#f44336;">Error: ' + e.message + '</p>'; }
     }
 
+    // =============================================
+    // DIAGNÓSTICO DEL SISTEMA
+    // =============================================
+    async function ejecutarDiagnostico() {
+        var div = document.getElementById('diagnosticoResultado');
+        div.style.display = 'block';
+        div.innerHTML = '<p style="color:#ff9800;">⏳ Ejecutando diagnóstico completo...</p>';
+        try {
+            var resp = await fetch(API_URL + '/api/diagnostico', { headers: { 'Authorization': 'Bearer ' + token } });
+            var data = await resp.json();
+            
+            var html = '<div style="margin-bottom:10px;padding:10px;background:' + (data.resumen.errores > 0 ? '#3a1a1a' : '#1a3a1a') + ';border-radius:4px;">';
+            html += '<strong style="color:' + (data.resumen.errores > 0 ? '#f44336' : '#4CAF50') + ';font-size:14px;">' + data.resumen.estado + '</strong>';
+            html += '<br>✅ ' + data.resumen.ok + ' OK | ⚠️ ' + data.resumen.warnings + ' Warnings | ❌ ' + data.resumen.errores + ' Errores';
+            html += '<br><span style="color:#888;font-size:10px;">' + data.timestamp + ' — ' + data.usuario + '</span>';
+            html += '</div>';
+            
+            data.detalle.forEach(function(r) {
+                var color = r.status === '✅' ? '#4CAF50' : r.status === '⚠️' ? '#ff9800' : '#f44336';
+                html += '<div style="padding:3px 0;border-bottom:1px solid #1a1a2e;">';
+                html += '<span style="color:' + color + ';">' + r.status + '</span> ';
+                html += '<strong style="color:#ddd;">' + r.nombre + '</strong>';
+                html += ' — <span style="color:#aaa;">' + (r.detalle || r.error || '') + '</span>';
+                html += '</div>';
+            });
+            
+            div.innerHTML = html;
+        } catch(e) { div.innerHTML = '<p style="color:#f44336;">Error: ' + e.message + '</p>'; }
+    }
+
     // Cerrar buscador al hacer clic fuera
     document.addEventListener('click', function(e) {
         const buscador = document.getElementById('buscadorGlobal');

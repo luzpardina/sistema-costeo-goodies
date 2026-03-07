@@ -16,6 +16,7 @@ const catalogoRoutes = require('./routes/catalogoRoutes');
 const comercialRoutes = require('./routes/comercialRoutes');
 const contableRoutes = require('./routes/contableRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const healthCheck = require('./routes/healthCheck');
 
 const app = express();
 
@@ -84,6 +85,7 @@ app.use('/api/catalogo', catalogoRoutes);
 app.use('/api/comercial', comercialRoutes);
 app.use('/api/contable', contableRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/diagnostico', healthCheck);
 
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/public/index.html');
