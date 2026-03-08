@@ -923,17 +923,71 @@
                     Costo Neto = Base + Derechos + Estadística + Gastos Reales prorrateados
                 </div>
 
-                <h3>Precio de Venta — Listas sin acuerdos cadena (Gross-Up)</h3>
+                <!-- ======================== -->
+                <!-- FORMACIÓN DE PRECIOS     -->
+                <!-- ======================== -->
+                <h2 style="margin-top:30px;">Formación de Precios (Costo → Precio de Góndola)</h2>
+
+                <p>Goodies vende a través de tres canales. En todos los casos, el análisis busca determinar cuál será el <strong>precio final en góndola</strong> (PVP al consumidor).</p>
+
+                <h3>Escenario 1: Goodies → Distribuidor → Tradicional → Consumidor Final</h3>
                 <div class="formula">
-                    Precio Neto Goodies = Costo Neto ÷ (1 - Σ%)<br>
-                    Σ% = Margen + Logístico + Financiero + Comisión + IIBB + Otro + Acuerdos Flat<br><br>
-                    Factura Goodies = Neto × (1 + IVA%) + Neto × Imp.Int.%<br>
-                    Costo Distribuidor = Neto Goodies + Imp. Internos<br>
-                    Neto Distribuidor = Costo ÷ (1 - % Margen Cliente) [gross-up]<br>
-                    Neto Tradicional = Costo × (1 + % Markup Trad.) [markup]<br>
-                    PVP = Neto Tradicional × (1 + IVA%)
+                    <strong>Paso 1 — Precio de Goodies al Distribuidor</strong> (gross-up):<br>
+                    Neto Goodies = Costo ÷ (1 - Σ%)<br>
+                    Σ% = Margen Goodies + IIBB + Logístico + Financiero + Comisión + Otros<br>
+                    Factura = Neto + IVA (21%) + Imp. Internos (si aplica)<br><br>
+
+                    <strong>Paso 2 — Costo del Distribuidor</strong>:<br>
+                    Costo Dist = Neto Goodies + Imp. Internos<br>
+                    <em>⚠️ El IVA NO es costo (se recupera como crédito fiscal). Los Internos SÍ son costo.</em><br><br>
+
+                    <strong>Paso 3 — Precio del Distribuidor al Tradicional</strong> (gross-up):<br>
+                    Neto Dist = Costo Dist ÷ (1 - % Margen Distribuidor)<br>
+                    Factura Dist = Neto × (1 + IVA%)<br><br>
+
+                    <strong>Paso 4 — Precio del Tradicional al Público</strong> (markup):<br>
+                    Neto Trad = Neto Dist × (1 + % Markup Trad)<br>
+                    <strong>PVP = Neto Trad × (1 + IVA%)</strong>
                 </div>
 
+                <h3>Escenario 2: Goodies → Tradicional Directo → Consumidor Final</h3>
+                <div class="formula">
+                    <strong>Paso 1 — Precio de Goodies al Tradicional</strong> (gross-up):<br>
+                    Neto Goodies = Costo ÷ (1 - Σ%)<br>
+                    Σ% = Margen Goodies Trad. + IIBB + Logístico + Financiero<br>
+                    <em>Nota: el margen de Goodies es diferente al de venta a distribuidor (en general mayor)</em><br>
+                    Factura = Neto + IVA + Imp. Internos<br><br>
+
+                    <strong>Paso 2 — Costo del Tradicional</strong>:<br>
+                    Costo Trad = Neto Goodies + Imp. Internos<br><br>
+
+                    <strong>Paso 3 — Precio Tradicional al Público</strong> (markup):<br>
+                    <strong>PVP = Costo Trad × (1 + % Markup) × (1 + IVA%)</strong>
+                </div>
+
+                <h3>Escenario 3: Goodies → Consumidor Final Directo</h3>
+                <div class="formula">
+                    Goodies vende al <strong>mismo precio de góndola</strong> que resultaría de la cadena (Esc. 1 o 2), para no competir con sus propios clientes.<br><br>
+
+                    <strong>Paso 1 — Neto desde PVP</strong>:<br>
+                    Neto Goodies = PVP ÷ (1 + IVA% + Imp.Interno%)<br>
+                    <em>⚠️ A diferencia de los otros escenarios, acá se divide por (1+IVA+Internos) porque el consumidor paga todo, no recupera nada.</em><br><br>
+
+                    <strong>Paso 2 — Margen</strong>:<br>
+                    Margen Bruto = (Neto - Costo) ÷ Neto<br>
+                    Margen Real = Margen Bruto - % Gastos (IIBB + Log + Fin)<br><br>
+
+                    <em>Ejemplo: Si el PVP es $490.54 y el costo es $100:</em><br>
+                    <em>Neto = 490.54 ÷ 1.2614 = $388.89</em><br>
+                    <em>Margen bruto = (388.89-100)/388.89 = 74.28%</em><br>
+                    <em>Margen real = 74.28% - 13% gastos = <strong>61.28%</strong></em><br><br>
+
+                    <strong>⚡ Artículos CON impuestos internos tienen más margen</strong> en este escenario, porque su PVP de referencia es más alto (la cadena acumuló internos).
+                </div>
+
+                <!-- ======================== -->
+                <!-- SUPERMERCADOS            -->
+                <!-- ======================== -->
                 <h3>Precio de Venta — Supermercados (dos capas de gross-up)</h3>
                 <div class="formula">
                     Capa 1: Precio Neto Goodies = Costo Neto ÷ (1 - Σ% gastos)<br>
@@ -946,13 +1000,83 @@
                     PVP = Neto Super × (1 + IVA%)
                 </div>
 
-                <h3>Margen Inverso (desde PVP)</h3>
+                <!-- ======================== -->
+                <!-- CÁLCULO INVERSO          -->
+                <!-- ======================== -->
+                <h2 style="margin-top:30px;">Cálculo Inverso (PVP → Margen Real de Goodies)</h2>
+
+                <p>Dado un precio de góndola (PVP), se <strong>desanda la cadena hacia atrás</strong> para calcular cuánto le queda realmente a Goodies después de todos los costos.</p>
+
+                <h3>Caso A: PVP de canal con intermediarios (Dist/Trad/Super)</h3>
                 <div class="formula">
-                    Precio Neto Final = PVP ÷ (1 + IVA%)<br>
-                    Desandar Markup Trad. → Desandar Margen Cliente → Quitar Imp. Internos<br>
-                    = Precio Neto Goodies<br>
-                    Ingreso Neto = Precio Neto × (1 - Σ% gastos)<br>
-                    Margen Goodies = (Ingreso Neto - Costo Neto) ÷ Costo Neto × 100
+                    <strong>Paso 1</strong>: Sacar IVA → PVP ÷ (1 + 21%) = Neto Final<br>
+                    <strong>Paso 2</strong>: Si tiene Markup Trad → Neto Final ÷ (1 + Markup%) = Neto anterior<br>
+                    <strong>Paso 3</strong>: Si tiene Margen Cliente → Neto × (1 - MC%) = Base con Internos<br>
+                    <strong>Paso 4</strong>: Quitar Internos → Base ÷ (1 + Int%) = Neto Goodies<br>
+                    <strong>Paso 5</strong>: Si tiene acuerdos cadena → Base × (1 - Σ%cadena) = Neto Goodies<br>
+                    <strong>Paso 6</strong>: Restar gastos → Neto × Σ% gastos = Deducciones<br>
+                    <strong>Paso 7</strong>: Ingreso Neto = Neto Goodies - Deducciones<br>
+                    <strong>Margen Real = (Ingreso - Costo) ÷ Neto Goodies</strong>
+                </div>
+
+                <p><strong>Ejemplo numérico — Distribuidor</strong> (costo $100, PVP $489.88):</p>
+                <table>
+                    <tr><th>Paso</th><th>Operación</th><th>Resultado</th></tr>
+                    <tr><td>1</td><td>$489.88 ÷ 1.21 (sacar IVA)</td><td><strong>$404.86</strong></td></tr>
+                    <tr><td>2</td><td>$404.86 ÷ 1.50 (desandar markup 50%)</td><td><strong>$269.91</strong></td></tr>
+                    <tr><td>3</td><td>$269.91 × 0.65 (desandar margen dist 35%)</td><td><strong>$175.44</strong> = Neto Goodies</td></tr>
+                    <tr><td>4</td><td>$175.44 × 13% = $22.81 (gastos)</td><td>Deducciones: <strong>$22.81</strong></td></tr>
+                    <tr><td>5</td><td>$175.44 - $22.81</td><td>Ingreso: <strong>$152.63</strong></td></tr>
+                    <tr><td>6</td><td>($152.63 - $100) ÷ $175.44</td><td>Margen: <strong>30.00%</strong> ✅</td></tr>
+                </table>
+
+                <h3>Caso B: PVP de venta directa a Consumidor Final</h3>
+                <div class="formula">
+                    <strong>Diferencia clave:</strong> cuando Goodies factura directo al consumidor, la factura incluye IVA <strong>e Impuestos Internos</strong>. El consumidor no recupera nada.<br><br>
+
+                    <strong>Paso 1</strong>: Sacar IVA + Internos → PVP ÷ (1 + IVA% + Int%) = <strong>Neto Goodies</strong><br>
+                    <strong>Paso 2</strong>: Restar gastos → Neto × Σ% gastos = Deducciones<br>
+                    <strong>Paso 3</strong>: Ingreso = Neto - Deducciones<br>
+                    <strong>Margen Real = (Ingreso - Costo) ÷ Neto Goodies</strong><br><br>
+
+                    <em>Equivale a: Margen = Margen_Bruto - Gastos%, donde Margen_Bruto = 1 - (Costo ÷ Neto)</em>
+                </div>
+
+                <p><strong>Ejemplo numérico — Venta directa CF</strong> (costo $100, PVP $490.54, art sin internos):</p>
+                <table>
+                    <tr><th>Paso</th><th>Operación</th><th>Resultado</th></tr>
+                    <tr><td>1</td><td>$490.54 ÷ 1.2614 (sacar IVA + Int 5.14%)</td><td><strong>$388.89</strong> = Neto Goodies</td></tr>
+                    <tr><td>2</td><td>$388.89 × 13% = $50.56 (gastos)</td><td>Deducciones: <strong>$50.56</strong></td></tr>
+                    <tr><td>3</td><td>$388.89 - $50.56</td><td>Ingreso: <strong>$338.33</strong></td></tr>
+                    <tr><td>4</td><td>($338.33 - $100) ÷ $388.89</td><td>Margen: <strong>61.29%</strong></td></tr>
+                </table>
+
+                <p><strong>Ejemplo — Art con internos</strong> (costo $100, PVP $515.75):</p>
+                <table>
+                    <tr><th>Paso</th><th>Operación</th><th>Resultado</th></tr>
+                    <tr><td>1</td><td>$515.75 ÷ 1.2614</td><td><strong>$408.87</strong></td></tr>
+                    <tr><td>2</td><td>$408.87 × 13%</td><td><strong>$53.15</strong></td></tr>
+                    <tr><td>3</td><td>$408.87 - $53.15</td><td><strong>$355.72</strong></td></tr>
+                    <tr><td>4</td><td>($355.72 - $100) ÷ $408.87</td><td>Margen: <strong>62.54%</strong></td></tr>
+                </table>
+                <p>⚡ Art con internos tiene más margen (62.54% vs 61.29%) porque su PVP de referencia es más alto — la cadena acumula internos que inflan el precio al público.</p>
+
+                <!-- ======================== -->
+                <!-- CUADRO RESUMEN           -->
+                <!-- ======================== -->
+                <h3>Cuadro Resumen — Regla de División del PVP</h3>
+                <table>
+                    <tr><th>Tipo de venta</th><th>PVP incluye</th><th>Se divide por</th></tr>
+                    <tr><td>Con intermediarios (dist/trad/super)</td><td>Solo IVA</td><td><strong>PVP ÷ (1 + IVA%)</strong></td></tr>
+                    <tr><td>Venta directa a Consumidor Final</td><td>IVA + Imp. Internos</td><td><strong>PVP ÷ (1 + IVA% + Int%)</strong></td></tr>
+                </table>
+
+                <h3>Control de Margen</h3>
+                <div class="formula">
+                    Para verificar que el margen es correcto:<br><br>
+                    Precio de Venta Neto × Margen% = Ganancia Neta<br>
+                    Precio de Venta Neto - Costo - (Precio × IIBB%) - (Precio × Log%) - (Precio × Fin%) = Ganancia Neta<br><br>
+                    Ambos cálculos deben dar el mismo resultado (control = 0).
                 </div>
 
                 <h3>Simulador Break-Even</h3>
@@ -993,6 +1117,18 @@
             <section id="changelog">
                 <h2>Historial de Cambios</h2>
                 
+                <h3>Marzo 2026 — v2.6</h3>
+                <ul>
+                    <li><strong>Fuente de costos seleccionable:</strong> en Cálculo de Precios y Cálculo de Margen se puede elegir entre "Último Despacho" o cualquier revaluación como base de costos</li>
+                    <li><strong>Fix margen inverso:</strong> el margen ahora se calcula sobre precio (no sobre costo), equivalente a Margen Bruto - Gastos%</li>
+                    <li><strong>Fix venta directa CF:</strong> cuando la lista no tiene intermediarios, el PVP se divide por (1+IVA+Internos) en vez de solo (1+IVA)</li>
+                    <li><strong>Fix filtro revaluación:</strong> el filtro por marca ahora funciona correctamente</li>
+                    <li><strong>Acuerdos comerciales supermercados:</strong> cargados Jumbo (CD), Coto, Carrefour, Libertad</li>
+                    <li><strong>Dashboard mejorado:</strong> importaciones por marca, barras bicolor, separado por año</li>
+                    <li><strong>Diagnóstico del sistema:</strong> nuevo botón en ADMIN que prueba automáticamente cada subsistema</li>
+                    <li><strong>Manual ampliado:</strong> sección de fórmulas reescrita con los 3 escenarios de venta, ejemplos numéricos y cuadro de control de márgenes</li>
+                </ul>
+
                 <h3>Marzo 2026 — v2.5 (sesión nocturna)</h3>
                 <ul>
                     <li>Gestión de usuarios: crear, editar rol, activar/desactivar, resetear contraseña</li>
@@ -1087,7 +1223,7 @@
             </section>
 
             <div style="margin-top:60px; padding:20px; background:#12121e; border-radius:8px; text-align:center; color:#666;">
-                <p>Sistema de Costeo GOODIES S.A. — Manual v2.5</p>
+                <p>Sistema de Costeo GOODIES S.A. — Manual v2.6</p>
                 <p>Desarrollado con asistencia de Claude (Anthropic)</p>
                 <p style="margin-top:10px;">Para soporte técnico, contactar al administrador del sistema.</p>
             </div>

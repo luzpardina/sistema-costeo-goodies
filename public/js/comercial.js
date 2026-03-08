@@ -922,7 +922,7 @@
                 html += '<div style="margin-top:10px;padding:10px;background:#12121e;border-radius:4px;border-left:3px solid ' + color + ';">';
                 html += '<p style="font-weight:bold;color:#4fc3f7;font-size:14px;">' + m.lista_nombre + '</p>';
                 // Paso a paso inverso
-                html += '<p style="margin-top:5px;"><strong style="color:#ff9800;">PVP → quitar IVA</strong>: ' + fmtMoney(r.pvp) + ' ÷ (1 + ' + r.iva_pct + '%) = ' + fmtMoney(m.precio_neto_final) + '</p>';
+                html += '<p style="margin-top:5px;"><strong style="color:#ff9800;">PVP → quitar ' + (m.es_venta_directa_cf ? 'IVA + Imp. Internos' : 'IVA') + '</strong>: ' + fmtMoney(r.pvp) + ' ÷ ' + (m.es_venta_directa_cf ? '(1 + ' + r.iva_pct + '% + ' + r.imp_interno_pct + '%)' : '(1 + ' + r.iva_pct + '%)') + ' = ' + fmtMoney(m.precio_neto_final) + '</p>';
                 if (m.pcts_usados.markup_trad > 0) {
                     html += '<p><strong style="color:#ff9800;">Desandar Markup Trad.</strong> (' + m.pcts_usados.markup_trad + '%): ' + fmtMoney(m.precio_neto_final) + ' ÷ (1 + ' + m.pcts_usados.markup_trad + '%) = ' + fmtMoney(m.costo_trad) + '</p>';
                 }

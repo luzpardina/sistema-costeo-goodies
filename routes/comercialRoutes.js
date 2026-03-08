@@ -510,8 +510,18 @@ router.post('/calcular-margenes', auth, async (req, res) => {
 
                 // === DESANDAR LA CADENA DESDE PVP HACIA ATRÁS ===
 
-                // Paso 1: PVP incluye IVA → sacar IVA
-                let precioNetoFinal = pvp / (1 + ivaPct);
+                // Paso 1: Sacar impuestos del PVP
+                // Si hay intermediarios (mc > 0 o mk > 0): PVP solo incluye IVA
+                // Si es venta directa a CF (mc = 0 y mk = 0): PVP incluye IVA + Internos
+                const esVentaDirectaCF = pctMargenCliente === 0 && pctMarkupTrad === 0;
+                let precioNetoFinal;
+                if (esVentaDirectaCF && impInternoPct > 0) {
+                    // Venta directa a consumidor final: PVP / (1 + IVA + Internos)
+                    precioNetoFinal = pvp / (1 + ivaPct + impInternoPct);
+                } else {
+                    // Venta a intermediarios: PVP / (1 + IVA)
+                    precioNetoFinal = pvp / (1 + ivaPct);
+                }
 
                 // Paso 2: Si hay markup tradicional → desandar
                 let precioNetoEslabonAnterior = precioNetoFinal;
@@ -529,9 +539,10 @@ router.post('/calcular-margenes', auth, async (req, res) => {
                     }
                 }
 
-                // Paso 4: Quitar imp. internos
+                // Paso 4: Quitar imp. internos (solo para cadena con intermediarios)
+                // En venta directa CF, ya se descontaron en paso 1
                 let basePreInternos = baseClienteMasInternos;
-                if (impInternoPct > 0) {
+                if (impInternoPct > 0 && !esVentaDirectaCF) {
                     basePreInternos = baseClienteMasInternos / (1 + impInternoPct);
                 }
 
@@ -571,6 +582,7 @@ router.post('/calcular-margenes', auth, async (req, res) => {
                     lista_nombre: lista.nombre,
                     pvp,
                     precio_neto_final: Math.round(precioNetoFinal * 100) / 100,
+                    es_venta_directa_cf: esVentaDirectaCF,
                     precio_neto_trad: pctMarkupTrad > 0 ? Math.round(precioNetoFinal * 100) / 100 : null,
                     costo_trad: pctMarkupTrad > 0 ? Math.round(precioNetoEslabonAnterior * 100) / 100 : null,
                     precio_neto_cliente: pctMargenCliente > 0 ? Math.round(precioNetoEslabonAnterior * 100) / 100 : null,
