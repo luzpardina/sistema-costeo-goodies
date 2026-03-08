@@ -890,7 +890,7 @@
             html += '<td style="text-align:right;">' + fmtMoney(r.costo_neto) + '</td>';
             html += '<td style="text-align:right;font-weight:bold;">' + fmtMoney(r.pvp) + '</td>';
             r.margenes.forEach(m => {
-                const color = m.margen_pct < 10 ? '#f44336' : m.margen_pct < 20 ? '#ff9800' : '#4CAF50';
+                const color = m.margen_sobre_precio < 10 ? '#f44336' : m.margen_sobre_precio < 20 ? '#ff9800' : '#4CAF50';
                 html += '<td style="text-align:right;border-left:2px solid #555;">' + fmtMoney(m.ingreso_neto) + '</td>';
                 if (hayCadena) {
                     html += '<td style="text-align:right;">' + fmtMoney(m.precio_neto_goodies);
@@ -899,7 +899,7 @@
                     }
                     html += '</td>';
                 }
-                html += '<td style="text-align:center;color:' + color + ';font-weight:bold;font-size:14px;">' + m.margen_pct.toFixed(1) + '%';
+                html += '<td style="text-align:center;color:' + color + ';font-weight:bold;font-size:14px;">' + m.margen_sobre_precio.toFixed(1) + '%';
                 if (m.margen_punta_punta_super !== null) {
                     html += '<br><small style="color:#aaa;font-weight:normal;font-size:10px;">Super PaP: ' + m.margen_punta_punta_super.toFixed(0) + '%</small>';
                 }
@@ -918,7 +918,7 @@
             html += '<p><strong>' + r.codigo_goodies + '</strong> — ' + r.nombre + '</p>';
             html += '<p>PVP: <strong>' + fmtMoney(r.pvp) + '</strong> | Costo Neto: <strong>' + fmtMoney(r.costo_neto) + '</strong> | IVA: ' + r.iva_pct + '% | Imp.Int: ' + r.imp_interno_pct + '%</p>';
             r.margenes.forEach(m => {
-                const color = m.margen_pct < 10 ? '#f44336' : m.margen_pct < 20 ? '#ff9800' : '#4CAF50';
+                const color = m.margen_sobre_precio < 10 ? '#f44336' : m.margen_sobre_precio < 20 ? '#ff9800' : '#4CAF50';
                 html += '<div style="margin-top:10px;padding:10px;background:#12121e;border-radius:4px;border-left:3px solid ' + color + ';">';
                 html += '<p style="font-weight:bold;color:#4fc3f7;font-size:14px;">' + m.lista_nombre + '</p>';
                 // Paso a paso inverso
@@ -939,7 +939,7 @@
                 const totalPctGastos = m.pcts_usados.logistico + m.pcts_usados.iibb + m.pcts_usados.financiero + m.pcts_usados.comision + m.pcts_usados.otro_costo + (m.pcts_usados.acuerdo_flat || 0);
                 html += '<p><strong style="color:#ff9800;">Deducciones Goodies</strong> (' + totalPctGastos.toFixed(1) + '% de ' + fmtMoney(m.precio_neto_goodies) + '): -' + fmtMoney(m.total_deducciones) + '</p>';
                 html += '<p><strong>Ingreso Neto Goodies:</strong> ' + fmtMoney(m.ingreso_neto) + '</p>';
-                html += '<p style="font-size:14px;margin-top:5px;"><strong style="color:' + color + ';">Margen Goodies: (' + fmtMoney(m.ingreso_neto) + ' - ' + fmtMoney(r.costo_neto) + ') ÷ ' + fmtMoney(r.costo_neto) + ' = ' + m.margen_pct.toFixed(1) + '%</strong></p>';
+                html += '<p style="font-size:14px;margin-top:5px;"><strong style="color:' + color + ';">Margen Goodies: (' + fmtMoney(m.ingreso_neto) + ' - ' + fmtMoney(r.costo_neto) + ') ÷ ' + fmtMoney(m.precio_neto_goodies) + ' = ' + m.margen_sobre_precio.toFixed(1) + '%</strong></p>';
                 if (m.margen_punta_punta_super !== null) {
                     html += '<p style="font-size:11px;color:#aaa;">Margen punta a punta del super: ' + m.margen_punta_punta_super.toFixed(1) + '% (referencia informativa)</p>';
                 }
@@ -953,8 +953,8 @@
         const alertasMargen = [];
         resultados.forEach(r => {
             r.margenes.forEach(m => {
-                if (m.margen_pct < 10 && r.costo_neto > 0) {
-                    alertasMargen.push({ codigo: r.codigo_goodies, nombre: r.nombre, lista: m.lista_nombre, margen: m.margen_pct });
+                if (m.margen_sobre_precio < 10 && r.costo_neto > 0) {
+                    alertasMargen.push({ codigo: r.codigo_goodies, nombre: r.nombre, lista: m.lista_nombre, margen: m.margen_sobre_precio });
                 }
             });
         });
@@ -976,7 +976,7 @@
         listas.forEach(l => { wsData[0].push(l + ' - Neto Goodies', l + ' - Ingreso Neto', l + ' - Margen %'); });
         ultimosResultadosMargenes.forEach(r => {
             const row = [r.codigo_goodies, r.nombre, r.rubro || '', r.costo_neto, r.pvp, r.iva_pct, r.imp_interno_pct];
-            r.margenes.forEach(m => { row.push(m.precio_neto_goodies, m.ingreso_neto, m.margen_pct); });
+            r.margenes.forEach(m => { row.push(m.precio_neto_goodies, m.ingreso_neto, m.margen_sobre_precio); });
             wsData.push(row);
         });
         const wb = XLSX.utils.book_new();
