@@ -2,6 +2,21 @@
 // COMMON - Auth, Login, Core Functions
 // =============================================
 
+        // Global 401 handler: detect expired sessions on ANY API call
+        (function() {
+            var originalFetch = window.fetch;
+            window.fetch = function(url, options) {
+                return originalFetch.apply(this, arguments).then(function(response) {
+                    if (response.status === 401 && url.toString().includes('/api/') && !url.toString().includes('/api/auth/login')) {
+                        alert('⚠️ Tu sesión expiró. Se va a recargar la página para que inicies sesión nuevamente.');
+                        logout();
+                        location.reload();
+                    }
+                    return response;
+                });
+            };
+        })();
+
         document.addEventListener('DOMContentLoaded', () => { if (token && usuario) { mostrarApp(); } });
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
