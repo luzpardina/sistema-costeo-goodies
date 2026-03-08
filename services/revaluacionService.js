@@ -5,8 +5,6 @@ class RevaluacionService {
 
     static async generarRevaluacion(usuarioId, costeoIds, tcNuevoUSD, tcNuevoEUR, tcNuevoGBP, motivo, soloContable = false, filtros = {}) {
         
-        console.log('Revaluación - Filtros recibidos:', JSON.stringify(filtros));
-        
         // 1. Obtener artículos a revaluar
         let whereCondition = { 
             estado: 'calculado',
@@ -62,10 +60,6 @@ class RevaluacionService {
                     (filtroMarca ? 'marca "' + filtros.marca + '"' : '') +
                     (filtroFabrica ? ' fábrica "' + filtros.fabrica + '"' : ''));
             }
-            
-            console.log('Filtro revaluación: ' + Object.keys(catalogoMap).length + ' artículos matchean ' +
-                (filtroMarca ? 'marca/nombre "' + filtros.marca + '"' : '') +
-                (filtroFabrica ? ' fábrica "' + filtros.fabrica + '"' : ''));
         }
         
         // 2. Agrupar por código de artículo y quedarse con el último (por fecha_despacho)
@@ -94,9 +88,6 @@ class RevaluacionService {
         if (Object.keys(articulosPorCodigo).length === 0) {
             throw new Error('No se encontraron artículos que coincidan con los filtros aplicados');
         }
-
-        console.log('Revaluación - Artículos después de filtros:', Object.keys(articulosPorCodigo).length, 
-            'de', costeos.reduce((sum, c) => sum + c.articulos.length, 0), 'totales');
         
         // Build motivo with filter info
         let motivoCompleto = motivo;

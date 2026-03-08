@@ -250,21 +250,13 @@ router.get('/ultimos-costos', auth, cacheMiddleware(120), async (req, res) => {
         
         // Si se pidió una revaluación específica, usar esos costos
         if (revaluacionId) {
-            console.log('ultimos-costos: buscando revaluación ID:', revaluacionId);
-            
-            // First try findByPk
             let rev = await Revaluacion.findByPk(revaluacionId, {
                 include: [{ model: RevaluacionArticulo, as: 'articulos' }]
             });
             
-            // If not found, log all existing revaluaciones for debugging
             if (!rev) {
-                const allRevs = await Revaluacion.findAll({ attributes: ['id', 'motivo', 'fecha_revaluacion'], limit: 10, order: [['fecha_revaluacion', 'DESC']] });
-                console.log('ultimos-costos: revaluación NO encontrada. IDs existentes:', allRevs.map(r => r.id));
                 return res.status(404).json({ error: 'Revaluación no encontrada. Puede que haya sido eliminada. Seleccioná otra fuente de costos.' });
             }
-            
-            console.log('ultimos-costos: revaluación encontrada, articulos:', rev.articulos ? rev.articulos.length : 0);
             
             const codigos = rev.articulos.map(a => a.codigo_goodies).filter(Boolean);
             const catItems = codigos.length > 0 ? await CatalogoArticulo.findAll({
