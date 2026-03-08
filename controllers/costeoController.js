@@ -1,6 +1,6 @@
 const XLSX = require('xlsx');
 const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios, ConsolidadoProveedor, CatalogoArticulo } = require('../models');
-const { calcularCosteo } = require('./calculosService');
+const CalculosService = require('../services/calculosService');
 const { Op } = require('sequelize');
 
 // Función auxiliar para leer valor de celda
@@ -501,8 +501,7 @@ const importarExcel = async (req, res) => {
         }
 
 	// EJECUTAR CÁLCULOS AUTOMÁTICOS
-        const models = { Costeo, ArticuloCosteo, GastosAduana, GastosVarios };
-        await calcularCosteo(costeo.id, models);
+        await CalculosService.calcularCosteo(costeo.id);
 
         // Actualizar catálogo unificado
         const catalogoResult = await actualizarCatalogo(articulos, datosGenerales.moneda_principal, datosGenerales.proveedor);
@@ -564,7 +563,6 @@ const calcular = async (req, res) => {
     try {
         const { id } = req.params;
         
-        const CalculosService = require('../services/calculosService');
         const resultado = await CalculosService.calcularCosteo(id);
         
         res.json(resultado);
