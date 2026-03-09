@@ -1,6 +1,7 @@
 const XLSX = require('xlsx');
 const { Costeo, ArticuloCosteo, GastosAduana, GastosVarios, ConsolidadoProveedor, CatalogoArticulo } = require('../models');
 const CalculosService = require('../services/calculosService');
+const { invalidateCache } = require('../utils/cache');
 const { Op } = require('sequelize');
 
 // Función auxiliar para leer valor de celda
@@ -506,6 +507,9 @@ const importarExcel = async (req, res) => {
         // Actualizar catálogo unificado
         const catalogoResult = await actualizarCatalogo(articulos, datosGenerales.moneda_principal, datosGenerales.proveedor);
 
+        // Invalidar cache de costos (para que se recalculen con el nuevo costeo)
+        invalidateCache('/api/costeos/ultimos-costos');
+
         // Respuesta exitosa
         res.status(201).json({
             mensaje: 'Costeo importado exitosamente',
@@ -731,6 +735,9 @@ fob_parte: datos.fob_parte || 0,
 
         // Actualizar catálogo unificado con datos del costeo
         const catalogoResult = await actualizarCatalogo(datos.articulos, datos.moneda_principal, datos.proveedor);
+
+        // Invalidar cache de costos
+        invalidateCache('/api/costeos/ultimos-costos');
 
         res.json({
             mensaje: 'Costeo guardado exitosamente',

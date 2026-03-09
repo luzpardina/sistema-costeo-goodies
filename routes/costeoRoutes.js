@@ -243,7 +243,7 @@ router.get('/listar', auth, async (req, res) => {
     }
 });
 
-router.get('/ultimos-costos', auth, cacheMiddleware(120), async (req, res) => {
+router.get('/ultimos-costos', auth, cacheMiddleware(600), async (req, res) => {
     try {
         const { Op } = require('sequelize');
         const revaluacionId = req.query.revaluacion_id;
@@ -555,6 +555,7 @@ router.post('/:id/calcular', auth, async (req, res) => {
     try {
         const { id } = req.params;
         const resultado = await CalculosService.calcularCosteo(id);
+        invalidateCache('/api/costeos/ultimos-costos');
         res.json(resultado);
     } catch (error) {
         console.error('Error al calcular:', error);
