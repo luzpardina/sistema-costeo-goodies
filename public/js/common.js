@@ -5,12 +5,13 @@
         // Global handler: detect expired sessions + auto-renew token
         (function() {
             var originalFetch = window.fetch;
+            var sesionExpiradaDetectada = false;
             window.fetch = function(url, options) {
                 return originalFetch.apply(this, arguments).then(function(response) {
-                    if (response.status === 401 && url.toString().includes('/api/') && !url.toString().includes('/api/auth/login')) {
-                        alert('⚠️ Tu sesión expiró. Se va a recargar la página para que inicies sesión nuevamente.');
+                    if (response.status === 401 && url.toString().includes('/api/') && !url.toString().includes('/api/auth/login') && !sesionExpiradaDetectada) {
+                        sesionExpiradaDetectada = true;
                         logout();
-                        location.reload();
+                        alert('⚠️ Tu sesión expiró. Hacé click en Aceptar para volver a iniciar sesión.');
                     }
                     // Auto-renovar token si el backend envía uno nuevo
                     var nuevoToken = response.headers.get('X-New-Token');
