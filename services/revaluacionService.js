@@ -197,15 +197,25 @@ class RevaluacionService {
             // Participación FOB de este artículo dentro del costeo
             const participacionFOB = fobTotalCosteoDivisa > 0 ? importeOrigenDivisa / fobTotalCosteoDivisa : 0;
             
-            // Flete y seguro: usar PARTE si es consolidado, MONTO si no
-            let fleteDivisa, seguroDivisa;
+            // Puesta FOB, Flete y Seguro: usar PARTE si es consolidado, MONTO si no
+            let puestaFobDivisa, fleteDivisa, seguroDivisa;
             if (esConsolidado) {
+                puestaFobDivisa = parseFloat(costeo.fob_parte) || 0;
                 fleteDivisa = parseFloat(costeo.flete_parte) || 0;
                 seguroDivisa = parseFloat(costeo.seguro_parte) || 0;
             } else {
+                puestaFobDivisa = parseFloat(costeo.fob_monto) || 0;
                 fleteDivisa = parseFloat(costeo.flete_monto) || 0;
                 seguroDivisa = parseFloat(costeo.seguro_monto) || 0;
             }
+            
+            // Puesta FOB en pesos (tiene su propia moneda)
+            const fobMonedaBase = (costeo.fob_moneda || monedaPrincipal).toUpperCase();
+            let tcFobBase = tcNuevoUSD;
+            if (fobMonedaBase === 'EUR') tcFobBase = tcNuevoEUR || tcNuevoUSD;
+            if (fobMonedaBase === 'GBP') tcFobBase = tcNuevoGBP || tcNuevoUSD;
+            const puestaFobNuevoPesos = puestaFobDivisa * tcFobBase;
+            
             const fleteMoneda = (costeo.flete_moneda || 'USD').toUpperCase();
             const seguroMoneda = (costeo.seguro_moneda || 'USD').toUpperCase();
             
@@ -219,7 +229,7 @@ class RevaluacionService {
             
             const fleteNuevoPesos = fleteDivisa * tcFlete;
             const seguroNuevoPesos = seguroDivisa * tcSeguro;
-            const gastosBaseAduanaNuevo = (fleteNuevoPesos + seguroNuevoPesos) * participacionFOB;
+            const gastosBaseAduanaNuevo = (puestaFobNuevoPesos + fleteNuevoPesos + seguroNuevoPesos) * participacionFOB;
             
             // ANMAT = FOB * 0.5%
             const anmatNuevo = fobTotalNuevoPesos * 0.005;
