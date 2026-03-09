@@ -529,14 +529,14 @@
         } catch(e) { alert('Error: ' + e.message); }
     }
 
-    function renderResultadoPrecios(resultados) {
+    function renderResultadoPrecios(resultados, mostrarTodosFlag) {
         const div = document.getElementById('resultadoPrecios');
         if (!div || !resultados.length) { if(div) div.innerHTML = '<p style="color:#ff9800;">No hay resultados.</p>'; return; }
 
         const listas = resultados[0].precios.map(p => p.lista_nombre);
         const fmtMoney = v => '$' + (parseFloat(v)||0).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
 
-        var html = '<h4 style="color:#4CAF50;margin:10px 0;">Resultados: Cadena de Precios por Lista</h4>';
+        var html = '<h4 style="color:#4CAF50;margin:10px 0;">Resultados: Cadena de Precios por Lista (' + resultados.length + ' artículos)</h4>';
 
         // Detectar si alguna lista tiene distribuidor, tradicional o acuerdos cadena
         const hayDistribuidor = resultados.some(r => r.precios.some(p => p.pct_margen_cliente > 0));
@@ -567,7 +567,10 @@
         });
         html += '</tr></thead><tbody>';
 
-        resultados.forEach(r => {
+        const LIMITE_PRECIOS = 50;
+        const resultadosVisibles = (mostrarTodosFlag || resultados.length <= LIMITE_PRECIOS) ? resultados : resultados.slice(0, LIMITE_PRECIOS);
+
+        resultadosVisibles.forEach(r => {
             html += '<tr>';
             html += '<td style="position:sticky;left:0;background:#12121e;z-index:1;"><strong>' + r.codigo_goodies + '</strong><br><small style="color:#aaa;">' + (r.nombre||'').substring(0,30) + '</small></td>';
             html += '<td style="text-align:right;font-weight:bold;">' + fmtMoney(r.costo_neto) + '</td>';
@@ -594,6 +597,10 @@
         });
 
         html += '</tbody></table></div>';
+
+        if (resultados.length > LIMITE_PRECIOS && !mostrarTodosFlag) {
+            html += '<p style="text-align:center;margin:10px 0;"><button onclick="renderResultadoPrecios(ultimosResultadosPrecios, true)" style="background:#4fc3f7;color:#000;border:none;padding:8px 20px;border-radius:4px;cursor:pointer;font-weight:bold;">Mostrar todos (' + resultados.length + ' artículos)</button> <small style="color:#aaa;">Mostrando primeros ' + LIMITE_PRECIOS + '</small></p>';
+        }
 
         // Desglose expandible por artículo
         html += '<details style="margin-top:15px;"><summary style="cursor:pointer;color:#4fc3f7;font-weight:bold;">📋 Ver desglose detallado del primer artículo</summary>';
