@@ -2,7 +2,7 @@
 // COMMON - Auth, Login, Core Functions
 // =============================================
 
-        // Global 401 handler: detect expired sessions on ANY API call
+        // Global handler: detect expired sessions + auto-renew token
         (function() {
             var originalFetch = window.fetch;
             window.fetch = function(url, options) {
@@ -11,6 +11,12 @@
                         alert('⚠️ Tu sesión expiró. Se va a recargar la página para que inicies sesión nuevamente.');
                         logout();
                         location.reload();
+                    }
+                    // Auto-renovar token si el backend envía uno nuevo
+                    var nuevoToken = response.headers.get('X-New-Token');
+                    if (nuevoToken) {
+                        token = nuevoToken;
+                        localStorage.setItem('token', nuevoToken);
                     }
                     return response;
                 });
