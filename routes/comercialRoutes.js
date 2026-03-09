@@ -171,9 +171,17 @@ router.post('/calcular-precios', auth, async (req, res) => {
         // FALLBACK: accept codigos (old format) and fetch from DB
         let articulosToProcess = [];
         if (articulos && articulos.length > 0) {
-            // Frontend sent costs directly — use them
+            // Bulk load catalogo for all articles at once (avoid N+1)
+            const allCodigos = articulos.map(a => a.codigo_goodies).filter(Boolean);
+            const catalogoItems = allCodigos.length > 0 ? await CatalogoArticulo.findAll({
+                where: { codigo_goodies: { [Op.in]: allCodigos } },
+                raw: true
+            }) : [];
+            const catMap = {};
+            catalogoItems.forEach(ci => { catMap[ci.codigo_goodies] = ci; });
+
             for (const art of articulos) {
-                const catalogo = await CatalogoArticulo.findOne({ where: { codigo_goodies: art.codigo_goodies } });
+                const catalogo = catMap[art.codigo_goodies] || null;
                 articulosToProcess.push({
                     codigo_goodies: art.codigo_goodies,
                     nombre: catalogo ? catalogo.nombre : art.codigo_goodies,
@@ -185,7 +193,14 @@ router.post('/calcular-precios', auth, async (req, res) => {
                 });
             }
         } else if (codigos && codigos.length > 0) {
-            // Old format: fetch from DB (backwards compatible)
+            // Old format: bulk load catalogo + fetch costs from DB
+            const catalogoItems = await CatalogoArticulo.findAll({
+                where: { codigo_goodies: { [Op.in]: codigos } },
+                raw: true
+            });
+            const catMap = {};
+            catalogoItems.forEach(ci => { catMap[ci.codigo_goodies] = ci; });
+
             for (const codigo_goodies of codigos) {
                 const ultimoArticulo = await ArticuloCosteo.findOne({
                     where: { codigo_goodies },
@@ -194,7 +209,7 @@ router.post('/calcular-precios', auth, async (req, res) => {
                 });
                 const costoNeto = ultimoArticulo ? parseFloat(ultimoArticulo.costo_unitario_neto_ars) || 0 : 0;
                 if (costoNeto === 0) continue;
-                const catalogo = await CatalogoArticulo.findOne({ where: { codigo_goodies } });
+                const catalogo = catMap[codigo_goodies] || null;
                 articulosToProcess.push({
                     codigo_goodies,
                     nombre: catalogo ? catalogo.nombre : codigo_goodies,
@@ -450,6 +465,15 @@ router.post('/calcular-margenes', auth, async (req, res) => {
 
         const resultados = [];
 
+        // Bulk load catalogo for all articles at once (avoid N+1)
+        const allCodigosMarg = articulos_pvp.map(a => a.codigo_goodies).filter(Boolean);
+        const catalogoItemsMarg = allCodigosMarg.length > 0 ? await CatalogoArticulo.findAll({
+            where: { codigo_goodies: { [Op.in]: allCodigosMarg } },
+            raw: true
+        }) : [];
+        const catMapMarg = {};
+        catalogoItemsMarg.forEach(ci => { catMapMarg[ci.codigo_goodies] = ci; });
+
         for (const artPvp of articulos_pvp) {
             const { codigo_goodies, pvp } = artPvp;
 
@@ -465,7 +489,7 @@ router.post('/calcular-margenes', auth, async (req, res) => {
                 costoNeto = ultimoArticulo ? parseFloat(ultimoArticulo.costo_unitario_neto_ars) || 0 : 0;
             }
 
-            const catalogo = await CatalogoArticulo.findOne({ where: { codigo_goodies } });
+            const catalogo = catMapMarg[codigo_goodies] || null;
             const ivaPct = artPvp.iva_pct !== undefined ? parseFloat(artPvp.iva_pct) / 100 : (catalogo ? (parseFloat(catalogo.iva_porcentaje) || 0.21) : 0.21);
             const impInternoPct = artPvp.imp_interno_pct !== undefined ? parseFloat(artPvp.imp_interno_pct) / 100 : (catalogo ? (parseFloat(catalogo.imp_interno_porcentaje) || 0) : 0);
             const rubro = catalogo ? (catalogo.rubro || 'Otros') : 'Otros';
