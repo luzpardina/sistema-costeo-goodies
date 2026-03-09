@@ -1,4 +1,4 @@
-const { Costeo, ArticuloCosteo, GastosVarios, Revaluacion, RevaluacionArticulo, CatalogoArticulo } = require('../models');
+const { Costeo, ArticuloCosteo, GastosVarios, ConsolidadoProveedor, Revaluacion, RevaluacionArticulo, CatalogoArticulo } = require('../models');
 const { Op } = require('sequelize');
 
 class RevaluacionService {
@@ -26,7 +26,8 @@ class RevaluacionService {
             where: whereCondition,
             include: [
                 { model: ArticuloCosteo, as: 'articulos' },
-                { model: GastosVarios, as: 'gastos_varios' }
+                { model: GastosVarios, as: 'gastos_varios' },
+                { model: ConsolidadoProveedor, as: 'proveedores_consolidado' }
             ],
             order: [['fecha_despacho', 'DESC']]
         });
@@ -159,19 +160,52 @@ class RevaluacionService {
             
             // Obtener gastos del costeo para calcular participación y prorrateo
             const gastosVarios = costeo.gastos_varios || [];
+            const esConsolidado = costeo.es_consolidado === true;
+            const proveedoresConsolidado = costeo.proveedores_consolidado || [];
             
-            // Total FOB del costeo original en divisa
+            // Total FOB del costeo en divisa (suma de todos los artículos del proveedor)
             let fobTotalCosteoDivisa = 0;
             for (const a of costeo.articulos) {
                 fobTotalCosteoDivisa += parseFloat(a.importe_total_origen) || 0;
             }
             
-            // Participación FOB de este artículo
+            // Calcular participación del proveedor en el consolidado
+            let participacionConsolidado = 1;
+            if (esConsolidado && proveedoresConsolidado.length > 0) {
+                const montoFactura = parseFloat(costeo.monto_factura) || 0;
+                let fobProveedorPesos;
+                if (montoFactura > 0) {
+                    fobProveedorPesos = montoFactura * tcNuevoPrincipal;
+                } else {
+                    fobProveedorPesos = fobTotalCosteoDivisa * tcNuevoPrincipal;
+                }
+                
+                let fobOtrosProveedores = 0;
+                for (const prov of proveedoresConsolidado) {
+                    const fobProv = parseFloat(prov.fob_total) || 0;
+                    const monedaProv = (prov.moneda || 'USD').toUpperCase();
+                    let tcProv = tcNuevoUSD;
+                    if (monedaProv === 'EUR') tcProv = tcNuevoEUR || tcNuevoUSD;
+                    if (monedaProv === 'GBP') tcProv = tcNuevoGBP || tcNuevoUSD;
+                    fobOtrosProveedores += fobProv * tcProv;
+                }
+                
+                const fobTotalConsolidado = fobProveedorPesos + fobOtrosProveedores;
+                participacionConsolidado = fobTotalConsolidado > 0 ? fobProveedorPesos / fobTotalConsolidado : 1;
+            }
+            
+            // Participación FOB de este artículo dentro del costeo
             const participacionFOB = fobTotalCosteoDivisa > 0 ? importeOrigenDivisa / fobTotalCosteoDivisa : 0;
             
-            // Flete y seguro en pesos nuevos
-            const fleteDivisa = parseFloat(costeo.flete_monto) || 0;
-            const seguroDivisa = parseFloat(costeo.seguro_monto) || 0;
+            // Flete y seguro: usar PARTE si es consolidado, MONTO si no
+            let fleteDivisa, seguroDivisa;
+            if (esConsolidado) {
+                fleteDivisa = parseFloat(costeo.flete_parte) || 0;
+                seguroDivisa = parseFloat(costeo.seguro_parte) || 0;
+            } else {
+                fleteDivisa = parseFloat(costeo.flete_monto) || 0;
+                seguroDivisa = parseFloat(costeo.seguro_monto) || 0;
+            }
             const fleteMoneda = (costeo.flete_moneda || 'USD').toUpperCase();
             const seguroMoneda = (costeo.seguro_moneda || 'USD').toUpperCase();
             
@@ -216,6 +250,14 @@ class RevaluacionService {
                 
                 let montoGPesos = montoOrig * tcG;
                 if (recargoG > 0) montoGPesos = montoGPesos * (1 + recargoG / 100);
+                
+                // Si es consolidado, aplicar participación del proveedor
+                if (esConsolidado) {
+                    const metodo = g.metodo_prorrateo || 'por_fob';
+                    if (metodo === 'por_fob') montoGPesos = montoGPesos * participacionConsolidado;
+                    // TODO: por_volumen y por_peso si se necesitan
+                }
+                
                 totalGastosVarNuevoPesos += montoGPesos;
             }
             const gastosVarArtNuevo = totalGastosVarNuevoPesos * participacionFOB;
