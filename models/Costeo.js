@@ -105,6 +105,9 @@ fob_parte: {
     fecha_factura_intermediaria: {
         type: DataTypes.DATE
     },
+    fecha_vencimiento_intermediaria: {
+        type: DataTypes.DATE
+    },
     cif_total_usd: {
         type: DataTypes.DECIMAL(15, 2)
     },
