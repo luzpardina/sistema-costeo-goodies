@@ -621,6 +621,7 @@ const cargaManual = async (req, res) => {
             empresa_intermediaria: datos.empresa_intermediaria || null,
             factura_intermediaria: datos.factura_intermediaria || null,
             fecha_factura_intermediaria: datos.fecha_factura_intermediaria || null,
+            fecha_vencimiento_intermediaria: datos.fecha_vencimiento_intermediaria || null,
             factura_nro: datos.factura_nro || null,
             moneda_principal: datos.moneda_principal || 'USD',
             monto_factura: datos.monto_factura || 0,
