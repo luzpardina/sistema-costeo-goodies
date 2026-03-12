@@ -153,9 +153,8 @@ class CalculosService {
             else if (seguroMoneda === 'GBP') tcSeguro = tc_gbp;
             const seguroAduanaARS = seguroAduana * tcSeguro;
 
-            // Base Aduana Total = FOB Factura + Puesta FOB + Flete + Seguro (todo en ARS)
+            // Base Aduana = Puesta FOB + Flete + Seguro (del tab Base Aduana, NO incluye FOB de factura)
             const gastosBaseAduanaARS = puestaFobARS + fleteAduanaARS + seguroAduanaARS;
-            const baseAduanaTotalARS = fobTotalPesos + gastosBaseAduanaARS;
 
             const gastosPorGrupo = {};
             let totalGastosVariosPesos = 0;
@@ -241,7 +240,7 @@ class CalculosService {
                 }
 
                 const gastosBaseAduanaArt = gastosBaseAduanaARS * participacionFOB;
-                const baseAduana = fobTotalArtPesos + gastosBaseAduanaArt;
+                const baseAduana = gastosBaseAduanaArt;
 
                 const derechosARS = derechosPct > 0 ? baseAduana * derechosPct : 0;
                 const estadisticaARS = derechosPct > 0 ? baseAduana * 0.03 : 0;
