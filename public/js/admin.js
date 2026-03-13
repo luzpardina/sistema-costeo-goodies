@@ -751,3 +751,14 @@
         }
     });
 
+    // Exponer funciones globalmente para onclick en HTML
+    window.cambiarRolUsuario = cambiarRolUsuario;
+    window.toggleActivoUsuario = toggleActivoUsuario;
+    window.resetPasswordUsuario = resetPasswordUsuario;
+    window.eliminarUsuario = eliminarUsuario;
+    window.mostrarFormUsuario = mostrarFormUsuario;
+    window.crearUsuario = crearUsuario;
+    window.cargarUsuarios = cargarUsuarios;
+    window.guardarConfig = guardarConfig;
+    window.ejecutarDiagnostico = ejecutarDiagnostico;
+    window.verHistorial = verHistorial;
