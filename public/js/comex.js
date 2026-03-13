@@ -1248,7 +1248,7 @@ async function ejecutarCalculo(id, metodo) {
                     html += '<tr><td style="padding:5px 8px;border-bottom:1px solid #333;font-weight:bold;">' + mon + '</td>';
                     html += '<td style="' + tdSt + '">' + fmtNum(v1) + '</td>';
                     html += '<td style="' + tdSt + '">' + fmtNum(v2) + '</td>';
-                    html += difCell(v2, v1) + '</tr>';
+                    html += difCell(v1, v2) + '</tr>';
                 });
                 html += '</tbody></table>';
 
@@ -1270,7 +1270,7 @@ async function ejecutarCalculo(id, metodo) {
                     html += '<td style="padding:5px 8px;text-align:center;border-bottom:1px solid #333;">' + mon + '</td>';
                     html += '<td style="' + tdSt + '">' + fmtNum(v1) + '</td>';
                     html += '<td style="' + tdSt + '">' + fmtNum(v2) + '</td>';
-                    html += difCell(v2, v1) + '</tr>';
+                    html += difCell(v1, v2) + '</tr>';
                 }
                 html += '</tbody></table>';
 
@@ -1300,13 +1300,13 @@ async function ejecutarCalculo(id, metodo) {
                         html += '<td style="padding:5px 8px;text-align:center;border-bottom:1px solid #333;font-size:11px;">' + item.moneda + '</td>';
                         html += '<td style="' + tdSt + '">' + (v1 ? fmtNum(v1) : '-') + '</td>';
                         html += '<td style="' + tdSt + '">' + (v2 ? fmtNum(v2) : '-') + '</td>';
-                        html += (v1 > 0 && v2 > 0 ? difCell(v2, v1) : '<td style="' + tdSt + '">-</td>') + '</tr>';
+                        html += (v1 > 0 && v2 > 0 ? difCell(v1, v2) : '<td style="' + tdSt + '">-</td>') + '</tr>';
                     }
                     html += '<tr style="background:#1a1a2e;font-weight:bold;">';
                     html += '<td colspan="2" style="padding:6px 8px;border-top:2px solid #444;">TOTAL GASTOS</td>';
                     html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">' + fmtNum(t1) + '</td>';
                     html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">' + fmtNum(t2) + '</td>';
-                    html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;font-weight:bold;color:' + colorPct(pctDif(t2,t1)) + ';">' + fmtPct(pctDif(t2,t1)) + '</td>';
+                    html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;font-weight:bold;color:' + colorPct(pctDif(t1,t2)) + ';">' + fmtPct(pctDif(t1,t2)) + '</td>';
                     html += '</tr></tbody></table>';
                 }
 
@@ -1335,13 +1335,13 @@ async function ejecutarCalculo(id, metodo) {
                         html += '<tr><td style="padding:5px 8px;border-bottom:1px solid #333;">' + f.label + '</td>';
                         html += '<td style="' + tdSt + '">$' + fmtNum(v1) + '</td>';
                         html += '<td style="' + tdSt + '">$' + fmtNum(v2) + '</td>';
-                        html += (v1 > 0 && v2 > 0 ? difCell(v2, v1) : '<td style="' + tdSt + '">-</td>') + '</tr>';
+                        html += (v1 > 0 && v2 > 0 ? difCell(v1, v2) : '<td style="' + tdSt + '">-</td>') + '</tr>';
                     }
                     html += '<tr style="background:#1a1a2e;font-weight:bold;">';
                     html += '<td style="padding:6px 8px;border-top:2px solid #444;">TOTAL</td>';
                     html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">$' + fmtNum(tga1) + '</td>';
                     html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;">$' + fmtNum(tga2) + '</td>';
-                    html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;font-weight:bold;color:' + colorPct(pctDif(tga2,tga1)) + ';">' + fmtPct(pctDif(tga2,tga1)) + '</td>';
+                    html += '<td style="padding:6px 8px;text-align:right;border-top:2px solid #444;font-weight:bold;color:' + colorPct(pctDif(tga1,tga2)) + ';">' + fmtPct(pctDif(tga1,tga2)) + '</td>';
                     html += '</tr></tbody></table>';
                 }
 
