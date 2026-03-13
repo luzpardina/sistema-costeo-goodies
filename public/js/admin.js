@@ -44,22 +44,29 @@
             var users = await resp.json();
             if (!Array.isArray(users) || users.length === 0) { div.innerHTML = '<p>No hay usuarios.</p>'; return; }
             var ROL_COLORS = { admin: '#f44336', comex: '#4fc3f7', comercial: '#ff9800', contable: '#4CAF50', visualizador: '#888' };
-            var html = '<table style="width:100%;"><thead><tr style="background:#2a2a3e;"><th>Nombre</th><th>Email</th><th>Rol</th><th>Activo</th><th>Acciones</th></tr></thead><tbody>';
+            var html = '<table style="width:100%;border-collapse:collapse;min-width:600px;">';
+            html += '<thead><tr style="background:#2a2a3e;">';
+            html += '<th style="padding:10px;text-align:left;border-bottom:2px solid #444;">Nombre</th>';
+            html += '<th style="padding:10px;text-align:left;border-bottom:2px solid #444;">Email</th>';
+            html += '<th style="padding:10px;text-align:center;border-bottom:2px solid #444;">Rol</th>';
+            html += '<th style="padding:10px;text-align:center;border-bottom:2px solid #444;">Estado</th>';
+            html += '<th style="padding:10px;text-align:center;border-bottom:2px solid #444;">Acciones</th>';
+            html += '</tr></thead><tbody>';
             users.forEach(function(u) {
                 var color = ROL_COLORS[u.rol] || '#aaa';
                 var activo = u.activo !== false;
-                html += '<tr style="' + (activo ? '' : 'opacity:0.5;') + '">';
-                html += '<td>' + (u.nombre || '-') + '</td>';
-                html += '<td>' + u.email + '</td>';
-                html += '<td><select onchange="cambiarRolUsuario(\'' + u.id + '\', this.value)" style="background:#1e1e2f;border:1px solid #444;color:' + color + ';padding:3px;border-radius:3px;font-size:11px;font-weight:bold;">';
+                html += '<tr style="border-bottom:1px solid #333;' + (activo ? '' : 'opacity:0.5;') + '">';
+                html += '<td style="padding:8px;">' + (u.nombre || '-') + '</td>';
+                html += '<td style="padding:8px;color:#aaa;">' + u.email + '</td>';
+                html += '<td style="padding:8px;text-align:center;"><select onchange="cambiarRolUsuario(\'' + u.id + '\', this.value)" style="background:#1e1e2f;border:1px solid #444;color:' + color + ';padding:5px 10px;border-radius:4px;font-size:12px;font-weight:bold;cursor:pointer;">';
                 ['admin', 'comex', 'comercial', 'contable', 'visualizador'].forEach(function(r) {
-                    html += '<option value="' + r + '" ' + (u.rol === r ? 'selected' : '') + '>' + r + '</option>';
+                    html += '<option value="' + r + '" ' + (u.rol === r ? 'selected' : '') + '>' + r.toUpperCase() + '</option>';
                 });
                 html += '</select></td>';
-                html += '<td><button class="btn btn-sm" style="padding:2px 8px;font-size:10px;background:' + (activo ? '#4CAF50' : '#f44336') + ';color:#fff;border:none;border-radius:3px;" onclick="toggleActivoUsuario(\'' + u.id + '\',' + !activo + ')">' + (activo ? '✅ Activo' : '❌ Inactivo') + '</button></td>';
-                html += '<td>';
-                html += '<button class="btn btn-sm" style="padding:2px 8px;font-size:10px;background:#ff9800;color:#fff;border:none;border-radius:3px;margin-right:4px;" onclick="resetPasswordUsuario(\'' + u.id + '\',\'' + u.email + '\')">🔑</button>';
-                html += '<button class="btn btn-sm" style="padding:2px 8px;font-size:10px;background:#f44336;color:#fff;border:none;border-radius:3px;" onclick="eliminarUsuario(\'' + u.id + '\',\'' + u.email + '\')">🗑️</button>';
+                html += '<td style="padding:8px;text-align:center;"><button style="padding:5px 12px;font-size:11px;background:' + (activo ? '#4CAF50' : '#f44336') + ';color:#fff;border:none;border-radius:4px;cursor:pointer;" onclick="toggleActivoUsuario(\'' + u.id + '\',' + !activo + ')">' + (activo ? '✅ Activo' : '❌ Inactivo') + '</button></td>';
+                html += '<td style="padding:8px;text-align:center;white-space:nowrap;">';
+                html += '<button style="padding:5px 10px;font-size:12px;background:#ff9800;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-right:5px;" onclick="resetPasswordUsuario(\'' + u.id + '\',\'' + u.email + '\')" title="Cambiar contraseña">🔑</button>';
+                html += '<button style="padding:5px 10px;font-size:12px;background:#f44336;color:#fff;border:none;border-radius:4px;cursor:pointer;" onclick="eliminarUsuario(\'' + u.id + '\',\'' + u.email + '\')" title="Eliminar usuario">🗑️</button>';
                 html += '</td>';
                 html += '</tr>';
             });
