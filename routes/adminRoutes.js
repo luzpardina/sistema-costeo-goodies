@@ -4,6 +4,7 @@ const auth = require('../middleware/auth');
 const { requireRole } = require('../middleware/roles');
 const { AuditoriaLog, ConfigSistema, Usuario } = require('../models');
 const { registrarAuditoria } = require('../utils/auditoria');
+const bcrypt = require('bcryptjs');
 
 // Listar usuarios (solo admins)
 router.get('/usuarios', auth, async (req, res) => {
@@ -13,6 +14,55 @@ router.get('/usuarios', auth, async (req, res) => {
             order: [['nombre', 'ASC']]
         });
         res.json(usuarios);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Crear nuevo usuario
+router.post('/usuarios', auth, async (req, res) => {
+    try {
+        if (req.usuario.rol !== 'admin') {
+            return res.status(403).json({ error: 'Solo administradores pueden crear usuarios' });
+        }
+        const { email, password, nombre, rol } = req.body;
+        if (!email || !password || !nombre) {
+            return res.status(400).json({ error: 'Email, password y nombre son requeridos' });
+        }
+        const existente = await Usuario.findOne({ where: { email } });
+        if (existente) {
+            return res.status(400).json({ error: 'El email ya está registrado' });
+        }
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const usuario = await Usuario.create({
+            email,
+            password: hashedPassword,
+            nombre,
+            rol: rol || 'visualizador',
+            activo: true
+        });
+        await registrarAuditoria(req.usuario.id, 'CREAR_USUARIO', 'Usuario', usuario.id, null, { email, nombre, rol });
+        res.json({ mensaje: 'Usuario creado', usuario: { id: usuario.id, email, nombre, rol: usuario.rol } });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Eliminar usuario
+router.delete('/usuarios/:id', auth, async (req, res) => {
+    try {
+        if (req.usuario.rol !== 'admin') {
+            return res.status(403).json({ error: 'Solo administradores pueden eliminar usuarios' });
+        }
+        const usuario = await Usuario.findByPk(req.params.id);
+        if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+        if (usuario.id === req.usuario.id) {
+            return res.status(400).json({ error: 'No podés eliminarte a vos mismo' });
+        }
+        const datosAntes = { email: usuario.email, nombre: usuario.nombre, rol: usuario.rol };
+        await usuario.destroy();
+        await registrarAuditoria(req.usuario.id, 'ELIMINAR_USUARIO', 'Usuario', req.params.id, datosAntes, null);
+        res.json({ mensaje: 'Usuario eliminado' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

@@ -57,7 +57,10 @@
                 });
                 html += '</select></td>';
                 html += '<td><button class="btn btn-sm" style="padding:2px 8px;font-size:10px;background:' + (activo ? '#4CAF50' : '#f44336') + ';color:#fff;border:none;border-radius:3px;" onclick="toggleActivoUsuario(\'' + u.id + '\',' + !activo + ')">' + (activo ? '✅ Activo' : '❌ Inactivo') + '</button></td>';
-                html += '<td><button class="btn btn-sm" style="padding:2px 8px;font-size:10px;background:#ff9800;color:#fff;border:none;border-radius:3px;" onclick="resetPasswordUsuario(\'' + u.id + '\',\'' + u.email + '\')">🔑 Reset Pass</button></td>';
+                html += '<td>';
+                html += '<button class="btn btn-sm" style="padding:2px 8px;font-size:10px;background:#ff9800;color:#fff;border:none;border-radius:3px;margin-right:4px;" onclick="resetPasswordUsuario(\'' + u.id + '\',\'' + u.email + '\')">🔑</button>';
+                html += '<button class="btn btn-sm" style="padding:2px 8px;font-size:10px;background:#f44336;color:#fff;border:none;border-radius:3px;" onclick="eliminarUsuario(\'' + u.id + '\',\'' + u.email + '\')">🗑️</button>';
+                html += '</td>';
                 html += '</tr>';
             });
             html += '</tbody></table>';
@@ -98,6 +101,20 @@
                 body: JSON.stringify({ password: newPass })
             });
             alert('✅ Contraseña actualizada para ' + email);
+        } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function eliminarUsuario(id, email) {
+        if (!confirm('¿Eliminar usuario ' + email + '?\nEsta acción no se puede deshacer.')) return;
+        try {
+            var resp = await fetch(API_URL + '/api/admin/usuarios/' + id, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            var data = await resp.json();
+            if (!resp.ok) { alert('Error: ' + (data.error || 'No se pudo eliminar')); return; }
+            alert('✅ Usuario eliminado');
+            cargarUsuarios();
         } catch(e) { alert('Error: ' + e.message); }
     }
 
