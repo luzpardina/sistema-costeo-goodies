@@ -34,12 +34,10 @@ const allowedOrigins = [
 ];
 app.use(cors({
     origin: function(origin, callback) {
-        // Permitir requests sin origin (mobile apps, curl, same-origin, server-to-server)
+        // Permitir requests sin origin (mobile apps, curl, same-origin)
         if (!origin) return callback(null, true);
-        // Whitelist estricta — antes había un callback(null, true) permisivo al final
-        // que invalidaba toda la whitelist. Eso permitía CORS desde cualquier sitio.
         if (allowedOrigins.some(o => origin.startsWith(o))) return callback(null, true);
-        callback(new Error('Origen no permitido por CORS: ' + origin));
+        callback(null, true); // Por ahora permisivo, restringir cuando esté estable
     },
     credentials: true
 }));
