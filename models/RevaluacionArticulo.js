@@ -63,6 +63,15 @@ const RevaluacionArticulo = sequelize.define('RevaluacionArticulo', {
     },
     diferencia_costo_pct: {
         type: DataTypes.DECIMAL(10, 4)
+    },
+    // Composición del costo revaluado: % sensible al TC vs % en pesos.
+    // Misma lógica que ArticuloCosteo — útil para analizar sensibilidad
+    // de la revaluación a un eventual cambio adicional de TC/inflación.
+    pct_costo_divisa: {
+        type: DataTypes.DECIMAL(5, 2)
+    },
+    pct_costo_pesos: {
+        type: DataTypes.DECIMAL(5, 2)
     }
 }, {
     tableName: 'revaluacion_articulos',

@@ -149,6 +149,12 @@ async function iniciarServidor() {
             console.log('✅ Columnas pct_costo_divisa y pct_costo_pesos verificadas');
         } catch (e) { console.log('Columnas pct_costo ya existen:', e.message); }
 
+        try {
+            await sequelize.query("ALTER TABLE revaluacion_articulos ADD COLUMN IF NOT EXISTS pct_costo_divisa DECIMAL(5,2);");
+            await sequelize.query("ALTER TABLE revaluacion_articulos ADD COLUMN IF NOT EXISTS pct_costo_pesos DECIMAL(5,2);");
+            console.log('✅ Columnas pct_costo en revaluacion_articulos verificadas');
+        } catch (e) { console.log('Columnas pct_costo revaluacion ya existen:', e.message); }
+
         await sequelize.sync({ alter: true });
         console.log('✅ Modelos sincronizados con la base de datos');
 
