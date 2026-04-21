@@ -874,6 +874,8 @@ async function duplicarCosteo(id) {
                     if (cmPorCajaDup) cmPorCajaDup.checked = false;
                     const thVODup = document.getElementById('thValorOrigen');
                     if (thVODup) thVODup.textContent = 'Valor Origen';
+                    const thVFDup = document.getElementById('thValorFabrica');
+                    if (thVFDup) thVFDup.textContent = 'Valor Fábrica';
                     articulosManual = (costeo.articulos || []).map(mapearArticuloDesdeDB);
                     if (articulosManual.length === 0) agregarArticulo();
                     renderizarArticulos();
@@ -936,6 +938,8 @@ async function editarCosteo(id) {
                     if (cmPorCajaEdit) cmPorCajaEdit.checked = false;
                     const thVOEdit = document.getElementById('thValorOrigen');
                     if (thVOEdit) thVOEdit.textContent = 'Valor Origen';
+                    const thVFEdit = document.getElementById('thValorFabrica');
+                    if (thVFEdit) thVFEdit.textContent = 'Valor Fábrica';
                     document.getElementById('cm_volumenM3').value = costeo.volumen_m3 || '';
                     document.getElementById('cm_pesoKg').value = costeo.peso_kg || '';
                     proveedoresConsolidado = (costeo.proveedores_consolidado || []).map(p => ({
@@ -1639,6 +1643,8 @@ function abrirCargaManual() {
             if (cmPorCaja) cmPorCaja.checked = false;
             const thValorOrigen = document.getElementById('thValorOrigen');
             if (thValorOrigen) thValorOrigen.textContent = 'Valor Origen';
+            const thValorFabrica = document.getElementById('thValorFabrica');
+            if (thValorFabrica) thValorFabrica.textContent = 'Valor Fábrica';
             document.getElementById('cm_volumenM3').value = '';
             document.getElementById('cm_pesoKg').value = '';
             const thConsolidado = document.getElementById('thConsolidado');
@@ -1772,15 +1778,22 @@ function agregarArticulo() {
             const porCaja = (document.getElementById('cm_cargarPorCaja') || {}).checked;
             tbody.innerHTML = articulosManual.map((art, idx) => {
                 const aplicaAnmat = art.aplica_anmat !== false;
-                // Calculo el unitario en tiempo real para mostrarlo al lado del input
-                // cuando el modo por caja está activo (feedback visual inmediato).
+                // Calculo unitarios en tiempo real (valor_origen y valor_fabrica) para
+                // mostrarlos debajo de cada input cuando el modo por caja está activo.
+                // Feedback visual inmediato para auditar lo que el sistema va a guardar.
                 let displayUnitario = '';
+                let displayUnitarioFab = '';
                 if (porCaja) {
-                    const valC = parseFloat(art.valor_origen) || 0;
                     const und = parseFloat(art.und_caja) || 0;
+                    const valC = parseFloat(art.valor_origen) || 0;
                     if (valC > 0 && und > 0) {
                         const unit = valC / und;
                         displayUnitario = '<div style="font-size:10px;color:#64b5f6;margin-top:2px;" title="Valor unitario calculado internamente">→ unit: $' + unit.toLocaleString('es-AR', {minimumFractionDigits:4, maximumFractionDigits:4}) + '</div>';
+                    }
+                    const valF = parseFloat(art.valor_fabrica) || 0;
+                    if (valF > 0 && und > 0) {
+                        const unitF = valF / und;
+                        displayUnitarioFab = '<div style="font-size:10px;color:#64b5f6;margin-top:2px;" title="Valor fábrica unitario calculado internamente">→ unit: $' + unitF.toLocaleString('es-AR', {minimumFractionDigits:4, maximumFractionDigits:4}) + '</div>';
                     }
                 }
                 return '<tr>' +
@@ -1790,7 +1803,7 @@ function agregarArticulo() {
                     '<td><input type="text" value="' + (art.nombre || '') + '" onchange="articulosManual[' + idx + '].nombre=this.value" style="width:100%;min-width:280px;"></td>' +
                     '<td><input type="number" step="0.01" value="' + (art.cajas || '') + '" onchange="articulosManual[' + idx + '].cajas=this.value;renderizarArticulos();" style="width:60px;"></td>' +
                     '<td><input type="number" step="0.01" value="' + (art.und_caja || '') + '" onchange="articulosManual[' + idx + '].und_caja=this.value;renderizarArticulos();" style="width:60px;"></td>' +
-                    '<td><input type="number" step="0.0001" value="' + (art.valor_fabrica || '') + '" onchange="actualizarValorFabrica(' + idx + ', this.value)" style="width:90px;"></td>' +
+                    '<td><input type="number" step="0.0001" value="' + (art.valor_fabrica || '') + '" onchange="actualizarValorFabrica(' + idx + ', this.value)" style="width:90px;">' + displayUnitarioFab + '</td>' +
                     '<td><input type="number" step="0.0001" value="' + (art.valor_origen || '') + '" onchange="articulosManual[' + idx + '].valor_origen=this.value;renderizarArticulos();" style="width:90px;">' + displayUnitario + '</td>' +
                     '<td><input type="number" step="0.01" value="' + (art.derechos || '') + '" onchange="articulosManual[' + idx + '].derechos=this.value" style="width:60px;"></td>' +
                     '<td><input type="number" step="0.01" value="' + (art.imp_interno || '') + '" onchange="articulosManual[' + idx + '].imp_interno=this.value" style="width:60px;"></td>' +
@@ -1838,9 +1851,11 @@ function recalcularValoresOrigen() {
 // al backend; la conversión por caja es solo para la UI.
 function toggleCargarPorCaja() {
     const porCaja = document.getElementById('cm_cargarPorCaja').checked;
-    // Actualizo el header de la columna
+    // Actualizo los headers de las dos columnas afectadas
     const th = document.getElementById('thValorOrigen');
     if (th) th.textContent = porCaja ? 'Valor x Caja' : 'Valor Origen';
+    const thF = document.getElementById('thValorFabrica');
+    if (thF) thF.textContent = porCaja ? 'Val. Fábrica x Caja' : 'Valor Fábrica';
     // Convierto los valores actuales al modo nuevo
     articulosManual.forEach(art => {
         const v = parseFloat(art.valor_origen) || 0;
