@@ -71,6 +71,12 @@ router.delete('/usuarios/:id', auth, async (req, res) => {
 // Actualizar usuario (rol, activo)
 router.put('/usuarios/:id', auth, async (req, res) => {
     try {
+        // SECURITY FIX: validar rol admin antes de modificar usuarios.
+        // Sin esta validación, cualquier usuario autenticado podía escalar su
+        // propio rol a admin o modificar cualquier otro usuario.
+        if (req.usuario.rol !== 'admin') {
+            return res.status(403).json({ error: 'Solo administradores pueden modificar usuarios' });
+        }
         const usuario = await Usuario.findByPk(req.params.id);
         if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
         
