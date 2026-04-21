@@ -1222,6 +1222,17 @@ async function ejecutarCalculo(id, metodo) {
 
                 var html = '';
 
+                // ===== BOTÓN INVERTIR COMPARACIÓN =====
+                // Permite swappear qué costeo es la "base" del cálculo de diferencia porcentual.
+                // Re-llama a mostrarComparativo con los ids invertidos, recalculando todas las tablas.
+                const idsJson = JSON.stringify([ids[1], ids[0]]);
+                html += '<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">';
+                html += '<button onclick=\'mostrarComparativo(' + idsJson + ')\' ' +
+                        'style="background:#2196F3;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold;" ' +
+                        'title="Invertir: calcular la diferencia % tomando el otro costeo como base">' +
+                        '🔄 Invertir comparación</button>';
+                html += '</div>';
+
                 // ===== ENCABEZADO: 2 tarjetas =====
                 html += '<div style="display:flex;gap:12px;margin-bottom:20px;">';
                 [c1, c2].forEach((c, i) => {
