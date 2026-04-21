@@ -248,4 +248,28 @@ router.post('/recalcular-pct-costo', auth, async (req, res) => {
     }
 });
 
+// Backup completo de la base de datos (descarga JSON).
+// Solo admin. Permite parámetro ?excluirSensibles=true para omitir tabla usuarios.
+router.get('/backup-db', auth, async (req, res) => {
+    try {
+        if (req.usuario.rol !== 'admin') {
+            return res.status(403).json({ error: 'Solo administradores pueden descargar backup' });
+        }
+        const excluirSensibles = req.query.excluirSensibles === 'true';
+        const { generarBackup } = require('../services/backupService');
+        const resultado = await generarBackup({ excluirSensibles });
+
+        await registrarAuditoria(req, 'backup', 'sistema', null,
+            `Backup generado (${Math.round(resultado.buffer.length / 1024)} KB, sensibles=${!excluirSensibles})`);
+
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="${resultado.filename}"`);
+        res.setHeader('X-Backup-Resumen', JSON.stringify(resultado.resumen).slice(0, 1000));
+        res.send(resultado.buffer);
+    } catch (error) {
+        console.error('Error generando backup:', error);
+        res.status(500).json({ error: 'Error al generar backup', detalles: error.message });
+    }
+});
+
 module.exports = router;

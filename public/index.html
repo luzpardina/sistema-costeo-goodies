@@ -720,6 +720,16 @@
                 <button class="btn" style="background:#9C27B0;color:#fff;margin-bottom:10px;" onclick="recalcularPctCostoMasivo()">🔀 Ejecutar Recálculo Masivo</button>
                 <div id="recalcPctResultado" style="display:none;margin-top:10px;max-height:400px;overflow-y:auto;background:#0a0a15;padding:12px;border-radius:6px;font-family:monospace;font-size:12px;"></div>
             </div>
+            <div class="card" style="border-left:4px solid #00BCD4;">
+                <h3>💾 Backup de la Base de Datos</h3>
+                <p style="color:#aaa;margin-bottom:10px;">Descarga un archivo JSON con todas las tablas del sistema (costeos, artículos, gastos, revaluaciones, listas de precios, acuerdos, valuaciones, configuración, auditoría).</p>
+                <p style="color:#ffab40;font-size:12px;margin-bottom:10px;">⚠ El archivo contiene datos sensibles. Guardalo en un lugar seguro.</p>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+                    <button class="btn" style="background:#00BCD4;color:#fff;" onclick="descargarBackup(false)">💾 Backup Completo (con usuarios)</button>
+                    <button class="btn" style="background:#0097A7;color:#fff;" onclick="descargarBackup(true)">💾 Backup sin Usuarios (más portable)</button>
+                </div>
+                <div id="backupResultado" style="display:none;margin-top:10px;background:#0a0a15;padding:12px;border-radius:6px;font-family:monospace;font-size:12px;"></div>
+            </div>
             <div class="card" style="border-left:4px solid #4fc3f7;">
                 <h3>📘 Manual de Usuario</h3>
                 <p style="color:#aaa;margin-bottom:15px;">Documentación completa del sistema: cómo usar cada módulo, fórmulas de cálculo, glosario y más.</p>
