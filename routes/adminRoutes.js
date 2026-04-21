@@ -71,6 +71,12 @@ router.delete('/usuarios/:id', auth, async (req, res) => {
 // Actualizar usuario (rol, activo)
 router.put('/usuarios/:id', auth, async (req, res) => {
     try {
+        // SECURITY FIX: validar rol admin antes de modificar usuarios.
+        // Sin esta validación, cualquier usuario autenticado podía escalar su
+        // propio rol a admin o modificar cualquier otro usuario.
+        if (req.usuario.rol !== 'admin') {
+            return res.status(403).json({ error: 'Solo administradores pueden modificar usuarios' });
+        }
         const usuario = await Usuario.findByPk(req.params.id);
         if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
         
@@ -92,11 +98,22 @@ router.put('/usuarios/:id', auth, async (req, res) => {
 // Resetear contraseña
 router.put('/usuarios/:id/password', auth, async (req, res) => {
     try {
+        // SECURITY FIX 1: validar rol admin (faltaba).
+        if (req.usuario.rol !== 'admin') {
+            return res.status(403).json({ error: 'Solo administradores pueden resetear contraseñas' });
+        }
         const usuario = await Usuario.findByPk(req.params.id);
         if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
         if (!req.body.password) return res.status(400).json({ error: 'Contraseña requerida' });
-        
-        usuario.password_hash = req.body.password;
+        // SECURITY FIX 2: hashear la contraseña antes de guardar.
+        // El modelo Usuario solo tiene hook beforeCreate (no beforeUpdate),
+        // por lo que asignar password_hash directamente la guardaba en texto plano
+        // y el login con bcrypt.compare fallaba siempre. Hashea explícitamente acá.
+        if (req.body.password.length < 6) {
+            return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+        }
+        const salt = await bcrypt.genSalt(10);
+        usuario.password_hash = await bcrypt.hash(req.body.password, salt);
         await usuario.save();
         await registrarAuditoria(req, 'actualizar', 'usuario', usuario.id, 'Password reseteada: ' + usuario.email);
         

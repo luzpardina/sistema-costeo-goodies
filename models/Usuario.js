@@ -46,6 +46,16 @@ const Usuario = sequelize.define('Usuario', {
                 const salt = await bcrypt.genSalt(10);
                 usuario.password_hash = await bcrypt.hash(usuario.password_hash, salt);
             }
+        },
+        // Defensa en profundidad: si en el futuro alguien hace
+        // usuario.password_hash = 'algo' y guarda, lo hasheamos automáticamente.
+        // Solo actúa si el campo cambió Y no parece ya hasheado (bcrypt empieza con $2).
+        beforeUpdate: async (usuario) => {
+            if (usuario.changed('password_hash') && usuario.password_hash &&
+                !usuario.password_hash.startsWith('$2')) {
+                const salt = await bcrypt.genSalt(10);
+                usuario.password_hash = await bcrypt.hash(usuario.password_hash, salt);
+            }
         }
     }
 });
