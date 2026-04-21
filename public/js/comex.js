@@ -1222,15 +1222,25 @@ async function ejecutarCalculo(id, metodo) {
 
                 var html = '';
 
-                // ===== BOTÓN INVERTIR COMPARACIÓN =====
-                // Permite swappear qué costeo es la "base" del cálculo de diferencia porcentual.
-                // Re-llama a mostrarComparativo con los ids invertidos, recalculando todas las tablas.
+                // Guardo el estado del comparativo actual en window para que el flujo de
+                // exportar pueda acceder a los ids y nombres vigentes (el usuario puede
+                // haber invertido la comparación, y el export debe respetar ese orden).
+                window.comparativoActual = { ids: [ids[0], ids[1]], n1: c1.nombre_costeo || '', n2: c2.nombre_costeo || '' };
+
+                // ===== BOTONES DE ACCIÓN (Invertir + Exportar) =====
                 const idsJson = JSON.stringify([ids[1], ids[0]]);
-                html += '<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">';
+                html += '<div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:12px;">';
+                // Invertir: swappea qué costeo es la base del cálculo de diferencia %.
+                // Re-llama a mostrarComparativo con los ids invertidos.
                 html += '<button onclick=\'mostrarComparativo(' + idsJson + ')\' ' +
                         'style="background:#2196F3;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold;" ' +
                         'title="Invertir: calcular la diferencia % tomando el otro costeo como base">' +
                         '🔄 Invertir comparación</button>';
+                // Exportar: abre modal de selección de secciones (Excel o PDF).
+                html += '<button onclick="abrirExportComparativo()" ' +
+                        'style="background:#9C27B0;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold;" ' +
+                        'title="Exportar el comparativo a Excel o PDF">' +
+                        '📤 Exportar</button>';
                 html += '</div>';
 
                 // ===== ENCABEZADO: 2 tarjetas =====
@@ -1431,7 +1441,166 @@ async function ejecutarCalculo(id, metodo) {
             }
         }
 
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { cerrarModal('detalleModal'); cerrarModal('recalcularModal'); cerrarModal('cargaManualModal'); cerrarModal('compPvsDefModal'); } });
+        // =============================================
+        // EXPORTAR COMPARATIVO (Excel + PDF)
+        // =============================================
+
+        // Paso 1: abre el modal de selección de secciones
+        function abrirExportComparativo() {
+            if (!window.comparativoActual || !window.comparativoActual.ids) {
+                alert('No hay un comparativo activo para exportar');
+                return;
+            }
+            document.getElementById('exportCompModal').classList.add('show');
+        }
+
+        // Lee el estado de los checkboxes y devuelve el objeto de secciones
+        function _leerSeccionesExport() {
+            return {
+                tc:                  document.getElementById('expSec_tc').checked,
+                baseAduana:          document.getElementById('expSec_baseAduana').checked,
+                gastosVarios:        document.getElementById('expSec_gastosVarios').checked,
+                gastosAduana:        document.getElementById('expSec_gastosAduana').checked,
+                articulosFOB:        document.getElementById('expSec_articulosFOB').checked,
+                articulosCostoNeto:  document.getElementById('expSec_articulosCostoNeto').checked
+            };
+        }
+
+        // Sanitiza un nombre para usarlo como filename (igual criterio que backend)
+        function _sanitizarNombreArchivo(nombre) {
+            return (nombre || 'Costeo')
+                .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-]/g, '')
+                .trim()
+                .replace(/\s+/g, '_');
+        }
+
+        // Paso 2a: exportar a Excel (backend)
+        async function ejecutarExportComparativoExcel() {
+            const estado = window.comparativoActual;
+            if (!estado || !estado.ids) { alert('No hay comparativo activo'); return; }
+            const secciones = _leerSeccionesExport();
+            // Validación: al menos una sección marcada
+            if (!Object.values(secciones).some(v => v)) {
+                alert('Seleccioná al menos una sección para exportar');
+                return;
+            }
+            try {
+                const res = await fetch(API_URL + '/api/costeos/comparativo-export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ ids: estado.ids, secciones: secciones })
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ error: 'Error desconocido' }));
+                    throw new Error(err.detalles || err.error || 'Error al generar Excel');
+                }
+                const blob = await res.blob();
+                const n1s = _sanitizarNombreArchivo(estado.n1);
+                const n2s = _sanitizarNombreArchivo(estado.n2);
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'Comparativo_' + n1s + '_vs_' + n2s + '.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                cerrarModal('exportCompModal');
+            } catch (err) {
+                console.error(err);
+                alert('Error al exportar Excel: ' + err.message);
+            }
+        }
+
+        // Paso 2b: exportar a PDF (client-side vía window.print)
+        // Abre una ventana nueva con el HTML del comparativo formateado para impresión,
+        // y dispara window.print(). El usuario elige "Guardar como PDF" en el diálogo.
+        function ejecutarExportComparativoPDF() {
+            const estado = window.comparativoActual;
+            if (!estado || !estado.ids) { alert('No hay comparativo activo'); return; }
+            const secciones = _leerSeccionesExport();
+            if (!Object.values(secciones).some(v => v)) {
+                alert('Seleccioná al menos una sección para exportar');
+                return;
+            }
+
+            // Reconstruyo el HTML del comparativo en una ventana nueva, filtrando por secciones.
+            // Parto del DOM actual del modal y filtro las secciones no deseadas por su <h4>.
+            const bodyHTML = document.getElementById('compPvsDefBody').innerHTML;
+            const temp = document.createElement('div');
+            temp.innerHTML = bodyHTML;
+
+            // Remuevo los botones de acción (Invertir / Exportar) del HTML a imprimir
+            const primerDiv = temp.querySelector('div[style*="justify-content:flex-end"]');
+            if (primerDiv) primerDiv.remove();
+
+            // Mapeo de seccion -> texto del <h4> que la identifica
+            const mapSecciones = {
+                tc: 'Tipos de Cambio',
+                baseAduana: 'Base Aduana',
+                gastosVarios: 'Gastos Varios',
+                gastosAduana: 'Gastos de Aduana',
+                articulosFOB: 'FOB Unitario',
+                articulosCostoNeto: 'Costo Neto Unitario'
+            };
+            // Para cada sección desmarcada, ubico su <h4> y remuevo el <h4> + la <table> siguiente
+            Object.keys(mapSecciones).forEach(key => {
+                if (secciones[key]) return;
+                const textoBuscar = mapSecciones[key];
+                const h4s = temp.querySelectorAll('h4');
+                h4s.forEach(h4 => {
+                    if (h4.textContent.indexOf(textoBuscar) !== -1) {
+                        // Elimino también la tabla que sigue al h4
+                        let next = h4.nextElementSibling;
+                        h4.remove();
+                        if (next && next.tagName === 'TABLE') next.remove();
+                    }
+                });
+            });
+
+            const htmlFiltrado = temp.innerHTML;
+            const titulo = 'Comparativo: ' + estado.n1 + ' vs ' + estado.n2;
+            const fechaHoy = new Date().toLocaleDateString('es-AR');
+
+            // Armo documento HTML completo optimizado para impresión.
+            // Uso colores claros (fondo blanco, texto negro) porque imprimir el modo oscuro queda ilegible.
+            const docHTML = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+                '<title>' + titulo + '</title>' +
+                '<style>' +
+                'body { font-family: Arial, Helvetica, sans-serif; color: #222; background: #fff; margin: 20px; font-size: 11px; }' +
+                'h2 { color: #1A237E; margin: 0 0 8px 0; font-size: 18px; }' +
+                'h4 { color: #1A237E; margin: 18px 0 8px 0; font-size: 13px; border-bottom: 1px solid #ccc; padding-bottom: 4px; }' +
+                'table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 11px; }' +
+                'th { background: #E8EAF6 !important; color: #1A237E; padding: 6px 8px; text-align: right; border: 1px solid #ccc; -webkit-print-color-adjust: exact; print-color-adjust: exact; }' +
+                'th:first-child { text-align: left; }' +
+                'td { padding: 5px 8px; border: 1px solid #ddd; text-align: right; }' +
+                'td:first-child { text-align: left; }' +
+                '.header-info { margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-left: 4px solid #1A237E; -webkit-print-color-adjust: exact; print-color-adjust: exact; }' +
+                '.header-info p { margin: 3px 0; }' +
+                '@media print { body { margin: 10mm; } h4 { page-break-after: avoid; } table { page-break-inside: auto; } tr { page-break-inside: avoid; } }' +
+                '</style></head><body>' +
+                '<h2>GOODIES — Comparativo de Costeos</h2>' +
+                '<div class="header-info">' +
+                '<p><strong>Costeo A (base):</strong> ' + estado.n1 + '</p>' +
+                '<p><strong>Costeo B (comparado):</strong> ' + estado.n2 + '</p>' +
+                '<p><strong>Fecha de exportación:</strong> ' + fechaHoy + '</p>' +
+                '</div>' +
+                htmlFiltrado +
+                '<script>window.onload = function() { setTimeout(function() { window.print(); }, 300); };<\/script>' +
+                '</body></html>';
+
+            const ventana = window.open('', '_blank', 'width=1000,height=800');
+            if (!ventana) {
+                alert('No se pudo abrir la ventana de impresión. Verificá que tu navegador no esté bloqueando pop-ups.');
+                return;
+            }
+            ventana.document.open();
+            ventana.document.write(docHTML);
+            ventana.document.close();
+            cerrarModal('exportCompModal');
+        }
+
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { cerrarModal('detalleModal'); cerrarModal('recalcularModal'); cerrarModal('cargaManualModal'); cerrarModal('compPvsDefModal'); cerrarModal('exportCompModal'); } });
 function abrirCargaManual() {
             window.costeoEditandoId = null;
             articulosManual = [];

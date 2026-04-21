@@ -904,6 +904,50 @@
             <div id="compPvsDefBody" style="padding: 20px; overflow-x: auto;"></div>
         </div>
     </div>
+    <div class="modal" id="exportCompModal">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="modal-header">
+                <h3>📤 Exportar Comparativo</h3>
+                <button class="modal-close" onclick="cerrarModal('exportCompModal')">×</button>
+            </div>
+            <div style="padding: 20px;">
+                <p style="color:#aaa;margin-bottom:15px;font-size:13px;">Seleccioná las secciones a incluir en el informe:</p>
+                <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px;border-radius:6px;background:#1e1e2f;">
+                        <input type="checkbox" id="expSec_tc" checked style="width:18px;height:18px;cursor:pointer;">
+                        <span>💱 Tipos de Cambio</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px;border-radius:6px;background:#1e1e2f;">
+                        <input type="checkbox" id="expSec_baseAduana" checked style="width:18px;height:18px;cursor:pointer;">
+                        <span>📦 Base Aduana (FOB + Flete + Seguro)</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px;border-radius:6px;background:#1e1e2f;">
+                        <input type="checkbox" id="expSec_gastosVarios" checked style="width:18px;height:18px;cursor:pointer;">
+                        <span>💰 Gastos Varios en Divisa (sin STABZ)</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px;border-radius:6px;background:#1e1e2f;">
+                        <input type="checkbox" id="expSec_gastosAduana" checked style="width:18px;height:18px;cursor:pointer;">
+                        <span>🏛️ Gastos de Aduana (ARS)</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px;border-radius:6px;background:#1e1e2f;">
+                        <input type="checkbox" id="expSec_articulosFOB" checked style="width:18px;height:18px;cursor:pointer;">
+                        <span>📦 Artículos — FOB Unitario</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px;border-radius:6px;background:#1e1e2f;">
+                        <input type="checkbox" id="expSec_articulosCostoNeto" checked style="width:18px;height:18px;cursor:pointer;">
+                        <span>💰 Artículos — Costo Neto Unitario (ARS)</span>
+                    </label>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:space-between;">
+                    <button class="btn btn-secondary" onclick="cerrarModal('exportCompModal')">Cancelar</button>
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn" style="background:#4CAF50;color:#fff;" onclick="ejecutarExportComparativoExcel()">📊 Excel</button>
+                        <button class="btn" style="background:#f44336;color:#fff;" onclick="ejecutarExportComparativoPDF()">📄 PDF</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="modal" id="recalcularModal">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
