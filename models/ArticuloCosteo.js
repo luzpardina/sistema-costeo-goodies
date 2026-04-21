@@ -125,6 +125,18 @@ const ArticuloCosteo = sequelize.define('ArticuloCosteo', {
     // Factor Importacion
     factor_importacion: {
         type: DataTypes.DECIMAL(10, 4)
+    },
+    // Composición del costo — % que depende del TC vs % que no depende.
+    // Útil para análisis de sensibilidad a devaluación / inflación.
+    // Suman 100% (salvo redondeo menor) sobre costo_total_neto_ars.
+    // - divisa: FOB + ANMAT + derechos + estadística + gastos aduana en divisa
+    //           + gastos varios cargados en moneda ≠ ARS
+    // - pesos:  gastos aduana en ARS + gastos varios cargados en ARS
+    pct_costo_divisa: {
+        type: DataTypes.DECIMAL(5, 2)
+    },
+    pct_costo_pesos: {
+        type: DataTypes.DECIMAL(5, 2)
     }
 }, {
     tableName: 'articulos_costeo',
