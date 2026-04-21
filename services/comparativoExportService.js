@@ -360,6 +360,71 @@ class ComparativoExportService {
             }
         }
 
+        // =================== SECCIÓN: COMPOSICIÓN DEL COSTO ===================
+        // Muestra qué % del costo neto de cada artículo proviene de componentes atados
+        // al TC (divisa) vs componentes en ARS (pesos). Útil para análisis de sensibilidad
+        // ante devaluación vs inflación.
+        if (secciones.composicionCostos) {
+            currentRow += 2;
+            currentRow = this._agregarTituloSeccion(ws, currentRow, '🔀 COMPOSICIÓN DEL COSTO — % DIVISA vs % PESOS');
+            // Encabezado con 2 super-headers (n1 / n2) y 4 sub-columnas (%Div, %Pes cada uno)
+            const headerRow1 = ws.getRow(currentRow);
+            headerRow1.getCell(1).value = 'Artículo';
+            ws.mergeCells(currentRow, 2, currentRow, 3);
+            headerRow1.getCell(2).value = n1;
+            ws.mergeCells(currentRow, 4, currentRow, 5);
+            headerRow1.getCell(4).value = n2;
+            styleTableHeader(headerRow1, [
+                { col: 1, tipo: 'base' },
+                { col: 2, tipo: 'green' },
+                { col: 3, tipo: 'green' },
+                { col: 4, tipo: 'orange' },
+                { col: 5, tipo: 'orange' }
+            ]);
+            currentRow++;
+            const headerRow2 = ws.getRow(currentRow);
+            headerRow2.getCell(1).value = 'Descripción';
+            headerRow2.getCell(2).value = '% Divisa';
+            headerRow2.getCell(3).value = '% Pesos';
+            headerRow2.getCell(4).value = '% Divisa';
+            headerRow2.getCell(5).value = '% Pesos';
+            styleTableHeader(headerRow2, [
+                { col: 1, tipo: 'base' },
+                { col: 2, tipo: 'green' },
+                { col: 3, tipo: 'green' },
+                { col: 4, tipo: 'orange' },
+                { col: 5, tipo: 'orange' }
+            ]);
+            currentRow++;
+            let altCC = false;
+            for (const codigo of todosCodigos) {
+                const a1 = (c1.articulos || []).find(a => a.codigo_goodies === codigo);
+                const a2 = (c2.articulos || []).find(a => a.codigo_goodies === codigo);
+                const nombre = (a1 || a2 || {}).nombre || '';
+                const d1 = a1 && a1.pct_costo_divisa != null ? parseFloat(a1.pct_costo_divisa) : null;
+                const p1 = a1 && a1.pct_costo_pesos  != null ? parseFloat(a1.pct_costo_pesos)  : null;
+                const d2 = a2 && a2.pct_costo_divisa != null ? parseFloat(a2.pct_costo_divisa) : null;
+                const p2 = a2 && a2.pct_costo_pesos  != null ? parseFloat(a2.pct_costo_pesos)  : null;
+                const row = ws.getRow(currentRow);
+                row.getCell(1).value = codigo + '  ' + nombre;
+                row.getCell(1).font = { bold: true, size: 10, name: 'Calibri' };
+                // Pongo los % como fracción decimal y aplico formato de %: asi Excel los muestra bien
+                // y permite sumar/filtrar. Si vienen NULL (costeo no recalculado), muestro '-'.
+                [[2, d1], [3, p1], [4, d2], [5, p2]].forEach(([col, val]) => {
+                    if (val != null) {
+                        row.getCell(col).value = val / 100;
+                        row.getCell(col).numFmt = '0.00%';
+                    } else {
+                        row.getCell(col).value = '-';
+                        row.getCell(col).alignment = { horizontal: 'center' };
+                    }
+                });
+                styleDataRow(row, altCC);
+                altCC = !altCC;
+                currentRow++;
+            }
+        }
+
         // Generate
         const buffer = await wb.xlsx.writeBuffer();
         const n1s = sanitizarNombreArchivo(n1);

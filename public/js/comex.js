@@ -1478,7 +1478,8 @@ async function ejecutarCalculo(id, metodo) {
                 gastosVarios:        document.getElementById('expSec_gastosVarios').checked,
                 gastosAduana:        document.getElementById('expSec_gastosAduana').checked,
                 articulosFOB:        document.getElementById('expSec_articulosFOB').checked,
-                articulosCostoNeto:  document.getElementById('expSec_articulosCostoNeto').checked
+                articulosCostoNeto:  document.getElementById('expSec_articulosCostoNeto').checked,
+                composicionCostos:   document.getElementById('expSec_composicionCostos').checked
             };
         }
 

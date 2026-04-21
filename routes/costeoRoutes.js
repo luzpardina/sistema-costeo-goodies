@@ -538,7 +538,8 @@ router.post('/comparativo-export', auth, async (req, res) => {
         }
         const seccionesNormalizadas = secciones || {
             tc: true, baseAduana: true, gastosVarios: true,
-            gastosAduana: true, articulosFOB: true, articulosCostoNeto: true
+            gastosAduana: true, articulosFOB: true, articulosCostoNeto: true,
+            composicionCostos: true
         };
         const ComparativoExportService = require('../services/comparativoExportService');
         const resultado = await ComparativoExportService.exportarComparativo(ids, seccionesNormalizadas);

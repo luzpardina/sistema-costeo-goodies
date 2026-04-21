@@ -116,13 +116,17 @@ class ExportarService {
             'ARS Unit.', 'ARS Total', 'ANMAT', 'Base Aduana',
             'Der. %', 'Derechos', 'Estad.', 'Gastos Prorr.',
             'COSTO NETO UNIT.', 'IVA Unit.', 'Imp.Int %', 'Imp.Int.',
-            'COSTO FINAL UNIT.', 'Factor Imp.'];
-        const aW = [16, 42, 7, 12, 14, 12, 14, 10, 14, 8, 12, 10, 14, 16, 12, 8, 12, 16, 10];
+            'COSTO FINAL UNIT.', 'Factor Imp.',
+            '% Divisa', '% Pesos'];
+        const aW = [16, 42, 7, 12, 14, 12, 14, 10, 14, 8, 12, 10, 14, 16, 12, 8, 12, 16, 10, 9, 9];
         aH.forEach((_, i) => { ws2.getColumn(i + 1).width = aW[i]; });
         
         const hr = ws2.addRow(aH);
         styleHeader(hr);
         [14, 18, 19].forEach(c => { hr.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.greenBg } }; });
+        // Las columnas de composición de costo tienen color distintivo para destacar
+        // que son informativas, no suman al costo (suman 100% entre ambas).
+        [20, 21].forEach(c => { hr.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7B1FA2' } }; });
 
         let tFobDiv = 0, tFobARS = 0, tCN = 0, tCF = 0, tUnd = 0;
         costeo.articulos.forEach((a, idx) => {
@@ -135,6 +139,9 @@ class ExportarService {
             const und = parseInt(a.unidades_totales) || 0;
             const dp = parseFloat(a.derechos_porcentaje) || 0;
             const ip = parseFloat(a.impuesto_interno_porcentaje) || 0;
+            // Composición del costo: puede venir NULL en costeos viejos no recalculados.
+            const pctDiv = a.pct_costo_divisa != null ? parseFloat(a.pct_costo_divisa) : null;
+            const pctPes = a.pct_costo_pesos  != null ? parseFloat(a.pct_costo_pesos)  : null;
             tFobDiv += ftDiv; tFobARS += ftARS; tCN += cn * und; tCF += cf * und; tUnd += und;
 
             const row = ws2.addRow([
@@ -144,22 +151,27 @@ class ExportarService {
                 parseFloat(a.estadistica_total_ars) || 0, parseFloat(a.gastos_varios_ars) || 0,
                 cn, parseFloat(a.iva_unitario_ars) || 0,
                 (ip <= 1 ? ip * 100 : ip), parseFloat(a.impuesto_interno_unitario_ars) || 0,
-                cf, parseFloat(a.factor_importacion) || 0
+                cf, parseFloat(a.factor_importacion) || 0,
+                pctDiv != null ? pctDiv / 100 : null,
+                pctPes != null ? pctPes / 100 : null
             ]);
             styleDataRow(row, idx % 2 === 1);
             for (let c = 4; c <= 19; c++) {
                 row.getCell(c).numFmt = (c === 10 || c === 16) ? '0.00' : '#,##0.00';
             }
+            // Formato de % para las columnas de composición (20, 21)
+            row.getCell(20).numFmt = '0.00%';
+            row.getCell(21).numFmt = '0.00%';
             row.getCell(14).font = { bold: true, size: 10, color: { argb: '1A237E' } };
             row.getCell(18).font = { bold: true, size: 10, color: { argb: '4CAF50' } };
             row.getCell(19).font = { bold: true, size: 10 };
         });
 
-        const totR = ws2.addRow(['', 'TOTALES', tUnd, '', tFobDiv, '', tFobARS, '', '', '', '', '', '', tCN, '', '', '', tCF, '']);
+        const totR = ws2.addRow(['', 'TOTALES', tUnd, '', tFobDiv, '', tFobARS, '', '', '', '', '', '', tCN, '', '', '', tCF, '', '', '']);
         styleTotalRow(totR);
         [5, 7, 14, 18].forEach(c => { totR.getCell(c).numFmt = '#,##0.00'; });
 
-        ws2.autoFilter = { from: 'A1', to: `S${costeo.articulos.length + 1}` };
+        ws2.autoFilter = { from: 'A1', to: `U${costeo.articulos.length + 1}` };
         ws2.views = [{ state: 'frozen', ySplit: 1 }];
 
         // =================== GASTOS ===================
