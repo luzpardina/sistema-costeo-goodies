@@ -153,11 +153,19 @@ class CalculosService {
             else if (seguroMoneda === 'GBP') tcSeguro = tc_gbp;
             const seguroAduanaARS = seguroAduana * tcSeguro;
 
-            // Base Aduana Total = FOB Factura + Puesta FOB + Flete + Seguro (todo en ARS)
+            // Base Aduana Total = FOB Factura + Puesta FOB + Flete + Seguro (todo en ARS).
+            // NOTA: esta base es teórica, usada solo para calcular derechos e impuestos.
+            // NO forma parte del costo neto del artículo (el flete/seguro real se carga
+            // por separado en la tabla de "gastos varios").
             const gastosBaseAduanaARS = puestaFobARS + fleteAduanaARS + seguroAduanaARS;
             const baseAduanaTotalARS = fobTotalPesos + gastosBaseAduanaARS;
 
             const gastosPorGrupo = {};
+            // Paralelos a gastosPorGrupo pero separados por moneda, para clasificar
+            // la porción prorrateada a cada artículo como divisa (si moneda != ARS)
+            // vs pesos (si moneda == ARS). Usado para calcular pct_costo_divisa/pesos.
+            const gastosPorGrupoDivisa = {};
+            const gastosPorGrupoPesos = {};
             let totalGastosVariosPesos = 0;
 
             for (const gasto of gastosVarios) {
@@ -205,8 +213,16 @@ class CalculosService {
                 const grupoGasto = gasto.grupo || '';
                 if (!gastosPorGrupo[grupoGasto]) {
                     gastosPorGrupo[grupoGasto] = 0;
+                    gastosPorGrupoDivisa[grupoGasto] = 0;
+                    gastosPorGrupoPesos[grupoGasto] = 0;
                 }
                 gastosPorGrupo[grupoGasto] += montoProrrateado;
+                // Clasifico según la moneda original del gasto: ARS = pesos, resto = divisa.
+                if (monedaGasto === 'ARS') {
+                    gastosPorGrupoPesos[grupoGasto] += montoProrrateado;
+                } else {
+                    gastosPorGrupoDivisa[grupoGasto] += montoProrrateado;
+                }
             }
 
             let totalDerechosARS = 0;
@@ -247,8 +263,13 @@ class CalculosService {
                 const estadisticaARS = derechosPct > 0 ? baseAduana * 0.03 : 0;
 
                 let gastosVariosArt = 0;
+                // Acumuladores paralelos para clasificar por moneda de origen
+                let gastosVariosArtDivisa = 0;
+                let gastosVariosArtPesos = 0;
                 const gastosGenerales = gastosPorGrupo[''] || 0;
                 gastosVariosArt += gastosGenerales * participacionFOB;
+                gastosVariosArtDivisa += (gastosPorGrupoDivisa[''] || 0) * participacionFOB;
+                gastosVariosArtPesos  += (gastosPorGrupoPesos[''] || 0) * participacionFOB;
 
                 for (const [grupoGasto, montoGasto] of Object.entries(gastosPorGrupo)) {
                     if (grupoGasto !== '' && grupoGasto === grupoArticulo) {
@@ -256,12 +277,26 @@ class CalculosService {
                         if (fobDelGrupo > 0) {
                             const participacionEnGrupo = fobTotalArtPesos / fobDelGrupo;
                             gastosVariosArt += montoGasto * participacionEnGrupo;
+                            gastosVariosArtDivisa += (gastosPorGrupoDivisa[grupoGasto] || 0) * participacionEnGrupo;
+                            gastosVariosArtPesos  += (gastosPorGrupoPesos[grupoGasto]  || 0) * participacionEnGrupo;
                         }
                     }
                 }
 
                 const costoTotalNetoARS = fobTotalArtPesos + anmatARS + derechosARS + estadisticaARS + gastosVariosArt;
                 const costoUnitarioNetoARS = costoTotalNetoARS / unidades;
+
+                // Composición del costo: cuánto viene de divisa (sensible al TC) vs pesos (no sensible).
+                // Clasificación (decidida con el usuario):
+                //   - FOB + ANMAT + derechos + estadística → divisa (todos derivados del FOB)
+                //   - Gastos varios según moneda de carga (ARS = pesos, otra = divisa)
+                // Nota: los "gastos base aduana" (Puesta FOB + Flete + Seguro de la pestaña
+                // Base Aduana) NO se incluyen: son valores teóricos declarados usados solo
+                // como base para calcular derechos, no forman parte del costo neto.
+                const montoDivisaArt = fobTotalArtPesos + anmatARS + derechosARS + estadisticaARS + gastosVariosArtDivisa;
+                const montoPesosArt  = gastosVariosArtPesos;
+                const pctCostoDivisa = costoTotalNetoARS > 0 ? (montoDivisaArt / costoTotalNetoARS) * 100 : 0;
+                const pctCostoPesos  = costoTotalNetoARS > 0 ? (montoPesosArt  / costoTotalNetoARS) * 100 : 0;
 
                 const impuestoInternoUnitARS = costoUnitarioNetoARS * impInternosPct;
                 const impuestoInternoTotalARS = impuestoInternoUnitARS * unidades;
@@ -303,7 +338,9 @@ class CalculosService {
                     impuesto_interno_total_ars: impuestoInternoTotalARS,
                     costo_unitario_ars: costoUnitarioFinalARS,
                     costo_total_ars: costoTotalFinalARS,
-                    factor_importacion: factorImportacion
+                    factor_importacion: factorImportacion,
+                    pct_costo_divisa: pctCostoDivisa,
+                    pct_costo_pesos: pctCostoPesos
                 });
 
                 articulosActualizados.push({
