@@ -98,11 +98,24 @@ router.put('/usuarios/:id', auth, async (req, res) => {
 // Resetear contraseña
 router.put('/usuarios/:id/password', auth, async (req, res) => {
     try {
+        // SECURITY FIX 1: validar rol admin (faltaba — cualquier usuario podía
+        // resetear la password de cualquier otro).
+        if (req.usuario.rol !== 'admin') {
+            return res.status(403).json({ error: 'Solo administradores pueden resetear contraseñas' });
+        }
         const usuario = await Usuario.findByPk(req.params.id);
         if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
         if (!req.body.password) return res.status(400).json({ error: 'Contraseña requerida' });
-        
-        usuario.password_hash = req.body.password;
+        if (req.body.password.length < 6) {
+            return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+        }
+        // SECURITY FIX 2: hashear la password antes de guardar.
+        // El modelo Usuario solo tiene hook beforeCreate (no beforeUpdate),
+        // entonces asignar password_hash directo guardaba TEXTO PLANO en DB.
+        // Consecuencia: el próximo login fallaba porque bcrypt.compare comparaba
+        // contra texto plano. El password reseteado quedaba inutilizable.
+        const salt = await bcrypt.genSalt(10);
+        usuario.password_hash = await bcrypt.hash(req.body.password, salt);
         await usuario.save();
         await registrarAuditoria(req, 'actualizar', 'usuario', usuario.id, 'Password reseteada: ' + usuario.email);
         
