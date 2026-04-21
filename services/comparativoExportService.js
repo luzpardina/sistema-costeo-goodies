@@ -211,7 +211,7 @@ class ComparativoExportService {
                     const key = desc + '|' + (g.moneda || 'USD').toUpperCase();
                     if (!gastosMap.has(key)) gastosMap.set(key, { desc: g.descripcion, moneda: g.moneda || 'USD', v1: 0, v2: 0 });
                     const entry = gastosMap.get(key);
-                    entry[idx === 0 ? 'v1' : 'v2'] += parseFloat(g.monto_divisa) || 0;
+                    entry[idx === 0 ? 'v1' : 'v2'] += parseFloat(g.monto) || 0;
                 });
             });
 
