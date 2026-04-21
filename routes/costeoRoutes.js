@@ -526,6 +526,32 @@ router.get('/detalle-articulo/:codigo', auth, async (req, res) => {
     }
 });
 
+// Exportar comparativo de 2 costeos a Excel
+// Body: { ids: [id1, id2], secciones: { tc, baseAduana, gastosVarios, gastosAduana, articulosFOB, articulosCostoNeto } }
+// El orden de ids define la base del cálculo: pctDif = (c2 - c1) / c1
+// IMPORTANTE: declarada antes de '/:id' para evitar que Express la trate como :id='comparativo-export'
+router.post('/comparativo-export', auth, async (req, res) => {
+    try {
+        const { ids, secciones } = req.body || {};
+        if (!Array.isArray(ids) || ids.length !== 2) {
+            return res.status(400).json({ error: 'Se requieren exactamente 2 ids de costeos' });
+        }
+        const seccionesNormalizadas = secciones || {
+            tc: true, baseAduana: true, gastosVarios: true,
+            gastosAduana: true, articulosFOB: true, articulosCostoNeto: true
+        };
+        const ComparativoExportService = require('../services/comparativoExportService');
+        const resultado = await ComparativoExportService.exportarComparativo(ids, seccionesNormalizadas);
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${resultado.filename}"`);
+        res.send(resultado.buffer);
+    } catch (error) {
+        console.error('Error al exportar comparativo:', error);
+        res.status(500).json({ error: 'Error al exportar comparativo', detalles: error.message });
+    }
+});
+
 // Obtener un costeo por ID
 router.get('/:id', auth, async (req, res) => {
     try {
