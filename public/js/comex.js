@@ -868,6 +868,12 @@ async function duplicarCosteo(id) {
                     document.getElementById('cm_seguroMoneda').value = costeo.seguro_moneda || 'USD';
                     document.getElementById('cm_seguroMonto').value = costeo.seguro_monto || '';
                     toggleIntermediaria();
+                    // Toggle "cargar por caja" arranca OFF al duplicar: usamos los
+                    // valores unitarios ya guardados en DB sin transformar.
+                    const cmPorCajaDup = document.getElementById('cm_cargarPorCaja');
+                    if (cmPorCajaDup) cmPorCajaDup.checked = false;
+                    const thVODup = document.getElementById('thValorOrigen');
+                    if (thVODup) thVODup.textContent = 'Valor Origen';
                     articulosManual = (costeo.articulos || []).map(mapearArticuloDesdeDB);
                     if (articulosManual.length === 0) agregarArticulo();
                     renderizarArticulos();
@@ -924,6 +930,12 @@ async function editarCosteo(id) {
                     document.getElementById('cm_seguroMonto').value = costeo.seguro_monto || '';
                     // Consolidado
                     document.getElementById('cm_esConsolidado').checked = !!costeo.es_consolidado;
+                    // Toggle "cargar por caja" arranca OFF al editar: los datos en DB
+                    // están como valor_unitario_origen (unitario real), no por caja.
+                    const cmPorCajaEdit = document.getElementById('cm_cargarPorCaja');
+                    if (cmPorCajaEdit) cmPorCajaEdit.checked = false;
+                    const thVOEdit = document.getElementById('thValorOrigen');
+                    if (thVOEdit) thVOEdit.textContent = 'Valor Origen';
                     document.getElementById('cm_volumenM3').value = costeo.volumen_m3 || '';
                     document.getElementById('cm_pesoKg').value = costeo.peso_kg || '';
                     proveedoresConsolidado = (costeo.proveedores_consolidado || []).map(p => ({
@@ -1622,6 +1634,11 @@ function abrirCargaManual() {
             document.getElementById('cm_fechaFacturaInterm').value = '';
             document.getElementById('cm_esConsolidado').checked = false;
             document.getElementById('cm_consolidadoSection').style.display = 'none';
+            // Reset toggle "Cargar por caja" y su header
+            const cmPorCaja = document.getElementById('cm_cargarPorCaja');
+            if (cmPorCaja) cmPorCaja.checked = false;
+            const thValorOrigen = document.getElementById('thValorOrigen');
+            if (thValorOrigen) thValorOrigen.textContent = 'Valor Origen';
             document.getElementById('cm_volumenM3').value = '';
             document.getElementById('cm_pesoKg').value = '';
             const thConsolidado = document.getElementById('thConsolidado');
@@ -1748,17 +1765,33 @@ function agregarArticulo() {
         function renderizarArticulos() {
             const tbody = document.getElementById('articulosBody');
             const tieneDatosFabrica = document.getElementById('cm_tieneIntermediaria').checked;
+            // Toggle "Cargar precios por caja": si está activo, el input "valor_origen"
+            // representa el precio POR CAJA, y al lado mostramos el unitario calculado
+            // como auditoría visual. Al guardar, se divide por unidades_por_caja para
+            // almacenar el valor_unitario_origen real con la precisión que tenga.
+            const porCaja = (document.getElementById('cm_cargarPorCaja') || {}).checked;
             tbody.innerHTML = articulosManual.map((art, idx) => {
                 const aplicaAnmat = art.aplica_anmat !== false;
+                // Calculo el unitario en tiempo real para mostrarlo al lado del input
+                // cuando el modo por caja está activo (feedback visual inmediato).
+                let displayUnitario = '';
+                if (porCaja) {
+                    const valC = parseFloat(art.valor_origen) || 0;
+                    const und = parseFloat(art.und_caja) || 0;
+                    if (valC > 0 && und > 0) {
+                        const unit = valC / und;
+                        displayUnitario = '<div style="font-size:10px;color:#64b5f6;margin-top:2px;" title="Valor unitario calculado internamente">→ unit: $' + unit.toLocaleString('es-AR', {minimumFractionDigits:4, maximumFractionDigits:4}) + '</div>';
+                    }
+                }
                 return '<tr>' +
                     '<td>' + (idx + 1) + '</td>' +
                     '<td><input type="text" value="' + (art.codigo_goodies || '') + '" onchange="articulosManual[' + idx + '].codigo_goodies=this.value" onblur="buscarEnMaestro(' + idx + ', this.value)" style="width:120px;"></td>' +
                     '<td><input type="text" value="' + (art.codigo_proveedor || '') + '" onchange="articulosManual[' + idx + '].codigo_proveedor=this.value" style="width:100px;"></td>' +
                     '<td><input type="text" value="' + (art.nombre || '') + '" onchange="articulosManual[' + idx + '].nombre=this.value" style="width:100%;min-width:280px;"></td>' +
-                    '<td><input type="number" step="0.01" value="' + (art.cajas || '') + '" onchange="articulosManual[' + idx + '].cajas=this.value" style="width:60px;"></td>' +
-                    '<td><input type="number" step="0.01" value="' + (art.und_caja || '') + '" onchange="articulosManual[' + idx + '].und_caja=this.value" style="width:60px;"></td>' +
-                    '<td><input type="number" step="0.01" value="' + (art.valor_fabrica || '') + '" onchange="actualizarValorFabrica(' + idx + ', this.value)" style="width:80px;"></td>' +
-                    '<td><input type="number" step="0.01" value="' + (art.valor_origen || '') + '" onchange="articulosManual[' + idx + '].valor_origen=this.value" style="width:80px;"></td>'  +
+                    '<td><input type="number" step="0.01" value="' + (art.cajas || '') + '" onchange="articulosManual[' + idx + '].cajas=this.value;renderizarArticulos();" style="width:60px;"></td>' +
+                    '<td><input type="number" step="0.01" value="' + (art.und_caja || '') + '" onchange="articulosManual[' + idx + '].und_caja=this.value;renderizarArticulos();" style="width:60px;"></td>' +
+                    '<td><input type="number" step="0.0001" value="' + (art.valor_fabrica || '') + '" onchange="actualizarValorFabrica(' + idx + ', this.value)" style="width:90px;"></td>' +
+                    '<td><input type="number" step="0.0001" value="' + (art.valor_origen || '') + '" onchange="articulosManual[' + idx + '].valor_origen=this.value;renderizarArticulos();" style="width:90px;">' + displayUnitario + '</td>' +
                     '<td><input type="number" step="0.01" value="' + (art.derechos || '') + '" onchange="articulosManual[' + idx + '].derechos=this.value" style="width:60px;"></td>' +
                     '<td><input type="number" step="0.01" value="' + (art.imp_interno || '') + '" onchange="articulosManual[' + idx + '].imp_interno=this.value" style="width:60px;"></td>' +
                     '<td><input type="checkbox" ' + (aplicaAnmat ? 'checked' : '') + ' onchange="articulosManual[' + idx + '].aplica_anmat=this.checked"></td>' +
@@ -1771,7 +1804,10 @@ function actualizarValorFabrica(idx, valor) {
     articulosManual[idx].valor_fabrica = valor;
     const tieneDatosFabrica = document.getElementById('cm_tieneIntermediaria').checked;
     if (tieneDatosFabrica) {
-        articulosManual[idx].valor_origen = (parseFloat(valor) / 0.97).toFixed(2);
+        // No aplico toFixed: preservo la precisión. El display del costeo final
+        // se formatea al mostrar, no al guardar. (ej: 0,8025 / 0,97 = 0,82731959...)
+        const v = parseFloat(valor);
+        articulosManual[idx].valor_origen = isNaN(v) ? '' : (v / 0.97);
     } else {
         articulosManual[idx].valor_origen = valor;
     }
@@ -1783,10 +1819,38 @@ function recalcularValoresOrigen() {
         const valorFabrica = parseFloat(art.valor_fabrica) || 0;
         if (valorFabrica > 0) {
             if (tieneDatosFabrica) {
-                art.valor_origen = (valorFabrica / 0.97).toFixed(2);
+                // Misma lógica: preservo precisión completa
+                art.valor_origen = valorFabrica / 0.97;
             } else {
                 art.valor_origen = art.valor_fabrica;
             }
+        }
+    });
+    renderizarArticulos();
+}
+// =============================================
+// TOGGLE: cargar precios por caja
+// =============================================
+// Cuando se activa, convertimos los valor_origen existentes de unitario a "por caja"
+// (multiplicamos por und_caja). Cuando se desactiva, hacemos lo inverso (dividimos).
+// Esto permite usar el toggle tanto en costeos nuevos como al editar uno existente
+// sin perder data. El guardado final siempre manda valor_unitario_origen (unitario real)
+// al backend; la conversión por caja es solo para la UI.
+function toggleCargarPorCaja() {
+    const porCaja = document.getElementById('cm_cargarPorCaja').checked;
+    // Actualizo el header de la columna
+    const th = document.getElementById('thValorOrigen');
+    if (th) th.textContent = porCaja ? 'Valor x Caja' : 'Valor Origen';
+    // Convierto los valores actuales al modo nuevo
+    articulosManual.forEach(art => {
+        const v = parseFloat(art.valor_origen) || 0;
+        const und = parseFloat(art.und_caja) || 0;
+        if (v > 0 && und > 0) {
+            art.valor_origen = porCaja ? (v * und) : (v / und);
+        }
+        const vf = parseFloat(art.valor_fabrica) || 0;
+        if (vf > 0 && und > 0) {
+            art.valor_fabrica = porCaja ? (vf * und) : (vf / und);
         }
     });
     renderizarArticulos();
@@ -2066,15 +2130,26 @@ function descargarTemplateArticulos() {
             if (!proveedor) { alert('El proveedor es obligatorio'); cambiarTab('datosGenerales'); return; }
             if (articulosManual.length === 0 || !articulosManual[0].nombre) { alert('Debe agregar al menos un articulo'); cambiarTab('articulos'); return; }
             const tieneIntermediaria = document.getElementById('cm_tieneIntermediaria').checked;
+            // Toggle por caja: si está activo, valor_origen en la UI representa el precio
+            // por caja, por lo que al enviar al backend lo dividimos por unidades_por_caja
+            // para obtener el valor_unitario_origen real (con toda la precisión que tenga).
+            const porCaja = (document.getElementById('cm_cargarPorCaja') || {}).checked;
             const articulos = articulosManual.filter(a => a.nombre).map(a => {
+                const undCaja = parseFloat(a.und_caja) || 0;
+                let valorUnitario = parseFloat(a.valor_origen) || 0;
+                let valorFabrica = parseFloat(a.valor_fabrica) || 0;
+                if (porCaja && undCaja > 0) {
+                    valorUnitario = valorUnitario / undCaja;
+                    valorFabrica = valorFabrica / undCaja;
+                }
                 return {
                     codigo_goodies: a.codigo_goodies || 'S/COD',
                     codigo_proveedor: a.codigo_proveedor || '',
                     nombre: a.nombre,
                     cantidad_cajas: parseFloat(a.cajas) || 0,
-                    unidades_por_caja: parseFloat(a.und_caja) || 0,
-                    valor_fabrica: parseFloat(a.valor_fabrica) || 0,
-                    valor_unitario_origen: parseFloat(a.valor_origen) || 0,
+                    unidades_por_caja: undCaja,
+                    valor_fabrica: valorFabrica,
+                    valor_unitario_origen: valorUnitario,
                     derechos_porcentaje: (parseFloat(a.derechos) || 0) / 100,
                     impuesto_interno_porcentaje: (parseFloat(a.imp_interno) || 0) / 100,
                     aplica_anmat: a.aplica_anmat !== false,

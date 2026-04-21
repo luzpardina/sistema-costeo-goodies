@@ -991,6 +991,9 @@
                     <div class="form-group">
                         <label><input type="checkbox" id="cm_esConsolidado" onchange="toggleConsolidado()"> Es Costeo Consolidado</label>
                     </div>
+                    <div class="form-group">
+                        <label title="Si el proveedor factura por caja (ej: USD 9,63/caja), activá este modo para evitar redondeos en el valor unitario"><input type="checkbox" id="cm_cargarPorCaja" onchange="toggleCargarPorCaja()"> Cargar precios por caja</label>
+                    </div>
                    <div class="form-group" id="cm_intermediariaGroup" style="display:none;">
                         <label>Nombre Empresa Fábrica</label>
                         <input type="text" id="cm_intermediaria" placeholder="Ej: BACKUS, PRAVDA">
@@ -1100,7 +1103,7 @@
                                 <th style="width:65px;">Cajas</th>
                                 <th style="width:65px;">Und/Caja</th>
                                 <th style="width:90px;">Valor Fábrica</th>
-<th style="width:90px;">Valor Origen</th>
+<th style="width:110px;"><span id="thValorOrigen">Valor Origen</span></th>
                                 <th style="width:65px;">% Derecho</th>
                                <th style="width:65px;">% Imp.Int.</th>
                                 <th style="width:50px;">ANMAT</th>
