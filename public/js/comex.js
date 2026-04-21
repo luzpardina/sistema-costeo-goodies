@@ -246,11 +246,16 @@
                 var html = '';
                 for (const art of data.articulos) {
                     const difColor = art.diferencia_pct > 0 ? '#f44336' : (art.diferencia_pct < 0 ? '#4CAF50' : '#fff');
+                    // Composición del costo: pueden venir null si revaluación de un costeo viejo sin recalcular
+                    const pctDiv = art.pct_costo_divisa != null ? parseFloat(art.pct_costo_divisa).toFixed(2) + '%' : '-';
+                    const pctPes = art.pct_costo_pesos  != null ? parseFloat(art.pct_costo_pesos).toFixed(2) + '%' : '-';
                     html += `<tr>
                         <td>${art.nombre}</td>
                         <td style="font-weight:bold;">$${parseFloat(art.costo_neto_original).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
                         <td style="font-weight:bold;">$${parseFloat(art.costo_neto_revaluado).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
                         <td style="color:${difColor};">${art.diferencia_pct ? art.diferencia_pct.toFixed(2) + '%' : '-'}</td>
+                        <td style="color:#64b5f6;">${pctDiv}</td>
+                        <td style="color:#ffab40;">${pctPes}</td>
                     </tr>`;
                 }
                 document.getElementById('resultadoRevaluacionBody').innerHTML = html;
@@ -329,11 +334,16 @@
                 var html = '';
                 for (const art of data.articulos) {
                     const difColor = art.diferencia_costo_pct > 0 ? '#f44336' : (art.diferencia_costo_pct < 0 ? '#4CAF50' : '#fff');
+                    // Composición del costo: pueden venir null si es una revaluación anterior al deploy de esta feature
+                    const pctDiv = art.pct_costo_divisa != null ? parseFloat(art.pct_costo_divisa).toFixed(2) + '%' : '-';
+                    const pctPes = art.pct_costo_pesos  != null ? parseFloat(art.pct_costo_pesos).toFixed(2) + '%' : '-';
                     html += `<tr>
                         <td>${art.nombre}</td>
                         <td style="font-weight:bold;">$${parseFloat(art.costo_neto_original).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
                         <td style="font-weight:bold;">$${parseFloat(art.costo_neto_revaluado).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
                         <td style="color:${difColor};">${art.diferencia_costo_pct ? parseFloat(art.diferencia_costo_pct).toFixed(2) + '%' : '-'}</td>
+                        <td style="color:#64b5f6;">${pctDiv}</td>
+                        <td style="color:#ffab40;">${pctPes}</td>
                     </tr>`;
                 }
                 document.getElementById('resultadoRevaluacionBody').innerHTML = html;
