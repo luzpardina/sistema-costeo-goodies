@@ -749,6 +749,54 @@
         } catch(e) { div.innerHTML = '<p style="color:#f44336;">Error: ' + e.message + '</p>'; }
     }
 
+    // =============================================
+    // RECÁLCULO MASIVO DE COMPOSICIÓN DEL COSTO
+    // =============================================
+    // Itera todos los costeos calculados y les completa pct_costo_divisa/pesos.
+    // Operación one-time (se ejecuta una sola vez tras activar la funcionalidad).
+    // Muestra progreso en pantalla y reporte final con errores si los hay.
+    async function recalcularPctCostoMasivo() {
+        if (!confirm('¿Confirmás que querés recalcular TODOS los costeos existentes?\n\nEsto va a:\n- Iterar cada costeo calculado\n- Recalcular el costeo completo\n- Poblar los nuevos campos % Divisa / % Pesos\n\nPuede tardar varios minutos. No cierres esta pestaña durante el proceso.')) {
+            return;
+        }
+        var div = document.getElementById('recalcPctResultado');
+        div.style.display = 'block';
+        div.innerHTML = '<p style="color:#ff9800;">⏳ Recalculando costeos... esto puede tardar varios minutos.</p>';
+        try {
+            var resp = await fetch(API_URL + '/api/admin/recalcular-pct-costo', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+            });
+            if (!resp.ok) {
+                var err = await resp.json().catch(function() { return { error: 'Error desconocido' }; });
+                throw new Error(err.error || 'Error al recalcular');
+            }
+            var data = await resp.json();
+            var hayErrores = data.errores && data.errores.length > 0;
+            var html = '<div style="padding:10px;background:' + (hayErrores ? '#3a2a1a' : '#1a3a1a') + ';border-radius:4px;margin-bottom:10px;">';
+            html += '<strong style="color:' + (hayErrores ? '#ff9800' : '#4CAF50') + ';font-size:14px;">';
+            html += hayErrores ? '⚠️ Recálculo completado con errores' : '✅ Recálculo completado exitosamente';
+            html += '</strong><br>';
+            html += 'Total procesados: <strong>' + data.total + '</strong><br>';
+            html += '✅ Exitosos: <strong>' + data.exitosos + '</strong><br>';
+            if (hayErrores) html += '❌ Con errores: <strong>' + data.errores.length + '</strong><br>';
+            html += 'Duración: ' + data.duracion_segundos + ' segundos';
+            html += '</div>';
+            if (hayErrores) {
+                html += '<div style="margin-top:10px;"><strong style="color:#ff9800;">Errores:</strong>';
+                data.errores.forEach(function(e) {
+                    html += '<div style="padding:4px 0;border-bottom:1px solid #1a1a2e;">';
+                    html += '<span style="color:#ddd;">' + (e.nombre || e.id) + '</span>: ';
+                    html += '<span style="color:#f44336;">' + e.error + '</span></div>';
+                });
+                html += '</div>';
+            }
+            div.innerHTML = html;
+        } catch(e) {
+            div.innerHTML = '<p style="color:#f44336;">Error: ' + e.message + '</p>';
+        }
+    }
+
     // Cerrar buscador al hacer clic fuera
     document.addEventListener('click', function(e) {
         const buscador = document.getElementById('buscadorGlobal');
@@ -768,4 +816,5 @@
     window.cargarUsuarios = cargarUsuarios;
     window.guardarConfig = guardarConfig;
     window.ejecutarDiagnostico = ejecutarDiagnostico;
+    window.recalcularPctCostoMasivo = recalcularPctCostoMasivo;
     window.verHistorial = verHistorial;

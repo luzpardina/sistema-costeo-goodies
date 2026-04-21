@@ -713,6 +713,13 @@
                 <button class="btn btn-warning" onclick="ejecutarDiagnostico()" style="margin-bottom:10px;">🔍 Ejecutar Diagnóstico Completo</button>
                 <div id="diagnosticoResultado" style="display:none;margin-top:10px;max-height:500px;overflow-y:auto;background:#0a0a15;padding:12px;border-radius:6px;font-family:monospace;font-size:12px;"></div>
             </div>
+            <div class="card" style="border-left:4px solid #9C27B0;">
+                <h3>🔀 Recalcular Composición del Costo</h3>
+                <p style="color:#aaa;margin-bottom:10px;">Recorre todos los costeos calculados existentes y les actualiza los campos <code>pct_costo_divisa</code> y <code>pct_costo_pesos</code>. Ejecutar una sola vez después de activar esta funcionalidad.</p>
+                <p style="color:#ffab40;font-size:12px;margin-bottom:10px;">⚠ Puede tardar varios minutos según la cantidad de costeos. No cierres esta pestaña durante el proceso.</p>
+                <button class="btn" style="background:#9C27B0;color:#fff;margin-bottom:10px;" onclick="recalcularPctCostoMasivo()">🔀 Ejecutar Recálculo Masivo</button>
+                <div id="recalcPctResultado" style="display:none;margin-top:10px;max-height:400px;overflow-y:auto;background:#0a0a15;padding:12px;border-radius:6px;font-family:monospace;font-size:12px;"></div>
+            </div>
             <div class="card" style="border-left:4px solid #4fc3f7;">
                 <h3>📘 Manual de Usuario</h3>
                 <p style="color:#aaa;margin-bottom:15px;">Documentación completa del sistema: cómo usar cada módulo, fórmulas de cálculo, glosario y más.</p>

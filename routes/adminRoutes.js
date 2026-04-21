@@ -178,4 +178,55 @@ router.get('/cotizaciones-bna', auth, async (req, res) => {
     }
 });
 
+// Recalcular pct_costo_divisa y pct_costo_pesos en todos los costeos existentes.
+// Endpoint one-time: itera todos los costeos calculados y los recalcula para
+// poblar los nuevos campos. Los costeos borradores (estado='borrador') se saltean
+// porque no tienen cálculo previo válido.
+// Solo admin. Devuelve reporte: total, exitosos, con errores, duración.
+router.post('/recalcular-pct-costo', auth, async (req, res) => {
+    try {
+        if (req.usuario.rol !== 'admin') {
+            return res.status(403).json({ error: 'Solo admins pueden ejecutar esta operación' });
+        }
+        const { Costeo } = require('../models');
+        const CalculosService = require('../services/calculosService');
+
+        const inicioMs = Date.now();
+        const costeos = await Costeo.findAll({
+            where: { estado: 'calculado' },
+            attributes: ['id', 'nombre_costeo'],
+            order: [['created_at', 'ASC']]
+        });
+
+        const resultados = { total: costeos.length, exitosos: 0, errores: [] };
+        for (const c of costeos) {
+            try {
+                await CalculosService.calcularCosteo(c.id);
+                resultados.exitosos++;
+            } catch (e) {
+                resultados.errores.push({ id: c.id, nombre: c.nombre_costeo, error: e.message });
+            }
+        }
+        resultados.duracion_segundos = Math.round((Date.now() - inicioMs) / 1000);
+
+        // Invalido el cache de últimos costos que ahora tiene datos recalculados
+        const { invalidateCache } = require('../utils/cache');
+        invalidateCache('/api/costeos/ultimos-costos');
+
+        // Registro en auditoría
+        try {
+            await registrarAuditoria(req.usuario.id, 'recalculo_masivo_pct_costo', {
+                total: resultados.total,
+                exitosos: resultados.exitosos,
+                cantidad_errores: resultados.errores.length
+            });
+        } catch (e) { /* no frenar si falla auditoría */ }
+
+        res.json(resultados);
+    } catch (error) {
+        console.error('Error en recálculo masivo pct_costo:', error);
+        res.status(500).json({ error: 'Error en recálculo masivo: ' + error.message });
+    }
+});
+
 module.exports = router;
