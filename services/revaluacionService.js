@@ -245,6 +245,10 @@ class RevaluacionService {
             
             // Gastos varios prorrateados con nuevos TC
             let totalGastosVarNuevoPesos = 0;
+            // Acumuladores paralelos para clasificar por moneda (ARS = pesos, resto = divisa).
+            // Usado para calcular pct_costo_divisa/pesos del artículo revaluado.
+            let totalGastosVarNuevoDivisa = 0;
+            let totalGastosVarNuevoPesosARS = 0;
             for (const g of gastosVarios) {
                 // Si se activó "solo contable", excluir gastos no contables
                 if (soloContable && g.no_contable) continue;
@@ -269,12 +273,29 @@ class RevaluacionService {
                 }
                 
                 totalGastosVarNuevoPesos += montoGPesos;
+                if (monedaG === 'ARS') {
+                    totalGastosVarNuevoPesosARS += montoGPesos;
+                } else {
+                    totalGastosVarNuevoDivisa += montoGPesos;
+                }
             }
             const gastosVarArtNuevo = totalGastosVarNuevoPesos * participacionFOB;
+            // Desglose proporcional de gastosVarArtNuevo por moneda de origen
+            const gastosVarArtNuevoDivisa = totalGastosVarNuevoDivisa * participacionFOB;
+            const gastosVarArtNuevoPesos  = totalGastosVarNuevoPesosARS * participacionFOB;
             
             // Costo Neto Revaluado
             const costoTotalNetoNuevo = fobTotalNuevoPesos + anmatNuevo + derechosNuevo + estadisticaNuevo + gastosVarArtNuevo;
             const costoUnitarioNetoNuevo = costoTotalNetoNuevo / unidades;
+
+            // Composición del costo revaluado (misma clasificación que el motor principal):
+            // - Divisa: FOB + ANMAT + derechos + estadística + gastos varios en moneda != ARS
+            // - Pesos: gastos varios en ARS
+            // Sobre el costo TOTAL (no unitario). Los % son iguales tanto en total como en unitario.
+            const montoDivisaArt = fobTotalNuevoPesos + anmatNuevo + derechosNuevo + estadisticaNuevo + gastosVarArtNuevoDivisa;
+            const montoPesosArt  = gastosVarArtNuevoPesos;
+            const pctCostoDivisa = costoTotalNetoNuevo > 0 ? (montoDivisaArt / costoTotalNetoNuevo) * 100 : 0;
+            const pctCostoPesos  = costoTotalNetoNuevo > 0 ? (montoPesosArt  / costoTotalNetoNuevo) * 100 : 0;
             
             // Diferencia porcentual
             let diferenciaCostoPct = null;
@@ -301,7 +322,9 @@ class RevaluacionService {
                 tc_eur_nuevo: tcNuevoEUR,
                 tc_gbp_nuevo: tcNuevoGBP,
                 costo_neto_revaluado: costoUnitarioNetoNuevo,
-                diferencia_costo_pct: diferenciaCostoPct
+                diferencia_costo_pct: diferenciaCostoPct,
+                pct_costo_divisa: pctCostoDivisa,
+                pct_costo_pesos: pctCostoPesos
             });
             
             articulosRevaluados.push({
@@ -309,7 +332,9 @@ class RevaluacionService {
                 nombre: articulo.nombre,
                 costo_neto_original: costoNetoOriginal,
                 costo_neto_revaluado: costoUnitarioNetoNuevo,
-                diferencia_pct: diferenciaCostoPct
+                diferencia_pct: diferenciaCostoPct,
+                pct_costo_divisa: pctCostoDivisa,
+                pct_costo_pesos: pctCostoPesos
             });
         }
         
