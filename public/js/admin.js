@@ -797,6 +797,64 @@
         }
     }
 
+    // =============================================
+    // BACKUP DE BASE DE DATOS
+    // =============================================
+    // Descarga un JSON con todas las tablas. excluirSensibles=true omite la
+    // tabla de usuarios (que contiene password_hash bcrypt). Útil para mandar
+    // el backup por mail o compartirlo con un consultor sin filtrar credenciales.
+    async function descargarBackup(excluirSensibles) {
+        var div = document.getElementById('backupResultado');
+        div.style.display = 'block';
+        div.innerHTML = '<p style="color:#ff9800;">⏳ Generando backup... esto puede tardar unos segundos.</p>';
+        try {
+            var url = API_URL + '/api/admin/backup-db' + (excluirSensibles ? '?excluirSensibles=true' : '');
+            var resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+            if (!resp.ok) {
+                var err = await resp.json().catch(function() { return { error: 'Error desconocido' }; });
+                throw new Error(err.error || err.detalles || 'Error al generar backup');
+            }
+            // Header X-Backup-Resumen contiene info útil para mostrar
+            var resumenStr = resp.headers.get('X-Backup-Resumen');
+            var resumen = null;
+            try { resumen = resumenStr ? JSON.parse(resumenStr) : null; } catch(e) {}
+            var blob = await resp.blob();
+            // Disparar descarga
+            var fname = 'backup_' + new Date().toISOString().split('T')[0] + (excluirSensibles ? '_sin-usuarios' : '') + '.json';
+            // Intentar usar el filename del header Content-Disposition
+            var cd = resp.headers.get('Content-Disposition');
+            if (cd) {
+                var m = cd.match(/filename="([^"]+)"/);
+                if (m) fname = m[1];
+            }
+            var blobUrl = window.URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = fname;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(blobUrl);
+            // Mostrar resumen
+            var html = '<div style="padding:10px;background:#1a3a1a;border-radius:4px;">';
+            html += '<strong style="color:#4CAF50;">✅ Backup descargado: ' + fname + '</strong><br>';
+            if (resumen && resumen._meta) {
+                html += 'Tamaño: ' + resumen._meta.tamano_kb + ' KB | Duración: ' + resumen._meta.duracion_ms + ' ms<br>';
+                html += '</div><div style="margin-top:10px;"><strong>Registros por tabla:</strong>';
+                Object.keys(resumen).forEach(function(k) {
+                    if (k === '_meta') return;
+                    html += '<div style="padding:2px 0;"><span style="color:#aaa;">' + k + ':</span> <strong>' + resumen[k] + '</strong></div>';
+                });
+                html += '</div>';
+            } else {
+                html += '</div>';
+            }
+            div.innerHTML = html;
+        } catch(e) {
+            div.innerHTML = '<p style="color:#f44336;">Error: ' + e.message + '</p>';
+        }
+    }
+
     // Cerrar buscador al hacer clic fuera
     document.addEventListener('click', function(e) {
         const buscador = document.getElementById('buscadorGlobal');
@@ -817,4 +875,5 @@
     window.guardarConfig = guardarConfig;
     window.ejecutarDiagnostico = ejecutarDiagnostico;
     window.recalcularPctCostoMasivo = recalcularPctCostoMasivo;
+    window.descargarBackup = descargarBackup;
     window.verHistorial = verHistorial;
