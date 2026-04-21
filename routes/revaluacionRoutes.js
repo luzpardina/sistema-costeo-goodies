@@ -96,13 +96,19 @@ router.get('/exportar/:id', auth, async (req, res) => {
             { header: 'Dif FOB %', key: 'dif_fob_pct', width: 12 },
             { header: 'Fecha Despacho', key: 'fecha_desp', width: 14 },
             { header: 'Fecha Revaluación', key: 'fecha_rev', width: 16 },
-            { header: 'Motivo', key: 'motivo', width: 25 }
+            { header: 'Motivo', key: 'motivo', width: 25 },
+            // Composición del costo revaluado (sensibilidad a cambios de TC / inflación)
+            { header: '% Divisa', key: 'pct_divisa', width: 10 },
+            { header: '% Pesos', key: 'pct_pesos', width: 10 }
         ];
         
         // Estilo encabezado
         hoja.getRow(1).font = { bold: true };
         hoja.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
         hoja.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        // Color distintivo (violeta) para las 2 columnas de composición
+        hoja.getRow(1).getCell(20).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7B1FA2' } };
+        hoja.getRow(1).getCell(21).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7B1FA2' } };
         
         // Datos
         for (const art of revaluacion.articulos) {
@@ -125,7 +131,10 @@ router.get('/exportar/:id', auth, async (req, res) => {
                 dif_fob_pct: parseFloat(art.diferencia_fob_pct) || 0,
                 fecha_desp: art.fecha_despacho ? new Date(art.fecha_despacho).toLocaleDateString('es-AR') : '',
                 fecha_rev: revaluacion.fecha_revaluacion ? new Date(revaluacion.fecha_revaluacion).toLocaleDateString('es-AR') : '',
-                motivo: revaluacion.motivo
+                motivo: revaluacion.motivo,
+                // Pueden venir null en revaluaciones generadas antes de esta feature
+                pct_divisa: art.pct_costo_divisa != null ? parseFloat(art.pct_costo_divisa) / 100 : null,
+                pct_pesos:  art.pct_costo_pesos  != null ? parseFloat(art.pct_costo_pesos)  / 100 : null
             });
         }
         
@@ -139,6 +148,9 @@ router.get('/exportar/:id', auth, async (req, res) => {
             hoja.getRow(i).getCell(14).numFmt = '#,##0.0000';
             hoja.getRow(i).getCell(15).numFmt = '#,##0.0000';
             hoja.getRow(i).getCell(16).numFmt = '0.00';
+            // % de composición como porcentaje nativo de Excel
+            hoja.getRow(i).getCell(20).numFmt = '0.00%';
+            hoja.getRow(i).getCell(21).numFmt = '0.00%';
         }
         
         const buffer = await workbook.xlsx.writeBuffer();
