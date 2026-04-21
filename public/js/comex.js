@@ -1386,6 +1386,31 @@ async function ejecutarCalculo(id, metodo) {
                 }
                 html += '</tbody></table>';
 
+                // ===== ARTÍCULOS: COSTO NETO UNITARIO (ARS) =====
+                html += '<h4 style="color:#ffd54f;margin:20px 0 8px 0;">💰 Artículos — Costo Neto Unitario (ARS)</h4>';
+                html += '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:#2a2a3e;">';
+                html += '<th style="padding:6px;text-align:left;border-bottom:2px solid #444;">Artículo</th>';
+                html += '<th style="padding:6px;text-align:right;border-bottom:2px solid #444;color:#4CAF50;font-size:11px;">Costo Neto ' + n1.substring(0,12) + '</th>';
+                html += '<th style="padding:6px;text-align:right;border-bottom:2px solid #444;color:#ff9800;font-size:11px;">Costo Neto ' + n2.substring(0,12) + '</th>';
+                html += '<th style="padding:6px;text-align:right;border-bottom:2px solid #444;color:#64b5f6;font-size:11px;">Dif %</th>';
+                html += '</tr></thead><tbody>';
+
+                for (const codigo of todosCodigosComp) {
+                    const a1 = (c1.articulos||[]).find(a => a.codigo_goodies === codigo);
+                    const a2 = (c2.articulos||[]).find(a => a.codigo_goodies === codigo);
+                    const nombre = (a1 || a2 || {}).nombre || '';
+                    const cn1 = a1 ? (parseFloat(a1.costo_unitario_neto_ars)||0) : 0;
+                    const cn2 = a2 ? (parseFloat(a2.costo_unitario_neto_ars)||0) : 0;
+
+                    html += '<tr>';
+                    html += '<td style="padding:4px 6px;border-bottom:1px solid #333;"><strong>' + codigo + '</strong><br><small style="color:#aaa;">' + nombre + '</small></td>';
+                    html += '<td style="padding:4px 6px;text-align:right;border-bottom:1px solid #333;">' + (cn1 ? '$' + fmtNum(cn1) : '-') + '</td>';
+                    html += '<td style="padding:4px 6px;text-align:right;border-bottom:1px solid #333;">' + (cn2 ? '$' + fmtNum(cn2) : '-') + '</td>';
+                    html += (cn1 > 0 && cn2 > 0 ? difCell(cn2, cn1) : '<td style="' + tdSt + '">-</td>');
+                    html += '</tr>';
+                }
+                html += '</tbody></table>';
+
                 document.getElementById('compPvsDefBody').innerHTML = html;
                 document.getElementById('compPvsDefTitle').textContent = 'Comparativo: ' + n1 + ' vs ' + n2;
                 document.getElementById('compPvsDefModal').classList.add('show');
