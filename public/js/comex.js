@@ -1424,7 +1424,7 @@ async function ejecutarCalculo(id, metodo) {
                     const tieneAlerta = alertas.length > 0;
                     const rowBg = tieneAlerta ? ' style="background:rgba(244,67,54,0.08);"' : '';
                     html += '<tr' + rowBg + '>';
-                    html += '<td style="padding:4px 6px;border-bottom:1px solid #333;"><strong>' + codigo + '</strong><br><small style="color:#aaa;">' + nombre + '</small></td>';
+                    html += '<td style="padding:4px 6px;border-bottom:1px solid #333;"><strong>' + (nombre || '—') + '</strong><br><small style="color:#aaa;">' + codigo + '</small></td>';
                     html += '<td style="padding:4px 6px;text-align:right;border-bottom:1px solid #333;">' + (f1 ? fmtFob(f1) : '-') + '</td>';
                     html += '<td style="padding:4px 6px;text-align:right;border-bottom:1px solid #333;">' + (f2 ? fmtFob(f2) : '-') + '</td>';
                     html += (f1 > 0 && f2 > 0 ? difCell(f2, f1) : '<td style="' + tdSt + '">-</td>');
@@ -1450,7 +1450,7 @@ async function ejecutarCalculo(id, metodo) {
                     const cn2 = a2 ? (parseFloat(a2.costo_unitario_neto_ars)||0) : 0;
 
                     html += '<tr>';
-                    html += '<td style="padding:4px 6px;border-bottom:1px solid #333;"><strong>' + codigo + '</strong><br><small style="color:#aaa;">' + nombre + '</small></td>';
+                    html += '<td style="padding:4px 6px;border-bottom:1px solid #333;"><strong>' + (nombre || '—') + '</strong><br><small style="color:#aaa;">' + codigo + '</small></td>';
                     html += '<td style="padding:4px 6px;text-align:right;border-bottom:1px solid #333;">' + (cn1 ? '$' + fmtNum(cn1) : '-') + '</td>';
                     html += '<td style="padding:4px 6px;text-align:right;border-bottom:1px solid #333;">' + (cn2 ? '$' + fmtNum(cn2) : '-') + '</td>';
                     html += (cn1 > 0 && cn2 > 0 ? difCell(cn2, cn1) : '<td style="' + tdSt + '">-</td>');
