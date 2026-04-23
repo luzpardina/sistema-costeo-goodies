@@ -1063,6 +1063,7 @@
                 <div style="text-align: right; margin-top: 20px;">
                     <button class="btn btn-warning" onclick="refrescarDatosGenerales()" style="margin-right:10px;">🔄 Refrescar</button>
                     <button class="btn btn-primary" onclick="cambiarTab('baseAduana')">Siguiente →</button>
+                    <button class="btn btn-success" onclick="guardarCargaManual()" style="margin-left:10px;" title="Podés guardar desde cualquier pestaña">💾 Guardar Costeo</button>
                 </div>
             </div>
             <div id="tabBaseAduana" class="tab-content">
@@ -1088,7 +1089,10 @@
                 <div style="display: flex; justify-content: space-between; margin-top: 20px;">
                     <button class="btn btn-secondary" onclick="cambiarTab('datosGenerales')">← Anterior</button>
                     <button class="btn btn-warning" onclick="refrescarBaseAduana()">🔄 Refrescar</button>
-                    <button class="btn btn-primary" onclick="cambiarTab('articulos')">Siguiente →</button>
+                    <div>
+                        <button class="btn btn-primary" onclick="cambiarTab('articulos')">Siguiente →</button>
+                        <button class="btn btn-success" onclick="guardarCargaManual()" style="margin-left:10px;" title="Podés guardar desde cualquier pestaña">💾 Guardar Costeo</button>
+                    </div>
                 </div>
             </div>
 <div id="tabArticulos" class="tab-content">
@@ -1133,7 +1137,10 @@
                 <div style="display: flex; justify-content: space-between; margin-top: 20px;">
                     <button class="btn btn-secondary" onclick="cambiarTab('baseAduana')">← Anterior</button>
                     <button class="btn btn-warning" onclick="refrescarArticulos()">🔄 Refrescar</button>
-                    <button class="btn btn-primary" onclick="cambiarTab('gastos')">Siguiente →</button>
+                    <div>
+                        <button class="btn btn-primary" onclick="cambiarTab('gastos')">Siguiente →</button>
+                        <button class="btn btn-success" onclick="guardarCargaManual()" style="margin-left:10px;" title="Podés guardar desde cualquier pestaña">💾 Guardar Costeo</button>
+                    </div>
                 </div>
             </div>
             <div id="tabGastos" class="tab-content">

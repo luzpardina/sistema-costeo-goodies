@@ -1194,10 +1194,125 @@ async function ejecutarCalculo(id, metodo) {
         }
 
         var costeoModificado = false;
-        function marcarModificado() { costeoModificado = true; }
+        // ========================================================================
+        // AUTOSAVE DE CARGA MANUAL EN LOCALSTORAGE
+        // ========================================================================
+        // Cada vez que hay un cambio en el formulario, guardamos silenciosamente
+        // el estado completo en localStorage bajo la clave 'borrador_carga_manual'.
+        // Esto nos permite recuperar el trabajo si la usuaria:
+        //   - Cierra el modal sin querer (X, Escape antes del fix, confirm sin leer)
+        //   - Cierra la pestaña del navegador
+        //   - Se queda sin sesión y tiene que re-loguear
+        //   - Hay un error de red al guardar y se pierde la respuesta
+        // El borrador se limpia cuando se guarda exitosamente o cuando la usuaria
+        // decide descartarlo al abrir carga manual.
+        const BORRADOR_KEY = 'borrador_carga_manual';
+        function guardarBorrador() {
+            try {
+                // Capturo el estado completo de todos los campos del modal
+                const getVal = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+                const getCk = id => { const el = document.getElementById(id); return el ? el.checked : false; };
+                const borrador = {
+                    _timestamp: Date.now(),
+                    _editandoId: window.costeoEditandoId || null,
+                    nombre: getVal('cm_nombre'),
+                    proveedor: getVal('cm_proveedor'),
+                    tieneIntermediaria: getCk('cm_tieneIntermediaria'),
+                    intermediaria: getVal('cm_intermediaria'),
+                    facturaInterm: getVal('cm_facturaInterm'),
+                    fechaFacturaInterm: getVal('cm_fechaFacturaInterm'),
+                    fechaVencInterm: getVal('cm_fechaVencInterm'),
+                    esConsolidado: getCk('cm_esConsolidado'),
+                    volumenM3: getVal('cm_volumenM3'),
+                    pesoKg: getVal('cm_pesoKg'),
+                    facturaNro: getVal('cm_facturaNro'),
+                    moneda: getVal('cm_moneda'),
+                    monto: getVal('cm_monto'),
+                    fechaFactura: getVal('cm_fechaFactura'),
+                    fechaVenc: getVal('cm_fechaVenc'),
+                    fechaDespacho: getVal('cm_fechaDespacho'),
+                    nroDespacho: getVal('cm_nroDespacho'),
+                    tcUsd: getVal('cm_tcUsd'),
+                    tcEur: getVal('cm_tcEur'),
+                    tcGbp: getVal('cm_tcGbp'),
+                    fobMoneda: getVal('cm_fobMoneda'),
+                    fobMonto: getVal('cm_fobMonto'),
+                    fleteMoneda: getVal('cm_fleteMoneda'),
+                    fleteMonto: getVal('cm_fleteMonto'),
+                    seguroMoneda: getVal('cm_seguroMoneda'),
+                    seguroMonto: getVal('cm_seguroMonto'),
+                    porCaja: getCk('cm_cargarPorCaja'),
+                    articulosManual: articulosManual || [],
+                    gastosManual: gastosManual || [],
+                    proveedoresConsolidado: proveedoresConsolidado || []
+                };
+                localStorage.setItem(BORRADOR_KEY, JSON.stringify(borrador));
+            } catch(e) {
+                // No molestar a la usuaria si localStorage falla (cuota, modo privado, etc.)
+                console.warn('Autosave falló:', e);
+            }
+        }
+        function leerBorrador() {
+            try {
+                const raw = localStorage.getItem(BORRADOR_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch(e) { return null; }
+        }
+        function descartarBorrador() {
+            try { localStorage.removeItem(BORRADOR_KEY); } catch(e) {}
+        }
+        function restaurarBorrador(b) {
+            const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+            const setCk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+            window.costeoEditandoId = b._editandoId || null;
+            setVal('cm_nombre', b.nombre);
+            setVal('cm_proveedor', b.proveedor);
+            setCk('cm_tieneIntermediaria', b.tieneIntermediaria);
+            setVal('cm_intermediaria', b.intermediaria);
+            setVal('cm_facturaInterm', b.facturaInterm);
+            setVal('cm_fechaFacturaInterm', b.fechaFacturaInterm);
+            setVal('cm_fechaVencInterm', b.fechaVencInterm);
+            setCk('cm_esConsolidado', b.esConsolidado);
+            setVal('cm_volumenM3', b.volumenM3);
+            setVal('cm_pesoKg', b.pesoKg);
+            setVal('cm_facturaNro', b.facturaNro);
+            setVal('cm_moneda', b.moneda);
+            setVal('cm_monto', b.monto);
+            setVal('cm_fechaFactura', b.fechaFactura);
+            setVal('cm_fechaVenc', b.fechaVenc);
+            setVal('cm_fechaDespacho', b.fechaDespacho);
+            setVal('cm_nroDespacho', b.nroDespacho);
+            setVal('cm_tcUsd', b.tcUsd);
+            setVal('cm_tcEur', b.tcEur);
+            setVal('cm_tcGbp', b.tcGbp);
+            setVal('cm_fobMoneda', b.fobMoneda);
+            setVal('cm_fobMonto', b.fobMonto);
+            setVal('cm_fleteMoneda', b.fleteMoneda);
+            setVal('cm_fleteMonto', b.fleteMonto);
+            setVal('cm_seguroMoneda', b.seguroMoneda);
+            setVal('cm_seguroMonto', b.seguroMonto);
+            setCk('cm_cargarPorCaja', b.porCaja);
+            articulosManual = b.articulosManual || [];
+            gastosManual = b.gastosManual || [];
+            proveedoresConsolidado = b.proveedoresConsolidado || [];
+            // Refrescar UI
+            if (typeof toggleIntermediaria === 'function') toggleIntermediaria();
+            if (typeof toggleConsolidado === 'function') toggleConsolidado();
+            if (typeof renderizarArticulos === 'function') renderizarArticulos();
+            if (typeof refrescarGastos === 'function') refrescarGastos();
+        }
+        window.descartarBorrador = descartarBorrador;
+
+        function marcarModificado() {
+            costeoModificado = true;
+            // Autosave silencioso. Lo debounceamos un poco para no saturar localStorage
+            // con cada tecla: guardamos 400ms después del último cambio.
+            clearTimeout(window._autosaveTimer);
+            window._autosaveTimer = setTimeout(guardarBorrador, 400);
+        }
         function cerrarModal(id) { 
             if (id === 'cargaManualModal' && costeoModificado) {
-                if (!confirm('Hay cambios sin guardar. ¿Seguro que querés cerrar?')) return;
+                if (!confirm('⚠ ATENCIÓN\n\nEstás por cerrar el formulario SIN GUARDAR los cambios.\n\nSi cerrás ahora vas a PERDER TODOS los datos cargados (datos generales, base aduana, artículos y gastos).\n\nPara guardar el costeo tenés que ir a la pestaña "4. Gastos" y apretar "💾 Guardar Costeo".\n\n¿Seguro que querés cerrar y perder los datos?')) return;
             }
             costeoModificado = false;
             const modal = document.getElementById(id);
@@ -1627,7 +1742,20 @@ async function ejecutarCalculo(id, metodo) {
             cerrarModal('exportCompModal');
         }
 
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { cerrarModal('detalleModal'); cerrarModal('recalcularModal'); cerrarModal('cargaManualModal'); cerrarModal('compPvsDefModal'); cerrarModal('exportCompModal'); } });
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            // Escape SÍ cierra modales "livianos" (detalle, recalcular, comparativos, etc.)
+            // pero NUNCA cierra cargaManualModal: ese formulario tiene mucho input manual
+            // y un Escape accidental hacía perder el trabajo completo. Para cerrar carga
+            // manual hay que usar explícitamente la X (que chequea costeoModificado).
+            const cargaModal = document.getElementById('cargaManualModal');
+            const cargaAbierto = cargaModal && cargaModal.classList.contains('show');
+            if (cargaAbierto) return;
+            cerrarModal('detalleModal');
+            cerrarModal('recalcularModal');
+            cerrarModal('compPvsDefModal');
+            cerrarModal('exportCompModal');
+        });
 function abrirCargaManual() {
             window.costeoEditandoId = null;
             articulosManual = [];
@@ -1682,6 +1810,29 @@ function abrirCargaManual() {
             agregarGasto();
             cambiarTab('datosGenerales');
             document.getElementById('cargaManualModal').classList.add('show');
+            // Detectar borrador de carga anterior (autosave en localStorage).
+            // Si hay uno, ofrecer restaurar. Esto salva el escenario típico:
+            // usuaria carga todo, cierra sin querer, vuelve a abrir. En lugar
+            // de empezar de cero, recupera su trabajo.
+            costeoModificado = false;  // reset al abrir fresh
+            const b = leerBorrador();
+            if (b && !b._editandoId) {
+                const fecha = new Date(b._timestamp);
+                const msg = 'Se encontró un borrador sin guardar de un costeo anterior.\n\n' +
+                    'Fecha del borrador: ' + fecha.toLocaleString('es-AR') + '\n' +
+                    'Nombre: ' + (b.nombre || '(sin nombre)') + '\n' +
+                    'Proveedor: ' + (b.proveedor || '(sin proveedor)') + '\n' +
+                    'Artículos cargados: ' + (b.articulosManual || []).length + '\n\n' +
+                    '¿Querés restaurarlo y continuar donde lo dejaste?\n\n' +
+                    '• "Aceptar" → restaura el borrador\n' +
+                    '• "Cancelar" → empieza desde cero (el borrador se descarta)';
+                if (confirm(msg)) {
+                    restaurarBorrador(b);
+                    costeoModificado = true;  // el borrador cuenta como cambios pendientes
+                } else {
+                    descartarBorrador();
+                }
+            }
         }
         function toggleIntermediaria() {
             const tiene = document.getElementById('cm_tieneIntermediaria').checked;
@@ -2246,6 +2397,8 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                 const data = await res.json();
                 if (res.ok) {
                     costeoModificado = false;
+                    // Borrador ya guardado en BD, ya no lo necesitamos en localStorage
+                    descartarBorrador();
                     var msgBase = window.costeoEditandoId ? 'Costeo actualizado exitosamente!' : 'Costeo guardado exitosamente!';
                     
                     // Info sobre catálogo
