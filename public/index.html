@@ -726,6 +726,19 @@
                 <a href="/manual.html" target="_blank" class="btn btn-primary" style="display:inline-block;text-decoration:none;padding:10px 25px;">📖 Abrir Manual del Sistema</a>
                 <p style="color:#666;margin-top:10px;font-size:12px;">Se abre en nueva pestaña. Última actualización: Marzo 2026 v2.1</p>
             </div>
+            <div class="card" style="border-left:4px solid #667eea; grid-column: 1 / -1;">
+                <h3>🎫 Tickets de Soporte</h3>
+                <p style="color:#aaa;margin-bottom:10px;">Tickets reportados por los usuarios del sistema. Resolvelos, respondé consultas y cerralos cuando estén listos.</p>
+                <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="cargarTicketsAdmin()">🔄 Cargar Tickets</button>
+                    <button class="btn btn-secondary" onclick="filtrarTicketsAdmin('abierto')">🔵 Abiertos</button>
+                    <button class="btn btn-secondary" onclick="filtrarTicketsAdmin('en_progreso')">🟡 En progreso</button>
+                    <button class="btn btn-secondary" onclick="filtrarTicketsAdmin('resuelto')">🟢 Resueltos</button>
+                    <button class="btn btn-secondary" onclick="filtrarTicketsAdmin('')">Todos</button>
+                </div>
+                <div id="ticketsAdminStats" style="margin-bottom:15px;"></div>
+                <div id="ticketsAdminLista" style="max-height:500px;overflow-y:auto;"></div>
+            </div>
             <div class="card" style="grid-column: 1 / -1;">
                 <h3>👥 Usuarios del Sistema</h3>
                 <p style="color:#aaa;margin-bottom:10px;">Roles: admin (acceso total), comex, comercial, contable, visualizador</p>
@@ -1290,5 +1303,103 @@
         <div id="historialContenido" style="color:#ccc;"></div>
     </div>
 </div>
+<!-- ============================================ -->
+<!-- SISTEMA DE TICKETS DE SOPORTE TÉCNICO       -->
+<!-- ============================================ -->
+<!-- Botón flotante siempre visible en esquina inferior derecha -->
+<div id="soporteBtnFlotante" style="position:fixed;bottom:25px;right:25px;z-index:9999;">
+    <button onclick="abrirNuevoTicket()" style="background:linear-gradient(135deg, #667eea, #764ba2);color:#fff;border:none;padding:14px 20px;border-radius:30px;cursor:pointer;font-size:14px;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.4);" title="Reportar problema o hacer consulta">
+        💬 Soporte
+    </button>
+</div>
+
+<!-- Modal de nuevo ticket -->
+<div id="nuevoTicketModal" class="modal">
+    <div class="modal-content" style="max-width:600px;">
+        <div class="modal-header">
+            <h3>💬 Contacto con Soporte Técnico</h3>
+            <button class="modal-close" onclick="cerrarModal('nuevoTicketModal')">×</button>
+        </div>
+        <div style="padding:20px;">
+            <p style="color:#aaa;margin-bottom:20px;">
+                Reportá un bug, proponé una mejora o consultá cualquier duda.
+                Todos los tickets quedan registrados y podés hacer seguimiento desde
+                "Mis Tickets".
+            </p>
+            <div class="form-row">
+                <div class="form-group" style="flex:1;">
+                    <label>Tipo <span style="color:#f44336;">*</span></label>
+                    <select id="ticketTipo" style="width:100%;padding:8px;background:#1e1e2f;border:1px solid #444;color:#fff;border-radius:5px;">
+                        <option value="bug">🐛 Bug / Error</option>
+                        <option value="sugerencia">💡 Sugerencia</option>
+                        <option value="consulta" selected>❓ Consulta</option>
+                        <option value="mejora">✨ Mejora</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Prioridad</label>
+                    <select id="ticketPrioridad" style="width:100%;padding:8px;background:#1e1e2f;border:1px solid #444;color:#fff;border-radius:5px;">
+                        <option value="baja">Baja</option>
+                        <option value="media" selected>Media</option>
+                        <option value="alta">Alta</option>
+                        <option value="critica">Crítica</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Título <span style="color:#f44336;">*</span></label>
+                <input type="text" id="ticketTitulo" maxlength="200" placeholder="Resumen corto del tema (máx 200 caracteres)" style="width:100%;padding:8px;background:#1e1e2f;border:1px solid #444;color:#fff;border-radius:5px;">
+            </div>
+            <div class="form-group">
+                <label>Descripción <span style="color:#f44336;">*</span></label>
+                <textarea id="ticketDescripcion" rows="6" placeholder="Contá con detalle: qué estabas haciendo, qué esperabas que pase, qué pasó en realidad. Si es un error, copiá el mensaje exacto si podés." style="width:100%;padding:8px;background:#1e1e2f;border:1px solid #444;color:#fff;border-radius:5px;resize:vertical;"></textarea>
+            </div>
+            <p style="color:#888;font-size:11px;margin:10px 0;">
+                🔒 Se captura automáticamente: tu email, la URL actual, y el navegador que usás — para ayudar al soporte a reproducir el problema.
+            </p>
+            <div style="display:flex;justify-content:space-between;margin-top:20px;">
+                <button class="btn btn-secondary" onclick="abrirMisTickets()">📋 Ver mis tickets</button>
+                <div>
+                    <button class="btn btn-secondary" onclick="cerrarModal('nuevoTicketModal')">Cancelar</button>
+                    <button class="btn btn-primary" onclick="enviarTicket()" style="margin-left:10px;">📨 Enviar</button>
+                </div>
+            </div>
+            <div id="ticketResultado" style="margin-top:15px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal "Mis tickets" (lista del usuario) -->
+<div id="misTicketsModal" class="modal">
+    <div class="modal-content" style="max-width:900px;">
+        <div class="modal-header">
+            <h3>📋 Mis Tickets</h3>
+            <button class="modal-close" onclick="cerrarModal('misTicketsModal')">×</button>
+        </div>
+        <div style="padding:20px;">
+            <div style="display:flex;gap:10px;margin-bottom:15px;">
+                <button class="btn btn-primary" onclick="abrirNuevoTicket()">+ Nuevo Ticket</button>
+                <button class="btn btn-secondary" onclick="cargarMisTickets()">🔄 Refrescar</button>
+            </div>
+            <div id="misTicketsLista" style="max-height:500px;overflow-y:auto;">
+                Cargando...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal detalle ticket -->
+<div id="detalleTicketModal" class="modal">
+    <div class="modal-content" style="max-width:700px;">
+        <div class="modal-header">
+            <h3 id="detalleTicketTitulo">Detalle del Ticket</h3>
+            <button class="modal-close" onclick="cerrarModal('detalleTicketModal')">×</button>
+        </div>
+        <div id="detalleTicketContenido" style="padding:20px;"></div>
+    </div>
+</div>
+
+<script src="js/soporte.js"></script>
+
 </body>
 </html>

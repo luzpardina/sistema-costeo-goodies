@@ -797,6 +797,141 @@
         }
     }
 
+    // =============================================
+    // TICKETS DE SOPORTE — Admin
+    // =============================================
+    // El admin ve todos los tickets, puede filtrar por estado, responder y cambiar estado.
+    // Las estadísticas (pendientes, etc.) se cargan en paralelo.
+    let _ticketsAdminCache = [];
+    let _ticketsFiltroActual = '';
+
+    async function cargarTicketsAdmin() {
+        const div = document.getElementById('ticketsAdminLista');
+        const divStats = document.getElementById('ticketsAdminStats');
+        div.innerHTML = '<p style="color:#aaa;">Cargando tickets...</p>';
+
+        try {
+            // Cargar tickets y stats en paralelo
+            const [respTickets, respStats] = await Promise.all([
+                fetch(API_URL + '/api/soporte', { headers: { 'Authorization': 'Bearer ' + token } }),
+                fetch(API_URL + '/api/soporte/stats/resumen', { headers: { 'Authorization': 'Bearer ' + token } })
+            ]);
+
+            if (!respTickets.ok) throw new Error('Error cargando tickets');
+            const data = await respTickets.json();
+            _ticketsAdminCache = data.tickets || [];
+
+            // Stats opcionales
+            if (respStats.ok) {
+                const stats = await respStats.json();
+                divStats.innerHTML =
+                    '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;">' +
+                    '<div style="padding:6px 12px;background:#2a2a3e;border-radius:5px;">Total: <strong>' + stats.total + '</strong></div>' +
+                    '<div style="padding:6px 12px;background:#1a3a5c;border-radius:5px;">Pendientes: <strong>' + stats.pendientes_admin + '</strong></div>' +
+                    '<div style="padding:6px 12px;background:#2a2a3e;border-radius:5px;">Bugs: <strong>' + (stats.por_tipo.bug || 0) + '</strong></div>' +
+                    '<div style="padding:6px 12px;background:#2a2a3e;border-radius:5px;">Críticos: <strong>' + (stats.por_prioridad.critica || 0) + '</strong></div>' +
+                    '</div>';
+            }
+
+            renderTicketsAdmin();
+        } catch (e) {
+            div.innerHTML = '<p style="color:#f44336;">Error: ' + e.message + '</p>';
+        }
+    }
+
+    function renderTicketsAdmin() {
+        const div = document.getElementById('ticketsAdminLista');
+        let tickets = _ticketsAdminCache;
+        if (_ticketsFiltroActual) {
+            tickets = tickets.filter(t => t.estado === _ticketsFiltroActual);
+        }
+        if (tickets.length === 0) {
+            div.innerHTML = '<p style="color:#888;padding:30px;text-align:center;">No hay tickets que mostrar con el filtro seleccionado.</p>';
+            return;
+        }
+
+        const tipoEmoji = { bug: '🐛', sugerencia: '💡', consulta: '❓', mejora: '✨' };
+        const estadoColor = {
+            abierto: '#4fc3f7',
+            en_progreso: '#ffab40',
+            resuelto: '#4CAF50',
+            cerrado: '#888'
+        };
+        const prioColor = { baja: '#aaa', media: '#4fc3f7', alta: '#ff9800', critica: '#f44336' };
+
+        let html = '';
+        for (const t of tickets) {
+            const color = estadoColor[t.estado] || '#aaa';
+            const pcolor = prioColor[t.prioridad] || '#aaa';
+            const fecha = new Date(t.created_at).toLocaleString('es-AR');
+            html += '<div style="padding:12px;margin-bottom:10px;background:#2a2a3e;border-radius:6px;border-left:4px solid ' + color + ';">';
+            html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">';
+            html += '<div style="flex:1;">';
+            html += '<div style="font-weight:bold;">' + (tipoEmoji[t.tipo] || '📝') + ' #' + t.numero + ' — ' + escapeHtmlAdmin(t.titulo) + '</div>';
+            html += '<div style="font-size:11px;color:#888;margin-top:4px;">' + escapeHtmlAdmin(t.usuario_email) + ' | ' + fecha + ' | <span style="color:' + pcolor + ';">' + t.prioridad + '</span></div>';
+            html += '</div>';
+            html += '<button class="btn btn-secondary btn-sm" onclick="responderTicket(\'' + t.id + '\')">Ver/Responder</button>';
+            html += '</div>';
+            html += '<div style="margin-top:8px;font-size:12px;color:#ccc;max-height:60px;overflow:hidden;text-overflow:ellipsis;">' + escapeHtmlAdmin((t.descripcion || '').substring(0, 200)) + (t.descripcion && t.descripcion.length > 200 ? '...' : '') + '</div>';
+            if (t.respuesta_admin) {
+                html += '<div style="margin-top:6px;font-size:11px;color:#4CAF50;">💬 Respondido</div>';
+            }
+            html += '</div>';
+        }
+        div.innerHTML = html;
+    }
+
+    function filtrarTicketsAdmin(estado) {
+        _ticketsFiltroActual = estado;
+        renderTicketsAdmin();
+    }
+
+    async function responderTicket(id) {
+        const ticket = _ticketsAdminCache.find(t => t.id === id);
+        if (!ticket) return;
+
+        const nuevoEstado = prompt(
+            'Ticket #' + ticket.numero + '\n' +
+            'De: ' + ticket.usuario_email + '\n' +
+            'Título: ' + ticket.titulo + '\n\n' +
+            'Descripción:\n' + ticket.descripcion + '\n\n' +
+            (ticket.respuesta_admin ? 'RESPUESTA ACTUAL:\n' + ticket.respuesta_admin + '\n\n' : '') +
+            '¿Nuevo estado? (abierto / en_progreso / resuelto / cerrado)',
+            ticket.estado
+        );
+        if (!nuevoEstado) return;
+        if (!['abierto', 'en_progreso', 'resuelto', 'cerrado'].includes(nuevoEstado)) {
+            alert('Estado inválido');
+            return;
+        }
+
+        const respuesta = prompt('Respuesta al usuario (opcional, dejá vacío para no cambiar):', ticket.respuesta_admin || '');
+
+        const updates = { estado: nuevoEstado };
+        if (respuesta !== null && respuesta.trim()) updates.respuesta_admin = respuesta.trim();
+
+        try {
+            const resp = await fetch(API_URL + '/api/soporte/' + id, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updates)
+            });
+            if (!resp.ok) throw new Error((await resp.json()).error);
+            alert('Ticket actualizado');
+            cargarTicketsAdmin();
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    function escapeHtmlAdmin(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     // Cerrar buscador al hacer clic fuera
     document.addEventListener('click', function(e) {
         const buscador = document.getElementById('buscadorGlobal');
@@ -817,4 +952,7 @@
     window.guardarConfig = guardarConfig;
     window.ejecutarDiagnostico = ejecutarDiagnostico;
     window.recalcularPctCostoMasivo = recalcularPctCostoMasivo;
+    window.cargarTicketsAdmin = cargarTicketsAdmin;
+    window.filtrarTicketsAdmin = filtrarTicketsAdmin;
+    window.responderTicket = responderTicket;
     window.verHistorial = verHistorial;

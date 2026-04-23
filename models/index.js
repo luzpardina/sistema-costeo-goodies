@@ -20,6 +20,7 @@ const ValuacionDetalle = require('./ValuacionDetalle');
 const CatalogoLog = require('./CatalogoLog');
 const AuditoriaLog = require('./AuditoriaLog');
 const ConfigSistema = require('./ConfigSistema');
+const SoporteTicket = require('./SoporteTicket');
 
 // =============================================
 // RELACIONES EXISTENTES (sin cambios)
@@ -184,5 +185,6 @@ module.exports = {
     ValuacionDetalle,
     CatalogoLog,
     AuditoriaLog,
-    ConfigSistema
+    ConfigSistema,
+    SoporteTicket
 };
