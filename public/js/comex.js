@@ -1348,7 +1348,20 @@ async function ejecutarCalculo(id, metodo) {
                 const costeos = await Promise.all(promesas);
                 const c1 = costeos[0], c2 = costeos[1];
 
-                const pctDif = (a, b) => { a = parseFloat(a)||0; b = parseFloat(b)||0; if (b === 0) return a === 0 ? 0 : 100; return ((a - b) / Math.abs(b)) * 100; };
+                // pctDif(viejo, nuevo): devuelve la variación porcentual del NUEVO
+                // respecto al VIEJO. Positivo si subió, negativo si bajó.
+                // Ejemplo: pctDif(100, 120) = +20% (el nuevo valor es 20% más alto).
+                // IMPORTANTE: siempre pasar primero el valor del costeo 1 (izquierda,
+                // típicamente el anterior) y segundo el del costeo 2 (derecha, el más
+                // nuevo). Antes la fórmula estaba invertida en Base Aduana, Gastos
+                // Varios y Tipos de Cambio, haciendo que un gasto que SUBÍA apareciera
+                // con Dif % negativo (como si hubiera bajado). Reportado 23/abr/2026.
+                const pctDif = (viejo, nuevo) => {
+                    viejo = parseFloat(viejo) || 0;
+                    nuevo = parseFloat(nuevo) || 0;
+                    if (viejo === 0) return nuevo === 0 ? 0 : 100;
+                    return ((nuevo - viejo) / Math.abs(viejo)) * 100;
+                };
                 const fmtNum = (v) => (parseFloat(v)||0).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
                 const fmtFob = (v) => (parseFloat(v)||0).toLocaleString('es-AR', {minimumFractionDigits:4, maximumFractionDigits:4});
                 const fmtPct = (v) => { const n = parseFloat(v); return (n > 0 ? '+' : '') + n.toFixed(2) + '%'; };
@@ -1534,7 +1547,7 @@ async function ejecutarCalculo(id, metodo) {
                     const alertas = [];
                     if (d1 > 0 && d2 > 0 && d1.toFixed(4) !== d2.toFixed(4)) alertas.push('⚠️ Derechos: ' + (d1*100).toFixed(1) + '% / ' + (d2*100).toFixed(1) + '%');
                     if (ii1 > 0 && ii2 > 0 && ii1.toFixed(4) !== ii2.toFixed(4)) alertas.push('⚠️ Imp.Int: ' + (ii1*100).toFixed(1) + '% / ' + (ii2*100).toFixed(1) + '%');
-                    if (f1 > 0 && f2 > 0 && Math.abs(pctDif(f2, f1)) > 5) alertas.push('⚠️ FOB varía ' + Math.abs(pctDif(f2, f1)).toFixed(1) + '%');
+                    if (f1 > 0 && f2 > 0 && Math.abs(pctDif(f1, f2)) > 5) alertas.push('⚠️ FOB varía ' + Math.abs(pctDif(f1, f2)).toFixed(1) + '%');
 
                     const tieneAlerta = alertas.length > 0;
                     const rowBg = tieneAlerta ? ' style="background:rgba(244,67,54,0.08);"' : '';
@@ -1542,7 +1555,7 @@ async function ejecutarCalculo(id, metodo) {
                     html += '<td style="padding:4px 6px;border-bottom:1px solid #333;"><strong>' + (nombre || '—') + '</strong><br><small style="color:#aaa;">' + codigo + '</small></td>';
                     html += '<td style="padding:4px 6px;text-align:right;border-bottom:1px solid #333;">' + (f1 ? fmtFob(f1) : '-') + '</td>';
                     html += '<td style="padding:4px 6px;text-align:right;border-bottom:1px solid #333;">' + (f2 ? fmtFob(f2) : '-') + '</td>';
-                    html += (f1 > 0 && f2 > 0 ? difCell(f2, f1) : '<td style="' + tdSt + '">-</td>');
+                    html += (f1 > 0 && f2 > 0 ? difCell(f1, f2) : '<td style="' + tdSt + '">-</td>');
                     html += '<td style="padding:4px 6px;border-bottom:1px solid #333;font-size:11px;">' + (tieneAlerta ? alertas.join('<br>') : '<span style="color:#4CAF50;">✔</span>') + '</td>';
                     html += '</tr>';
                 }
@@ -1568,7 +1581,7 @@ async function ejecutarCalculo(id, metodo) {
                     html += '<td style="padding:4px 6px;border-bottom:1px solid #333;"><strong>' + (nombre || '—') + '</strong><br><small style="color:#aaa;">' + codigo + '</small></td>';
                     html += '<td style="padding:4px 6px;text-align:right;border-bottom:1px solid #333;">' + (cn1 ? '$' + fmtNum(cn1) : '-') + '</td>';
                     html += '<td style="padding:4px 6px;text-align:right;border-bottom:1px solid #333;">' + (cn2 ? '$' + fmtNum(cn2) : '-') + '</td>';
-                    html += (cn1 > 0 && cn2 > 0 ? difCell(cn2, cn1) : '<td style="' + tdSt + '">-</td>');
+                    html += (cn1 > 0 && cn2 > 0 ? difCell(cn1, cn2) : '<td style="' + tdSt + '">-</td>');
                     html += '</tr>';
                 }
                 html += '</tbody></table>';

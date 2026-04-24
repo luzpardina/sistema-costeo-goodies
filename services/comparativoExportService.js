@@ -25,13 +25,16 @@ const thinBorder = {
     right: { style: 'thin', color: { argb: COLORS.borderColor } }
 };
 
-// pctDif: misma fórmula que el frontend — (a - b) / |b|
-// Nota: devuelve número puro (ej. 15.23 para +15.23%), no decimal.
-function pctDif(a, b) {
-    a = parseFloat(a) || 0;
-    b = parseFloat(b) || 0;
-    if (b === 0) return a === 0 ? 0 : 100;
-    return ((a - b) / Math.abs(b)) * 100;
+// pctDif(viejo, nuevo): variación porcentual del nuevo respecto del viejo.
+// Positivo si subió, negativo si bajó. Convención (viejo, nuevo) alineada
+// con el frontend en comex.js. Antes estaba (a, b) con fórmula invertida,
+// lo que generaba signos incorrectos en algunas secciones del Excel.
+// Corregido 23/abr/2026.
+function pctDif(viejo, nuevo) {
+    viejo = parseFloat(viejo) || 0;
+    nuevo = parseFloat(nuevo) || 0;
+    if (viejo === 0) return nuevo === 0 ? 0 : 100;
+    return ((nuevo - viejo) / Math.abs(viejo)) * 100;
 }
 
 // Sanitiza un nombre para usarlo en un filename de Excel.
@@ -231,7 +234,7 @@ class ComparativoExportService {
                 rowTot.getCell(4).value = t2;
                 rowTot.getCell(3).numFmt = '#,##0.00';
                 rowTot.getCell(4).numFmt = '#,##0.00';
-                const pctTot = pctDif(t2, t1);
+                const pctTot = pctDif(t1, t2);
                 rowTot.getCell(5).value = pctTot / 100;
                 rowTot.getCell(5).numFmt = '+0.00%;-0.00%;0.00%';
                 styleTotalRow(rowTot);
@@ -278,7 +281,7 @@ class ComparativoExportService {
                 rowTot.getCell(4).value = t2;
                 rowTot.getCell(3).numFmt = '"$"#,##0.00';
                 rowTot.getCell(4).numFmt = '"$"#,##0.00';
-                const pctTot = pctDif(t2, t1);
+                const pctTot = pctDif(t1, t2);
                 rowTot.getCell(5).value = pctTot / 100;
                 rowTot.getCell(5).numFmt = '+0.00%;-0.00%;0.00%';
                 styleTotalRow(rowTot);
@@ -311,7 +314,7 @@ class ComparativoExportService {
                 row.getCell(3).numFmt = '#,##0.0000';
                 row.getCell(4).numFmt = '#,##0.0000';
                 if (f1 > 0 && f2 > 0) {
-                    const pct = pctDif(f2, f1);
+                    const pct = pctDif(f1, f2);
                     row.getCell(5).value = pct / 100;
                     row.getCell(5).numFmt = '+0.00%;-0.00%;0.00%';
                     colorPctCell(row.getCell(5), pct);
@@ -346,7 +349,7 @@ class ComparativoExportService {
                 row.getCell(3).numFmt = '"$"#,##0.00';
                 row.getCell(4).numFmt = '"$"#,##0.00';
                 if (cn1 > 0 && cn2 > 0) {
-                    const pct = pctDif(cn2, cn1);
+                    const pct = pctDif(cn1, cn2);
                     row.getCell(5).value = pct / 100;
                     row.getCell(5).numFmt = '+0.00%;-0.00%;0.00%';
                     colorPctCell(row.getCell(5), pct);
@@ -475,7 +478,7 @@ class ComparativoExportService {
         r.getCell(3).numFmt = numFmt;
         r.getCell(4).numFmt = numFmt;
         if (v1 > 0 && v2 > 0) {
-            const pct = pctDif(v2, v1);
+            const pct = pctDif(v1, v2);
             r.getCell(5).value = pct / 100;
             r.getCell(5).numFmt = '+0.00%;-0.00%;0.00%';
             colorPctCell(r.getCell(5), pct);
