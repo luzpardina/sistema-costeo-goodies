@@ -320,7 +320,7 @@
                 <table>
                     <tr><th>Campo</th><th>Descripción</th></tr>
                     <tr><td>Nombre del Costeo</td><td>Identificador libre (ej: "PREGO Marzo 2026")</td></tr>
-                    <tr><td>Proveedor de Origen</td><td>Empresa que provee la mercadería (se sincroniza al catálogo maestro)</td></tr>
+                    <tr><td>Empresa que factura en Origen</td><td>Empresa que emite la factura desde el exterior. A veces es la propia fábrica, a veces es una empresa intermediaria (ej. STAB, INFINITY) que factura por temas de financiamiento. Se sincroniza al catálogo maestro.</td></tr>
                     <tr><td>Empresa Intermediaria</td><td>La fábrica real si hay intermediario. Se registra en el catálogo como "Empresa Fábrica"</td></tr>
                     <tr><td>Moneda Principal</td><td>USD, EUR o GBP — moneda de la factura del proveedor</td></tr>
                     <tr><td>Monto Factura</td><td>Total de la factura del proveedor en moneda principal</td></tr>
@@ -330,7 +330,7 @@
                 </table>
 
                 <div class="tip">
-                    Al guardar, si el Proveedor de Origen o la Empresa Fábrica difieren de lo que está en el catálogo maestro, 
+                    Al guardar, si la Empresa que factura en Origen o la Empresa Fábrica difieren de lo que está en el catálogo maestro, 
                     el sistema te pregunta si querés actualizar el catálogo. Así se mantienen sincronizados.
                 </div>
 
@@ -596,7 +596,7 @@
                     <tr><th>Columna</th><th>Obligatoria</th><th>Descripción</th></tr>
                     <tr><td>Cod. Goodies</td><td>Sí</td><td>Código único del artículo</td></tr>
                     <tr><td>Nombre</td><td>Sí</td><td>Nombre completo</td></tr>
-                    <tr><td>Proveedor de Origen *</td><td>No</td><td>Nombre del proveedor</td></tr>
+                    <tr><td>Empresa que factura en Origen *</td><td>No</td><td>Empresa que emite factura desde el exterior</td></tr>
                     <tr><td>Nombre Empresa Fábrica</td><td>No</td><td>Fábrica real</td></tr>
                     <tr><td>Marca</td><td>No</td><td>Marca comercial</td></tr>
                     <tr><td>Rubro</td><td>No</td><td>Categoría: Almacén, Bebidas, Frescos, etc.</td></tr>

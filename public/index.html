@@ -201,7 +201,7 @@
                         <input type="search" id="filtroNombre" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" placeholder="Buscar por nombre..." oninput="aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
                     </div>
                     <div class="filtro-grupo">
-                        <label>Proveedor de Origen</label>
+                        <label>Empresa que factura en Origen</label>
                         <input type="search" id="filtroProveedor" autocomplete="off" list="listaProveedores" placeholder="Escribí para buscar..." oninput="cascadaFiltrosCosteos(); aplicarFiltros()" onchange="cascadaFiltrosCosteos(); aplicarFiltros()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
                         <datalist id="listaProveedores"></datalist>
                     </div>
@@ -263,7 +263,7 @@
                     <input type="text" name="prevent_autofill" style="display:none;" tabindex="-1">
                     <input type="password" name="prevent_autofill_pw" style="display:none;" tabindex="-1">
                     <div class="filtro-grupo">
-                        <label>Proveedor de Origen</label>
+                        <label>Empresa que factura en Origen</label>
                         <input type="search" id="filtroProveedorArticulo" autocomplete="off" list="listaProveedoresArticulo" placeholder="Escribí para buscar..." oninput="cascadaFiltrosUltimoCosto(); filtrarArticulos()" onchange="cascadaFiltrosUltimoCosto(); filtrarArticulos()" style="padding: 8px; border: 1px solid #444; border-radius: 5px; background: #1e1e2f; color: #fff; min-width: 200px;">
                         <datalist id="listaProveedoresArticulo"></datalist>
                     </div>
@@ -995,7 +995,7 @@
                 <h4>Datos del Costeo</h4>
                 <div class="form-row">
                     <div class="form-group"><label>Nombre del Costeo *</label><input type="text" id="cm_nombre" placeholder="Ej: BACKUS 1-25"></div>
-                    <div class="form-group"><label>Proveedor de Origen *</label><input type="text" id="cm_proveedor" list="listaProveedoresMaestro" placeholder="Seleccione o escriba proveedor" onchange="cargarMarcasDelProveedor()"><datalist id="listaProveedoresMaestro"></datalist></div>
+                    <div class="form-group"><label>Empresa que factura en Origen *</label><input type="text" id="cm_proveedor" list="listaProveedoresMaestro" placeholder="Seleccione o escriba la empresa" onchange="cargarMarcasDelProveedor()"><datalist id="listaProveedoresMaestro"></datalist></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">

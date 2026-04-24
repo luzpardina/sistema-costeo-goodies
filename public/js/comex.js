@@ -2430,7 +2430,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
                         if (hasProv || hasFab) {
                             var syncMsg = '⚠️ Se detectaron diferencias con el catálogo maestro:\n';
                             if (hasProv) {
-                                syncMsg += '\n📋 Proveedor de Origen:';
+                                syncMsg += '\n📋 Empresa que factura en Origen:';
                                 data.catalogo_sync.proveedor_cambios.forEach(c => {
                                     syncMsg += '\n  ' + c.codigo + ': "' + c.antes + '" → "' + c.despues + '"';
                                 });
@@ -2876,7 +2876,7 @@ fob_parte: parseFloat(document.getElementById('cm_fobParte')?.value) || 0,
             const proveedor = document.getElementById('cm_proveedor').value.trim();
             const fabrica = document.getElementById('cm_intermediaria').value.trim();
             if (!proveedor && !fabrica) {
-                alert('Completá al menos el Proveedor de Origen o la Empresa Fábrica en Datos Generales');
+                alert('Completá al menos la Empresa que factura en Origen o la Empresa Fábrica en Datos Generales');
                 cambiarTab('datosGenerales');
                 return;
             }

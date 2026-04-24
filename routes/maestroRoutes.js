@@ -25,7 +25,7 @@ function parsearExcelCatalogo(buffer) {
         if (!codigo || !nombre) return null;
         return {
             codigo_goodies: codigo, nombre,
-            proveedor: String(row['RazonSocialProveedor'] || row['proveedor'] || row['Proveedor'] || row['Proveedor de Origen *'] || '').trim() || null,
+            proveedor: String(row['Empresa que factura en Origen *'] || row['Empresa que factura en Origen'] || row['RazonSocialProveedor'] || row['proveedor'] || row['Proveedor'] || row['Proveedor de Origen *'] || row['Proveedor de Origen'] || '').trim() || null,
             empresa_fabrica: String(row['Nombre Empresa Fábrica'] || row['empresa_fabrica'] || row['Empresa Fábrica'] || '').trim() || null,
             marca: String(row['NombreMarcaArticulo'] || row['marca'] || row['Marca'] || '').trim() || null,
             rubro: String(row['NombreArticuloCategoria'] || row['categoria'] || row['Rubro'] || '').trim() || null,
@@ -274,7 +274,7 @@ router.get('/descargar', auth, async (req, res) => {
 
         // Headers
         const headers = [
-            'Cod. Goodies', 'Nombre', 'Proveedor de Origen *', 'Nombre Empresa Fábrica', 'Marca',
+            'Cod. Goodies', 'Nombre', 'Empresa que factura en Origen *', 'Nombre Empresa Fábrica', 'Marca',
             'Rubro', 'SubRubro', 'Cod. Elaborador', 'Pos. Arancelaria',
             '% Derechos', '% Imp. Internos', '% IVA', '% Estadística',
             'Moneda', 'País Origen', 'Und/Caja', 'Último Valor Origen', 'Último Valor Fábrica',
@@ -285,7 +285,7 @@ router.get('/descargar', auth, async (req, res) => {
             'RNE', 'RNPA', 'Es Combo', 'Pesable', 'Activo Web', 'Unidad Venta',
             'Proveedor Activo', 'Empresa Fábrica Activa', 'Artículo Activo'
         ];
-        const colWidths = [18.6, 57.5, 23.6, 26.5, 19.8, 30.8, 26.8, 15.4, 15.3, 10.8, 8, 5.9, 9.9, 8, 15.4, 8.9, 8.4, 7.4, 8, 8, 8, 8, 10, 10, 12, 9, 18, 15, 16, 14, 10, 10, 10, 10, 10, 14, 14, 8, 8, 8, 12, 9.9, 12, 7.8];
+        const colWidths = [18.6, 57.5, 30, 26.5, 19.8, 30.8, 26.8, 15.4, 15.3, 10.8, 8, 5.9, 9.9, 8, 15.4, 8.9, 8.4, 7.4, 8, 8, 8, 8, 10, 10, 12, 9, 18, 15, 16, 14, 10, 10, 10, 10, 10, 14, 14, 8, 8, 8, 12, 9.9, 12, 7.8];
 
         // Set column widths
         ws.columns = headers.map((h, i) => ({ header: h, width: colWidths[i] || 12 }));
